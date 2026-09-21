@@ -3,6 +3,7 @@ package wstool.common;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Properties;
 import wstool.common.model.PackageDescriptor;
@@ -62,6 +63,23 @@ public final class WorkspaceLayout {
 
     public Path buildDirectory(PackageDescriptor descriptor) {
         return metadata().resolve("build").resolve(descriptor.version().name());
+    }
+
+    public void ensureBuildDirectoryLink(Path source, PackageDescriptor descriptor) {
+        var link = source.resolve("builddir");
+        var buildDirectory = buildDirectory(descriptor);
+        try {
+            Files.createDirectories(buildDirectory.getParent());
+            if (Files.exists(link, LinkOption.NOFOLLOW_LINKS)) {
+                if (Files.isSymbolicLink(link)
+                        && Files.readSymbolicLink(link)
+                                .equals(link.getParent().relativize(buildDirectory))) return;
+                throw new IllegalStateException("Package already contains " + link);
+            }
+            Files.createSymbolicLink(link, link.getParent().relativize(buildDirectory));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to link package build directory " + link, e);
+        }
     }
 
     public Path stageDirectory(PackageDescriptor descriptor) {

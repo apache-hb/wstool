@@ -15,7 +15,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -46,14 +45,16 @@ class EndToEndIntegrationTest {
 
     private final Path fixtureRoot = findFixtureRoot();
     private final Path repositoryRoot = fixtureRoot.getParent().getParent();
-    private Path temporaryDirectory;
+    private Path integrationDirectory;
     private String endpoint;
     private String accessKey;
     private String secretKey;
 
     @BeforeAll
     void startGarage() throws Exception {
-        temporaryDirectory = Files.createTempDirectory("wstool-integration-");
+        integrationDirectory = repositoryRoot.resolve("build/integration-test");
+        delete(integrationDirectory);
+        Files.createDirectories(integrationDirectory);
         endpoint = "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
 
         var node = garageOutput("node", "id");
@@ -77,14 +78,9 @@ class EndToEndIntegrationTest {
         runGarage("bucket", "allow", "--read", "--write", "storage", "--key", "wstool-integration");
     }
 
-    @AfterAll
-    void cleanupTemporaryDirectory() throws Exception {
-        if (temporaryDirectory != null) delete(temporaryDirectory);
-    }
-
     @Test
     void buildsCxxApplicationAndFetchesPublishedDependencies() throws Exception {
-        var firstWorkspace = temporaryDirectory.resolve("first");
+        var firstWorkspace = integrationDirectory.resolve("first");
         createWorkspace(firstWorkspace, "first");
         var firstCreated =
                 runCli(
@@ -94,7 +90,7 @@ class EndToEndIntegrationTest {
                         "--name",
                         "first",
                         "--root",
-                        temporaryDirectory.toString());
+                        integrationDirectory.toString());
         assertEquals(0, firstCreated.exitCode, firstCreated.output);
         assertTrue(Files.isDirectory(firstWorkspace), firstCreated.output);
         configureAndClone(
@@ -103,6 +99,10 @@ class EndToEndIntegrationTest {
         configureAndClone(firstWorkspace, "googletest", "googletest");
         configureAndClone(firstWorkspace, "glibc", "glibc");
         configureAndClone(firstWorkspace, "sample-app", "app");
+        assertBuildDirectoryLink(firstWorkspace, "abseil");
+        assertBuildDirectoryLink(firstWorkspace, "googletest");
+        assertBuildDirectoryLink(firstWorkspace, "glibc");
+        assertBuildDirectoryLink(firstWorkspace, "sample-app");
         runCli(firstWorkspace, "workspace", "setup", "--distro", "demo");
         var firstBuild = runCli(firstWorkspace, "distro", "build");
         assertEquals(0, firstBuild.exitCode, firstBuild.output);
@@ -113,7 +113,7 @@ class EndToEndIntegrationTest {
         assertEquals(0, application.exitCode, application.output);
         assertTrue(application.output.startsWith("wstool/"), application.output);
 
-        var secondWorkspace = temporaryDirectory.resolve("second");
+        var secondWorkspace = integrationDirectory.resolve("second");
         var secondCreated =
                 runCli(
                         secondWorkspace.getParent(),
@@ -122,10 +122,11 @@ class EndToEndIntegrationTest {
                         "--name",
                         "second",
                         "--root",
-                        temporaryDirectory.toString());
+                        integrationDirectory.toString());
         assertEquals(0, secondCreated.exitCode, secondCreated.output);
         assertTrue(Files.isDirectory(secondWorkspace), secondCreated.output);
         configureAndClone(secondWorkspace, "sample-app", "app");
+        assertBuildDirectoryLink(secondWorkspace, "sample-app");
         runCli(secondWorkspace, "workspace", "setup", "--distro", "demo");
         var fetchedBuild = runCli(secondWorkspace, "distro", "build");
         assertEquals(0, fetchedBuild.exitCode, fetchedBuild.output);
@@ -142,6 +143,15 @@ class EndToEndIntegrationTest {
 
     private void createWorkspace(Path workspace, String name) throws Exception {
         assertTrue(Files.notExists(workspace), name);
+    }
+
+    private static void assertBuildDirectoryLink(Path workspace, String packageName)
+            throws IOException {
+        var link = workspace.resolve("src").resolve(packageName).resolve("builddir");
+        var expected = workspace.resolve(".wstool/build").resolve(packageName).toAbsolutePath();
+        assertTrue(Files.isSymbolicLink(link), link.toString());
+        var actual = link.getParent().resolve(Files.readSymbolicLink(link)).toAbsolutePath();
+        assertEquals(expected.normalize(), actual.normalize());
     }
 
     private void configureAndClone(Path workspace, String packageName, String fixtureName)

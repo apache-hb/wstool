@@ -50,6 +50,7 @@ public final class BuildService {
             String target,
             List<String> arguments,
             boolean docker) {
+        layout.ensureBuildDirectoryLink(descriptor.source(), descriptor);
         materializeDependencies(layout, descriptor, "build");
         var useDocker = docker || descriptor.buildOptions().buildImage().equals("bootstrap");
         var buildDirectory = layout.buildDirectory(descriptor);
@@ -131,6 +132,7 @@ public final class BuildService {
 
     private void build(WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker) {
         var source = descriptor.source();
+        layout.ensureBuildDirectoryLink(source, descriptor);
         var buildOptions = descriptor.buildOptions();
         var useDocker = docker || buildOptions.buildImage().equals("bootstrap");
         var buildDir = layout.buildDirectory(descriptor);

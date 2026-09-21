@@ -57,13 +57,17 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
                 if (packages.size() != 1)
                     throw new IllegalArgumentException("A git URL must be cloned separately");
                 targetName = repositoryName(source);
-                gitClone(source, layout.sources().resolve(targetName));
+                var targetPath = layout.sources().resolve(targetName);
+                gitClone(source, targetPath);
+                layout.ensureBuildDirectoryLink(
+                        targetPath, PackageDescriptorReader.read(targetPath));
             } else {
                 var sourcePath = Path.of(source).toAbsolutePath().normalize();
                 var targetPath = layout.sources().resolve(targetName);
                 var descriptor = PackageDescriptorReader.read(sourcePath);
                 if (descriptor.importOptions() == null) copy(sourcePath, targetPath);
                 else importPackage(sourcePath, targetPath, descriptor);
+                layout.ensureBuildDirectoryLink(targetPath, descriptor);
             }
             LOG.info("Cloned {}", targetName);
         }

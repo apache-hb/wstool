@@ -17,6 +17,14 @@ class WsToolPackage {
 }
 
 class BuildOptions {
+  tool: String
+
+  /// Extra environment variables passed to the build tool
+  buildEnvironment: Mapping<String, String>?
+
+  /// A freeform map of options that are passed to the build tool through the environment variable `WST_USER_OPTIONS`
+  buildConfig: Mapping<String, String>?
+
   networkIsolation: NetworkIsolation = "isolated"
   sourceMount: SourceMount = "readonly"
   buildImage: BuildImage = "declared"
@@ -37,7 +45,7 @@ class ImportOptions {
 
 package: WsToolPackage
 
-buildOptions: BuildOptions?
+buildOptions: BuildOptions
 
 importOptions: ImportOptions?
 

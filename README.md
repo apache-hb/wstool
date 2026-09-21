@@ -51,7 +51,7 @@ The main command for configuring and aggregating packages during builds is `wsto
 
 ## writing your own build tools
 
-Build tools are simply scripts in the `bin` folder of your install, to create a new build tool create a package that installs an executable file to its `bin` output. The `buildTool` package key should be the name of the installed binary.
+Build tools are simply scripts in the `bin` folder of your install, to create a new build tool create a package that installs an executable file to its `bin` output. The `buildTool` package key should be the name of the installed binary. If you want to create a build tool that only a single project is going to use, it can be placed in `wstool/bin` inside the packages root directory. Then specify it using `buildTool` like usual.
 
 The executable receives these environment variables:
 
