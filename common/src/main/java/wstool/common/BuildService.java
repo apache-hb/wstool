@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import wstool.common.model.BuildOptions;
@@ -57,12 +58,12 @@ public final class BuildService {
         var sourcePath = pathForBuild(descriptor.source(), layout, useDocker);
         var buildPath = pathForBuild(buildDirectory, layout, useDocker);
         var stagePath = pathForBuild(layout.stageDirectory(descriptor), layout, useDocker);
-        var tool = layout.sysroot().resolve("bin").resolve(descriptor.buildTool());
+        var tool = buildTool(layout, descriptor);
         if (!Files.exists(tool)) {
             throw new IllegalStateException(
                     "Build tool "
-                            + descriptor.buildTool()
-                            + " is not installed in "
+                            + descriptor.buildOptions().tool()
+                            + " was not found in the package or "
                             + layout.sysroot());
         }
         var command = new ArrayList<String>(List.of(pathForBuild(tool, layout, useDocker), target));
@@ -73,7 +74,7 @@ public final class BuildService {
                 descriptor.buildOptions(),
                 command,
                 descriptor.buildOptions().effectiveDockerImage(),
-                toolEnvironment(sourcePath, buildPath, stagePath));
+                toolEnvironment(sourcePath, buildPath, stagePath, descriptor.buildOptions()));
     }
 
     public void fetchDependency(WorkspaceLayout layout, PackageVersion version) {
@@ -141,7 +142,7 @@ public final class BuildService {
         delete(stageDir);
         createDirectories(buildDir, stageDir, layout.sysroot());
 
-        if (descriptor.buildTool().equals("system")) {
+        if (buildOptions.tool().equals("system")) {
             copyTree(source.resolve("bin"), stageDir.resolve("bin"));
             writeManifest(stageDir, descriptor);
             copyTree(stageDir, layout.sysroot());
@@ -152,12 +153,12 @@ public final class BuildService {
         var sourcePath = pathForBuild(source, layout, useDocker);
         var buildPath = pathForBuild(buildDir, layout, useDocker);
         var stagePath = pathForBuild(stageDir, layout, useDocker);
-        var tool = layout.sysroot().resolve("bin").resolve(descriptor.buildTool());
+        var tool = buildTool(layout, descriptor);
         if (!Files.exists(tool)) {
             throw new IllegalStateException(
                     "Build tool "
-                            + descriptor.buildTool()
-                            + " is not installed in "
+                            + buildOptions.tool()
+                            + " was not found in the package or "
                             + layout.sysroot());
         }
         run(
@@ -166,16 +167,29 @@ public final class BuildService {
                 buildOptions,
                 List.of(pathForBuild(tool, layout, useDocker)),
                 buildOptions.effectiveDockerImage(),
-                toolEnvironment(sourcePath, buildPath, stagePath));
+                toolEnvironment(sourcePath, buildPath, stagePath, buildOptions));
         copyTree(stageDir, layout.sysroot());
     }
 
     private static Map<String, String> toolEnvironment(
-            String source, String privateDirectory, String prefix) {
-        return Map.of(
-                "WST_SRCDIR", source,
-                "WST_PRIVATE", privateDirectory,
-                "WST_PREFIX", prefix);
+            String source, String privateDirectory, String prefix, BuildOptions buildOptions) {
+        var environment = new LinkedHashMap<>(buildOptions.buildEnvironment());
+        environment.put("WST_SRCDIR", source);
+        environment.put("WST_PRIVATE", privateDirectory);
+        environment.put("WST_PREFIX", prefix);
+        environment.put(
+                "WST_USER_OPTIONS",
+                buildOptions.buildConfig().entrySet().stream()
+                        .map(entry -> entry.getKey() + "=" + entry.getValue())
+                        .collect(Collectors.joining(System.lineSeparator())));
+        return Map.copyOf(environment);
+    }
+
+    private static Path buildTool(WorkspaceLayout layout, PackageDescriptor descriptor) {
+        var toolName = descriptor.buildOptions().tool();
+        var bespoke = descriptor.source().resolve("wstool").resolve("bin").resolve(toolName);
+        if (Files.exists(bespoke)) return bespoke;
+        return layout.sysroot().resolve("bin").resolve(toolName);
     }
 
     private static String pathForBuild(Path path, WorkspaceLayout layout, boolean docker) {

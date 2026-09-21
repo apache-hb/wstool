@@ -4,6 +4,11 @@ typealias Version = String
 typealias DependencyMap = Mapping<String, Version>
 
 typealias NetworkIsolation = "isolated" | "open"
+
+/// The mount type of the packages source code inside the build container
+/// "readonly" mounts the source code as readonly, this is recommended as it means builds don't modify their own source tree
+/// "readwrite" mounts the source code as readwrite, this should only be used with external packages that have janky build systems or
+/// lack out of tree build support
 typealias SourceMount = "readonly" | "readwrite"
 
 /// The type of buildimage to use, when in doubt use declared
@@ -48,8 +53,6 @@ package: WsToolPackage
 buildOptions: BuildOptions
 
 importOptions: ImportOptions?
-
-buildTool: String
 
 /// Dependencies only required during build time, such as gradle or cmake
 buildDependencies: DependencyMap?

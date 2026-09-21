@@ -107,6 +107,10 @@ class EndToEndIntegrationTest {
         var firstBuild = runCli(firstWorkspace, "distro", "build");
         assertEquals(0, firstBuild.exitCode, firstBuild.output);
         assertTrue(firstBuild.output.contains("Built distribution"));
+        assertTrue(
+                Files.exists(
+                        firstWorkspace.resolve(".wstool/stage/glibc/include/gnu/libc-version.h")));
+        assertTrue(Files.exists(firstWorkspace.resolve(".wstool/stage/glibc/lib/libc.so.6")));
 
         var binary = firstWorkspace.resolve(".wstool/stage/sample-app/bin/sample-app");
         var application = run(List.of(binary.toString()));

@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+source=$WST_SRCDIR
+build=$WST_PRIVATE
+prefix=$WST_PREFIX
+
+if [ "$#" -eq 0 ]; then
+  mkdir -p "$build"
+  cd "$build"
+  sh "$source/configure" --prefix="$prefix" --disable-werror
+  make -C "$build" lib
+  make -C "$build" install-headers
+  mkdir -p "$prefix/lib"
+  cp "$build/libc.so" "$prefix/lib/libc.so.6"
+  cp "$build/elf/ld.so" "$prefix/lib/ld-linux-x86-64.so.2"
+  exit 0
+fi
+
+target=$1
+shift
+make -C "$build" "$target" "$@"

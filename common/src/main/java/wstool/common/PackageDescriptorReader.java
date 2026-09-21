@@ -44,7 +44,6 @@ public final class PackageDescriptorReader {
                                 descriptor.getPackage().getVersion()),
                         toBuildOptions(descriptor.getBuildOptions()),
                         toImportOptions(descriptor.getImportOptions()),
-                        descriptor.getBuildTool(),
                         valuesOrEmpty(descriptor.getBuildDependencies()),
                         valuesOrEmpty(descriptor.getDependencies()),
                         valuesOrEmpty(descriptor.getTestDependencies()),
@@ -79,8 +78,11 @@ public final class PackageDescriptorReader {
     }
 
     private static BuildOptions toBuildOptions(Package.BuildOptions options) {
-        if (options == null) return BuildOptions.defaults();
+        if (options == null) throw new IllegalArgumentException("buildOptions is required");
         return new BuildOptions(
+                options.getTool(),
+                valuesOrEmpty(options.getBuildEnvironment()),
+                valuesOrEmpty(options.getBuildConfig()),
                 options.getNetworkIsolation().toString(),
                 options.getSourceMount().toString(),
                 options.getBuildImage().toString(),

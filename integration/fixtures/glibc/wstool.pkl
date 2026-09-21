@@ -5,7 +5,12 @@ package {
   version = "2.39"
 }
 
-buildTool = "system"
+buildOptions {
+  tool = "wstool-glibc"
+  buildEnvironment {
+    ["MAKEFLAGS"] = "-j2"
+  }
+}
 
 importOptions {
   archive = "https://ftp.gnu.org/gnu/glibc/glibc-2.39.tar.xz"

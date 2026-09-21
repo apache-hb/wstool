@@ -16,14 +16,22 @@ if [ -d "$workspace_sysroot" ]; then
 fi
 
 if [ "$#" -eq 0 ]; then
+  set --
+  if [ -n "${WST_USER_OPTIONS:-}" ]; then
+    old_ifs=$IFS
+    IFS='
+'
+    for option in $WST_USER_OPTIONS; do
+      [ -n "$option" ] && set -- "$@" "-D$option"
+    done
+    IFS=$old_ifs
+  fi
   cmake \
     -S "$source" \
     -B "$build" \
-    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$install" \
     -DCMAKE_PREFIX_PATH="$sysroot" \
-    -DABSL_ENABLE_INSTALL=ON \
-    -DINSTALL_GTEST=ON
+    "$@"
   cmake --build "$build" --parallel
   cmake --install "$build"
   if [ -f "$build/CTestTestfile.cmake" ]; then

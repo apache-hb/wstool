@@ -8,7 +8,6 @@ public record PackageDescriptor(
         PackageVersion version,
         BuildOptions buildOptions,
         ImportOptions importOptions,
-        String buildTool,
         Map<String, String> buildDependencies,
         Map<String, String> dependencies,
         Map<String, String> testDependencies,

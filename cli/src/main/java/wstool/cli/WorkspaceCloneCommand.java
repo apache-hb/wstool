@@ -10,9 +10,11 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -233,6 +235,7 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
                 else {
                     Files.createDirectories(destination.getParent());
                     Files.copy(tar, destination, StandardCopyOption.REPLACE_EXISTING);
+                    if ((entry.getMode() & 0111) != 0) makeExecutable(destination);
                 }
                 entry = tar.getNextEntry();
             }
@@ -255,6 +258,20 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
             throw new IllegalArgumentException(
                     "Archive entry escapes extraction directory: " + entryName);
         return destination;
+    }
+
+    private static void makeExecutable(Path path) throws IOException {
+        try {
+            var permissions = EnumSet.noneOf(PosixFilePermission.class);
+            permissions.addAll(Files.getPosixFilePermissions(path));
+            permissions.add(PosixFilePermission.OWNER_EXECUTE);
+            permissions.add(PosixFilePermission.GROUP_EXECUTE);
+            permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+            Files.setPosixFilePermissions(path, permissions);
+        } catch (UnsupportedOperationException e) {
+            if (!path.toFile().setExecutable(true, false))
+                throw new IOException("Unable to make executable: " + path, e);
+        }
     }
 
     private static Path sourceRoot(Path extracted) {
@@ -281,6 +298,8 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
         try {
             var wstool = source.resolve("wstool.pkl");
             Files.copy(wstool, target.resolve("wstool.pkl"), StandardCopyOption.REPLACE_EXISTING);
+            var bespokeTools = source.resolve("wstool/bin");
+            if (Files.isDirectory(bespokeTools)) copy(bespokeTools, target.resolve("wstool/bin"));
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to copy package descriptor", e);
         }

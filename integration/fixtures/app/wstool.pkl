@@ -5,12 +5,17 @@ package {
   version = "1.0.0"
 }
 
-buildTool = "wstool-cmake"
-
 buildOptions {
+  tool = "wstool-cmake"
   networkIsolation = "isolated"
   sourceMount = "readonly"
   buildImage = "declared"
+  buildEnvironment {
+    ["CMAKE_BUILD_PARALLEL_LEVEL"] = "2"
+  }
+  buildConfig {
+    ["CMAKE_BUILD_TYPE"] = "Release"
+  }
 }
 
 buildDependencies {

@@ -69,7 +69,7 @@ public final class WorkspaceLayout {
         var link = source.resolve("builddir");
         var buildDirectory = buildDirectory(descriptor);
         try {
-            Files.createDirectories(buildDirectory.getParent());
+            Files.createDirectories(buildDirectory);
             if (Files.exists(link, LinkOption.NOFOLLOW_LINKS)) {
                 if (Files.isSymbolicLink(link)
                         && Files.readSymbolicLink(link)

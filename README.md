@@ -95,3 +95,11 @@ Garage. Run it with:
 
 It requires Java 25 and a working Docker daemon. No repository-level shell script is used
 to orchestrate the test; the test owns the Garage container and all CLI subprocesses.
+
+## Current build tool configuration
+
+Build tool selection is configured with `buildOptions.tool`. A tool is first resolved from the package-local
+`wstool/bin/<tool>` path, which is useful for bespoke package-specific build tools, and
+then from the package's build dependencies. `buildEnvironment` entries are passed to
+the tool's environment, while `buildConfig` entries are exposed through
+`WST_USER_OPTIONS` for the tool to interpret.

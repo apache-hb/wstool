@@ -5,4 +5,6 @@ package {
   version = "1.0.0"
 }
 
-buildTool = "system"
+buildOptions {
+  tool = "system"
+}

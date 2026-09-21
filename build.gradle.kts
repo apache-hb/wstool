@@ -87,7 +87,7 @@ spotless {
 
   format("text") {
     target("**/*.md", "**/*.xml", ".gitattributes", ".gitignore")
-    targetExclude("**/build/**", ".gradle/**")
+    targetExclude("build/**", "**/build/**", ".gradle/**")
     trimTrailingWhitespace()
     endWithNewline()
   }
