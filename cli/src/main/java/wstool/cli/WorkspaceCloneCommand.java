@@ -13,6 +13,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HexFormat;
@@ -28,6 +29,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import wstool.Distribution;
 import wstool.common.PackageDescriptorReader;
 import wstool.common.WorkspaceLayout;
 import wstool.common.model.PackageDescriptor;
@@ -53,27 +55,65 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
         for (var packageName : packages) {
-            var source = from == null ? packageName : from;
-            var targetName = packageName;
-            if (isUrl(source)) {
-                if (packages.size() != 1)
-                    throw new IllegalArgumentException("A git URL must be cloned separately");
-                targetName = repositoryName(source);
-                var targetPath = layout.sources().resolve(targetName);
-                gitClone(source, targetPath);
-                layout.ensureBuildDirectoryLink(
-                        targetPath, PackageDescriptorReader.read(targetPath));
-            } else {
-                var sourcePath = Path.of(source).toAbsolutePath().normalize();
-                var targetPath = layout.sources().resolve(targetName);
-                var descriptor = PackageDescriptorReader.read(sourcePath);
-                if (descriptor.importOptions() == null) copy(sourcePath, targetPath);
-                else importPackage(sourcePath, targetPath, descriptor);
-                layout.ensureBuildDirectoryLink(targetPath, descriptor);
-            }
-            LOG.info("Cloned {}", targetName);
+            clonePackage(layout, packageName);
+            LOG.info("Cloned {}", packageName);
         }
         return 0;
+    }
+
+    private void clonePackage(WorkspaceLayout layout, String packageName) {
+        var targetName = packageName;
+        var targetPath = layout.sources().resolve(targetName);
+        if (from == null) {
+            var source = packageSource(layout, packageName);
+            switch (source) {
+                case Distribution.SourceCode sourceCode ->
+                        cloneLocal(
+                                layout.distribution()
+                                        .worldFile()
+                                        .getParent()
+                                        .resolve(sourceCode.getPath())
+                                        .toAbsolutePath()
+                                        .normalize(),
+                                targetPath);
+                case Distribution.GitRepository git ->
+                        gitClone(git.getRepo().toString(), git.getBranch(), targetPath);
+                case Distribution.Archive archive -> importArchive(targetPath, archive);
+                default ->
+                        throw new IllegalArgumentException("Unsupported package source " + source);
+            }
+        } else if (isUrl(from)) {
+            if (packages.size() != 1)
+                throw new IllegalArgumentException("A git URL must be cloned separately");
+            targetName = repositoryName(from);
+            targetPath = layout.sources().resolve(targetName);
+            gitClone(from, null, targetPath);
+        } else {
+            cloneLocal(Path.of(from).toAbsolutePath().normalize(), targetPath);
+        }
+        var descriptor = PackageDescriptorReader.read(targetPath);
+        layout.ensureBuildDirectoryLink(targetPath, descriptor);
+    }
+
+    private static Distribution.PackageSource packageSource(
+            WorkspaceLayout layout, String packageName) {
+        var packages = layout.distribution().packages();
+        if (packages.containsKey(packageName)) return packages.get(packageName);
+        var matches =
+                packages.entrySet().stream()
+                        .filter(entry -> entry.getKey().startsWith(packageName + "@"))
+                        .toList();
+        if (matches.size() != 1) {
+            throw new IllegalArgumentException(
+                    "Distribution does not contain one unambiguous package named " + packageName);
+        }
+        return matches.getFirst().getValue();
+    }
+
+    private static void cloneLocal(Path sourcePath, Path targetPath) {
+        var descriptor = PackageDescriptorReader.read(sourcePath);
+        if (descriptor.importOptions() == null) copy(sourcePath, targetPath);
+        else importPackage(sourcePath, targetPath, descriptor);
     }
 
     private static boolean isUrl(String value) {
@@ -90,12 +130,12 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
         return value;
     }
 
-    private static void gitClone(String source, Path target) {
+    private static void gitClone(String source, String branch, Path target) {
         try {
-            var process =
-                    new ProcessBuilder("git", "clone", "--depth", "1", source, target.toString())
-                            .inheritIO()
-                            .start();
+            var command = new ArrayList<String>(List.of("git", "clone", "--depth", "1"));
+            if (branch != null && !branch.isBlank()) command.addAll(List.of("--branch", branch));
+            command.addAll(List.of(source, target.toString()));
+            var process = new ProcessBuilder(command).inheritIO().start();
             if (process.waitFor() != 0)
                 throw new IllegalStateException("git clone failed for " + source);
         } catch (IOException e) {
@@ -118,6 +158,20 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
             extract(archive, extracted);
             copy(sourceRoot(extracted), target);
             copyDescriptor(descriptorSource, target);
+        } finally {
+            delete(temporary);
+        }
+    }
+
+    private static void importArchive(Path target, Distribution.Archive source) {
+        var temporary = createTemporaryDirectory(target);
+        try {
+            var archive = temporary.resolve("source" + archiveSuffix(source.getUri()));
+            var extracted = temporary.resolve("extracted");
+            download(source.getUri(), archive);
+            verifyChecksum(archive, source.getChecksum());
+            extract(archive, extracted);
+            copy(sourceRoot(extracted), target);
         } finally {
             delete(temporary);
         }

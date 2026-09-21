@@ -1,5 +1,6 @@
 package wstool.common;
 
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -23,6 +24,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import wstool.Distribution;
 import wstool.common.model.PackageVersion;
 
 public final class S3ArtifactStore implements ArtifactStore {
@@ -31,8 +33,12 @@ public final class S3ArtifactStore implements ArtifactStore {
     private final S3Client client;
     private final String bucket;
 
-    public S3ArtifactStore() {
-        var endpoint = env("WSTOOL_S3_ENDPOINT", null);
+    @Inject
+    public S3ArtifactStore(Distribution.Storage workspaceStorage) {
+        var endpoint =
+                workspaceStorage.getEndpoint() == null
+                        ? env("WSTOOL_S3_ENDPOINT", null)
+                        : workspaceStorage.getEndpoint().toString();
         var accessKey = env("WSTOOL_S3_ACCESS_KEY", env("AWS_ACCESS_KEY_ID", "garage-key"));
         var secretKey = env("WSTOOL_S3_SECRET_KEY", env("AWS_SECRET_ACCESS_KEY", "garage-secret"));
         var builder =
@@ -54,7 +60,7 @@ public final class S3ArtifactStore implements ArtifactStore {
             builder.credentialsProvider(DefaultCredentialsProvider.create());
         }
         client = builder.build();
-        bucket = env("WSTOOL_S3_BUCKET", "storage");
+        bucket = workspaceStorage.getBucket();
     }
 
     @Override

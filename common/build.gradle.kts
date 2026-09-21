@@ -11,7 +11,7 @@ java {
 
 dependencies {
   implementation(platform(project(":")))
-  implementation(project(":config"))
+  api(project(":config"))
 
   implementation("com.google.inject:guice")
   implementation("org.apache.logging.log4j:log4j-api")

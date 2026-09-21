@@ -21,13 +21,11 @@ public final class DistroReleaseCommand implements Callable<Integer> {
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
         try {
-            Files.writeString(
-                    layout.metadata().resolve("release"),
-                    layout.state().getProperty("distro", "(unnamed)"));
+            Files.writeString(layout.metadata().resolve("release"), layout.distribution().name());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        LOG.info("Released distribution {}", layout.state().getProperty("distro", "(unnamed)"));
+        LOG.info("Released distribution {}", layout.distribution().name());
         return 0;
     }
 }

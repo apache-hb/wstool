@@ -12,10 +12,10 @@ public class StorageImpl implements Storage, AutoCloseable {
     private final LocalStorage localStorage;
     private final S3ArtifactStore artifacts;
 
-    public StorageImpl(Path cache, LocalStorage localStorage) {
+    public StorageImpl(Path cache, LocalStorage localStorage, S3ArtifactStore artifacts) {
         this.cache = cache;
         this.localStorage = localStorage;
-        this.artifacts = new S3ArtifactStore();
+        this.artifacts = artifacts;
     }
 
     @Override

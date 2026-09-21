@@ -135,3 +135,27 @@ Build tool selection is configured with `buildOptions.tool`. A tool is first res
 then from the package's build dependencies. `buildEnvironment` entries are passed to
 the tool's environment, while `buildConfig` entries are exposed through
 `WST_USER_OPTIONS` for the tool to interpret.
+
+## Current world configuration behavior
+
+`workspace setup` evaluates the selected `world.pkl` with Pkl and records the evaluated
+distribution and storage settings in the workspace state:
+
+```shell
+wstool workspace setup --distro my-wonderful-distribution --from /path/to/distribution
+```
+
+The `--from` value may name a directory containing `world.pkl`, the `world.pkl` file itself,
+or a Git URL. `workspace clone --package name` then resolves the package source from the
+configured world. Relative `SourceCode.path` values are resolved relative to `world.pkl`.
+
+## Current workspace discovery behavior
+
+Workspace configuration is derived directly from `world.pkl`; wstool does not create a
+`workspace.properties` file. Commands locate the world by walking from the workspace root
+through its parent directories until `world.pkl` is found. Setup therefore only validates
+the distribution name:
+
+```shell
+wstool workspace setup --distro my-wonderful-distribution
+```

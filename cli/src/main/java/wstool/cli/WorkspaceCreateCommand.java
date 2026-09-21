@@ -25,9 +25,6 @@ public final class WorkspaceCreateCommand implements Callable<Integer> {
     public Integer call() {
         var base = parent == null ? Path.of(".") : parent;
         var layout = WorkspaceLayout.create(base.resolve(name));
-        var properties = layout.state();
-        properties.setProperty("name", name);
-        layout.saveState(properties);
         LOG.info("Created workspace {}", layout.root());
         return 0;
     }

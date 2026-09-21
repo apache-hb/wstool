@@ -5,7 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.Properties;
+import wstool.common.model.DistributionDescriptor;
 import wstool.common.model.PackageDescriptor;
 
 public final class WorkspaceLayout {
@@ -86,27 +86,17 @@ public final class WorkspaceLayout {
         return metadata().resolve("stage").resolve(descriptor.version().name());
     }
 
-    public Path stateFile() {
-        return metadata().resolve("workspace.properties");
+    public Path worldFile() {
+        var path = root;
+        while (path != null) {
+            var world = path.resolve("world.pkl");
+            if (Files.isRegularFile(world)) return world;
+            path = path.getParent();
+        }
+        throw new IllegalStateException("No world.pkl found above " + root);
     }
 
-    public Properties state() {
-        var properties = new Properties();
-        if (Files.exists(stateFile())) {
-            try (var input = Files.newInputStream(stateFile())) {
-                properties.load(input);
-            } catch (IOException e) {
-                throw new UncheckedIOException("Unable to read " + stateFile(), e);
-            }
-        }
-        return properties;
-    }
-
-    public void saveState(Properties properties) {
-        try (var output = Files.newOutputStream(stateFile())) {
-            properties.store(output, "wstool workspace");
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to write " + stateFile(), e);
-        }
+    public DistributionDescriptor distribution() {
+        return DistributionReader.read(worldFile());
     }
 }

@@ -30,7 +30,7 @@ public final class DistroBuildCommand implements Callable<Integer> {
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
         buildService.buildWorkspace(layout, docker);
-        LOG.info("Built distribution {}", layout.state().getProperty("distro", "(unnamed)"));
+        LOG.info("Built distribution {}", layout.distribution().name());
         return 0;
     }
 }

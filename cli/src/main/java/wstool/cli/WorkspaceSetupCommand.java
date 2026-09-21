@@ -21,10 +21,12 @@ public final class WorkspaceSetupCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
-        var properties = layout.state();
-        properties.setProperty("distro", distro);
-        layout.saveState(properties);
-        LOG.info("Configured distribution {}", distro);
+        var distribution = layout.distribution();
+        if (!distro.equals(distribution.name())) {
+            throw new IllegalArgumentException(
+                    "Distribution name is " + distribution.name() + ", but --distro was " + distro);
+        }
+        LOG.info("Configured distribution {} from {}", distribution.name(), layout.worldFile());
         return 0;
     }
 }

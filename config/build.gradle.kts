@@ -20,7 +20,9 @@ dependencies {
 pkl {
   javaCodeGenerators {
     register("configClasses") {
-      sourceModules.set(files("src/main/resources/package.pkl"))
+      sourceModules.set(
+        files("src/main/resources/package.pkl", "src/main/resources/distribution.pkl")
+      )
       generateGetters.set(true)
     }
   }
