@@ -1,0 +1,30 @@
+open module wstool.package
+
+import "pkl:semver"
+
+typealias Version = String(semver.isValid(this))
+typealias DependencyMap = Mapping<String, Version>
+
+class WsToolPackage {
+    name: String
+    version: Version
+}
+
+package: WsToolPackage
+
+buildTool: String
+
+/// Dependencies only required during build time, such as gradle or cmake
+buildDependencies: DependencyMap?
+
+/// Dependencies that are part of the public api
+dependencies: DependencyMap?
+
+/// Dependencies that are required to build and test, but not required at runtime
+testDependencies: DependencyMap?
+
+/// Dependencies that are required at runtime, but are not part of the public api
+runtimeDependencies: DependencyMap?
+
+/// Override dependency versions if a dependency has 2 conflicting versions
+overrideDependencies: DependencyMap?
