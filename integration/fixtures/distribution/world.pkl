@@ -1,0 +1,27 @@
+amends "modulepath:/distribution.pkl"
+
+import "modulepath:/distribution.pkl"
+
+name = "demo"
+
+storage {
+  bucket = "storage"
+}
+
+packages {
+  ["wstool-cmake@1.0.0"] = new distribution.GitRepository {
+    repo = "__GIT_SERVER__/wstool-cmake.git"
+  }
+  ["abseil@20240116.2"] = new distribution.GitRepository {
+    repo = "__GIT_SERVER__/abseil.git"
+  }
+  ["googletest@1.14.0"] = new distribution.GitRepository {
+    repo = "__GIT_SERVER__/googletest.git"
+  }
+  ["glibc@2.39"] = new distribution.GitRepository {
+    repo = "__GIT_SERVER__/glibc.git"
+  }
+  ["sample-app@1.0.0"] = new distribution.GitRepository {
+    repo = "__GIT_SERVER__/sample-app.git"
+  }
+}

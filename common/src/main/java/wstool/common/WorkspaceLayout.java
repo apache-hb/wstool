@@ -38,7 +38,10 @@ public final class WorkspaceLayout {
     public static WorkspaceLayout find(Path start) {
         var path = start.toAbsolutePath().normalize();
         while (path != null) {
-            if (Files.isRegularFile(path.resolve(WORLD_FILE))) {
+            var world = path.resolve(WORLD_FILE);
+            if (Files.isRegularFile(world)
+                    || (Files.isSymbolicLink(world)
+                            && Files.isDirectory(path.resolve(METADATA_DIRECTORY)))) {
                 return new WorkspaceLayout(path);
             }
             path = path.getParent();

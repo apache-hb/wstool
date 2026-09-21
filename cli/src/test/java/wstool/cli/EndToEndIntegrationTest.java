@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -30,6 +32,15 @@ import org.testcontainers.utility.MountableFile;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class EndToEndIntegrationTest {
     private static final String GARAGE_IMAGE = "dxflrs/garage:v2.1.0";
+    private static final String GIT_IMAGE =
+            "castlemilk/git-http-backend@sha256:38c38edb7af62240da3830c9176cf5ba5374b85579d664986c481fa0eb494ab0";
+    private static final String GIT_USERNAME = "wstool";
+    private static final String GIT_PASSWORD = "integration";
+
+    private static final Path fixtureRoot = findFixtureRoot();
+    private static final Path repositoryRoot = fixtureRoot.getParent().getParent();
+    private static final Path integrationDirectory = prepareIntegrationDirectory();
+    private static final Path gitDirectory = integrationDirectory.resolve("git");
 
     @org.testcontainers.junit.jupiter.Container
     private static final GenericContainer<?> garage =
@@ -43,19 +54,39 @@ class EndToEndIntegrationTest {
                                     .forStatusCodeMatching(status -> status >= 200 && status < 500)
                                     .withStartupTimeout(Duration.ofSeconds(45)));
 
-    private final Path fixtureRoot = findFixtureRoot();
-    private final Path repositoryRoot = fixtureRoot.getParent().getParent();
-    private Path integrationDirectory;
+    @org.testcontainers.junit.jupiter.Container
+    private static final GenericContainer<?> gitServer =
+            new GenericContainer<>(GIT_IMAGE)
+                    .withExposedPorts(3000)
+                    .withFileSystemBind(gitDirectory.toString(), "/tmp/git", BindMode.READ_WRITE)
+                    .withCopyFileToContainer(
+                            MountableFile.forClasspathResource("gitconfig"), "/etc/gitconfig")
+                    .withEnv("GIT_USERNAME", GIT_USERNAME)
+                    .withEnv("GIT_PASSWORD", GIT_PASSWORD)
+                    .waitingFor(
+                            Wait.forHttp("/")
+                                    .forPort(3000)
+                                    .forStatusCodeMatching(status -> status >= 200 && status < 500)
+                                    .withStartupTimeout(Duration.ofSeconds(45)));
+
     private String endpoint;
     private String accessKey;
     private String secretKey;
+    private String gitEndpoint;
 
     @BeforeAll
-    void startGarage() throws Exception {
-        integrationDirectory = repositoryRoot.resolve("build/integration-test");
-        delete(integrationDirectory);
-        Files.createDirectories(integrationDirectory);
+    void startServices() throws Exception {
         endpoint = "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
+        gitEndpoint =
+                "http://"
+                        + GIT_USERNAME
+                        + ":"
+                        + GIT_PASSWORD
+                        + "@"
+                        + gitServer.getHost()
+                        + ":"
+                        + gitServer.getMappedPort(3000);
+        publishRepositories();
 
         var node = garageOutput("node", "id");
         var nodeId =
@@ -93,8 +124,6 @@ class EndToEndIntegrationTest {
                         integrationDirectory.toString());
         assertEquals(0, firstCreated.exitCode, firstCreated.output);
         assertTrue(Files.isDirectory(firstWorkspace), firstCreated.output);
-        installDistribution(firstWorkspace);
-        assertWorkspaceLayout(firstWorkspace);
         configure(firstWorkspace);
         configureAndClone(firstWorkspace, "wstool-cmake");
         configureAndClone(firstWorkspace, "abseil");
@@ -130,8 +159,6 @@ class EndToEndIntegrationTest {
                         integrationDirectory.toString());
         assertEquals(0, secondCreated.exitCode, secondCreated.output);
         assertTrue(Files.isDirectory(secondWorkspace), secondCreated.output);
-        installDistribution(secondWorkspace);
-        assertWorkspaceLayout(secondWorkspace);
         configure(secondWorkspace);
         configureAndClone(secondWorkspace, "sample-app");
         assertBuildDirectoryLink(secondWorkspace, "sample-app");
@@ -161,10 +188,6 @@ class EndToEndIntegrationTest {
         assertEquals(expected.normalize(), actual.normalize());
     }
 
-    private void installDistribution(Path workspace) throws IOException {
-        Files.copy(fixtureRoot.resolve("world.pkl"), workspace.resolve("distribution/world.pkl"));
-    }
-
     private static void assertWorkspaceLayout(Path workspace) throws IOException {
         assertTrue(Files.isSymbolicLink(workspace.resolve("world.pkl")));
         assertEquals(
@@ -180,8 +203,65 @@ class EndToEndIntegrationTest {
     }
 
     private void configure(Path workspace) throws Exception {
-        var setup = runCli(workspace, "workspace", "setup", "--distro", "demo");
+        var setup =
+                runCli(
+                        workspace,
+                        "workspace",
+                        "setup",
+                        "--distro",
+                        "demo",
+                        "--from",
+                        gitUrl("distribution"));
         assertEquals(0, setup.exitCode, setup.output);
+        assertWorkspaceLayout(workspace);
+    }
+
+    private void publishRepositories() throws Exception {
+        publishRepository("distribution", createDistributionSource());
+        publishRepository("wstool-cmake", repositoryRoot.resolve("packages/wstool-cmake"));
+        publishRepository("abseil", fixtureRoot.resolve("abseil"));
+        publishRepository("googletest", fixtureRoot.resolve("googletest"));
+        publishRepository("glibc", fixtureRoot.resolve("glibc"));
+        publishRepository("sample-app", fixtureRoot.resolve("app"));
+    }
+
+    private Path createDistributionSource() throws IOException {
+        var source = integrationDirectory.resolve("distribution-source");
+        Files.createDirectories(source);
+        var world = Files.readString(fixtureRoot.resolve("distribution/world.pkl"));
+        Files.writeString(
+                source.resolve("world.pkl"), world.replace("__GIT_SERVER__", gitEndpoint));
+        return source;
+    }
+
+    private void publishRepository(String name, Path source) throws Exception {
+        var working = integrationDirectory.resolve("git-working").resolve(name);
+        copy(source, working);
+        runGit(working, "init", "--initial-branch", "master");
+        runGit(working, "config", "user.name", "wstool integration");
+        runGit(working, "config", "user.email", "wstool@example.invalid");
+        runGit(working, "add", ".");
+        runGit(working, "commit", "-m", "fixture");
+        var bare = gitDirectory.resolve(name + ".git");
+        var result =
+                run(
+                        new ProcessBuilder(
+                                "git", "clone", "--bare", working.toString(), bare.toString()));
+        assertEquals(0, result.exitCode, result.output);
+    }
+
+    private String gitUrl(String name) {
+        return gitEndpoint + "/" + name + ".git";
+    }
+
+    private static void runGit(Path directory, String... arguments) throws Exception {
+        var command = new ArrayList<String>();
+        command.add("git");
+        command.add("-C");
+        command.add(directory.toString());
+        command.addAll(List.of(arguments));
+        var result = run(new ProcessBuilder(command));
+        assertEquals(0, result.exitCode, result.output);
     }
 
     private Result runCli(Path directory, String... args) throws Exception {
@@ -256,6 +336,45 @@ class EndToEndIntegrationTest {
         }
         throw new IllegalStateException(
                 "Cannot find integration/fixtures from " + Path.of(".").toAbsolutePath());
+    }
+
+    private static Path prepareIntegrationDirectory() {
+        var directory = repositoryRoot.resolve("build/integration-test");
+        try {
+            delete(directory);
+            Files.createDirectories(directory.resolve("git"));
+            return directory;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to prepare integration directory", e);
+        }
+    }
+
+    private static void copy(Path source, Path target) {
+        try (var paths = Files.walk(source)) {
+            paths.forEach(
+                    path -> {
+                        var destination = target.resolve(source.relativize(path).toString());
+                        try {
+                            if (Files.isSymbolicLink(path)) {
+                                Files.createDirectories(destination.getParent());
+                                Files.createSymbolicLink(destination, Files.readSymbolicLink(path));
+                            } else if (Files.isDirectory(path)) {
+                                Files.createDirectories(destination);
+                            } else {
+                                Files.createDirectories(destination.getParent());
+                                Files.copy(
+                                        path,
+                                        destination,
+                                        StandardCopyOption.REPLACE_EXISTING,
+                                        StandardCopyOption.COPY_ATTRIBUTES);
+                            }
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to copy fixture " + source, e);
+        }
     }
 
     private static void delete(Path path) throws IOException {

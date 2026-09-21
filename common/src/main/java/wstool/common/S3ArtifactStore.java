@@ -57,7 +57,7 @@ public final class S3ArtifactStore implements ArtifactStore {
                     StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(accessKey, secretKey)));
         } else {
-            builder.credentialsProvider(DefaultCredentialsProvider.create());
+            builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
         }
         client = builder.build();
         bucket = workspaceStorage.getBucket();

@@ -36,6 +36,10 @@ public final class WorkspaceCloneService {
         for (var packageName : packages) clonePackage(layout, packageName, packages, from);
     }
 
+    public void cloneRepository(String source, String branch, Path target) {
+        gitClone(source, branch, target);
+    }
+
     private void clonePackage(
             WorkspaceLayout layout, String packageName, List<String> packages, String from) {
         var targetName = packageName;
@@ -52,8 +56,12 @@ public final class WorkspaceCloneService {
                                         .toAbsolutePath()
                                         .normalize(),
                                 targetPath);
-                case Distribution.GitRepository git ->
-                        gitClone(git.getRepo().toString(), git.getBranch(), targetPath);
+                case Distribution.GitRepository git -> {
+                    gitClone(git.getRepo().toString(), git.getBranch(), targetPath);
+                    var descriptor = PackageDescriptorReader.read(targetPath);
+                    if (descriptor.importOptions() != null)
+                        importPackage(targetPath, targetPath, descriptor);
+                }
                 case Distribution.Archive archive -> importArchive(targetPath, archive);
                 default ->
                         throw new IllegalArgumentException("Unsupported package source " + source);
