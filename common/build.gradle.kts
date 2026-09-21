@@ -14,6 +14,8 @@ dependencies {
   api(project(":config"))
 
   implementation("com.google.inject:guice")
+  implementation("org.apache.commons:commons-compress:1.28.0")
+  implementation("org.tukaani:xz:1.12")
   implementation("org.apache.logging.log4j:log4j-api")
   runtimeOnly("org.apache.logging.log4j:log4j-core")
   runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")

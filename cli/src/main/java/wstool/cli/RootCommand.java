@@ -37,7 +37,8 @@ public final class RootCommand implements Callable<Integer> {
                         if (cls == PackageCommand.class
                                 || cls == SysrootCommand.class
                                 || cls == AggregateCommand.class
-                                || cls == DistroBuildCommand.class) {
+                                || cls == DistroBuildCommand.class
+                                || cls == WorkspaceCloneCommand.class) {
                             return injector.getInstance(cls);
                         }
                         try {

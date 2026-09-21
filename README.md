@@ -151,10 +151,7 @@ configured world. Relative `SourceCode.path` values are resolved relative to `wo
 
 ## Current workspace discovery behavior
 
-Workspace configuration is derived directly from `world.pkl`; wstool does not create a
-`workspace.properties` file. Commands locate the world by walking from the workspace root
-through its parent directories until `world.pkl` is found. Setup therefore only validates
-the distribution name:
+Workspace configuration is derived directly from `world.pkl`; Commands locate the world by walking from the workspace root through its parent directories until `world.pkl` is found. Setup therefore only validates the distribution name:
 
 ```shell
 wstool workspace setup --distro my-wonderful-distribution

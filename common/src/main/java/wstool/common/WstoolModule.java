@@ -12,6 +12,7 @@ public final class WstoolModule extends AbstractModule {
     protected void configure() {
         bind(ArtifactStore.class).to(S3ArtifactStore.class).in(Scopes.SINGLETON);
         bind(BuildService.class).in(Scopes.SINGLETON);
+        bind(WorkspaceCloneService.class).in(Scopes.SINGLETON);
     }
 
     @Provides
