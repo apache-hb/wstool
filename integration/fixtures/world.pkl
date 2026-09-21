@@ -9,11 +9,17 @@ storage {
 }
 
 packages {
-  ["wstool-cmake@1.0.0"] = new distribution.SourceCode { path = "../../packages/wstool-cmake" }
-  ["abseil@20240116.2"] = new distribution.SourceCode { path = "../../integration/fixtures/abseil" }
-  ["googletest@1.14.0"] = new distribution.SourceCode {
-    path = "../../integration/fixtures/googletest"
+  ["wstool-cmake@1.0.0"] = new distribution.SourceCode {
+    path = "../../../../packages/wstool-cmake"
   }
-  ["glibc@2.39"] = new distribution.SourceCode { path = "../../integration/fixtures/glibc" }
-  ["sample-app@1.0.0"] = new distribution.SourceCode { path = "../../integration/fixtures/app" }
+  ["abseil@20240116.2"] = new distribution.SourceCode {
+    path = "../../../../integration/fixtures/abseil"
+  }
+  ["googletest@1.14.0"] = new distribution.SourceCode {
+    path = "../../../../integration/fixtures/googletest"
+  }
+  ["glibc@2.39"] = new distribution.SourceCode { path = "../../../../integration/fixtures/glibc" }
+  ["sample-app@1.0.0"] = new distribution.SourceCode {
+    path = "../../../../integration/fixtures/app"
+  }
 }

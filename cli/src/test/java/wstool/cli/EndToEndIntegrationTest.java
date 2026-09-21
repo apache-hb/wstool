@@ -55,7 +55,6 @@ class EndToEndIntegrationTest {
         integrationDirectory = repositoryRoot.resolve("build/integration-test");
         delete(integrationDirectory);
         Files.createDirectories(integrationDirectory);
-        Files.copy(fixtureRoot.resolve("world.pkl"), worldFile());
         endpoint = "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
 
         var node = garageOutput("node", "id");
@@ -94,6 +93,8 @@ class EndToEndIntegrationTest {
                         integrationDirectory.toString());
         assertEquals(0, firstCreated.exitCode, firstCreated.output);
         assertTrue(Files.isDirectory(firstWorkspace), firstCreated.output);
+        installDistribution(firstWorkspace);
+        assertWorkspaceLayout(firstWorkspace);
         configure(firstWorkspace);
         configureAndClone(firstWorkspace, "wstool-cmake");
         configureAndClone(firstWorkspace, "abseil");
@@ -129,6 +130,8 @@ class EndToEndIntegrationTest {
                         integrationDirectory.toString());
         assertEquals(0, secondCreated.exitCode, secondCreated.output);
         assertTrue(Files.isDirectory(secondWorkspace), secondCreated.output);
+        installDistribution(secondWorkspace);
+        assertWorkspaceLayout(secondWorkspace);
         configure(secondWorkspace);
         configureAndClone(secondWorkspace, "sample-app");
         assertBuildDirectoryLink(secondWorkspace, "sample-app");
@@ -158,6 +161,19 @@ class EndToEndIntegrationTest {
         assertEquals(expected.normalize(), actual.normalize());
     }
 
+    private void installDistribution(Path workspace) throws IOException {
+        Files.copy(fixtureRoot.resolve("world.pkl"), workspace.resolve("distribution/world.pkl"));
+    }
+
+    private static void assertWorkspaceLayout(Path workspace) throws IOException {
+        assertTrue(Files.isSymbolicLink(workspace.resolve("world.pkl")));
+        assertEquals(
+                Path.of("distribution", "world.pkl"),
+                Files.readSymbolicLink(workspace.resolve("world.pkl")));
+        assertTrue(Files.isDirectory(workspace.resolve("src")));
+        assertTrue(Files.isDirectory(workspace.resolve(".wstool")));
+    }
+
     private void configureAndClone(Path workspace, String packageName) throws Exception {
         var result = runCli(workspace, "workspace", "clone", "--package", packageName);
         assertEquals(0, result.exitCode, result.output);
@@ -166,10 +182,6 @@ class EndToEndIntegrationTest {
     private void configure(Path workspace) throws Exception {
         var setup = runCli(workspace, "workspace", "setup", "--distro", "demo");
         assertEquals(0, setup.exitCode, setup.output);
-    }
-
-    private Path worldFile() {
-        return integrationDirectory.resolve("world.pkl");
     }
 
     private Result runCli(Path directory, String... args) throws Exception {

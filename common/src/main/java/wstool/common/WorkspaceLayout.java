@@ -10,6 +10,8 @@ import wstool.common.model.PackageDescriptor;
 
 public final class WorkspaceLayout {
     public static final String METADATA_DIRECTORY = ".wstool";
+    public static final String DISTRIBUTION_DIRECTORY = "distribution";
+    public static final String WORLD_FILE = "world.pkl";
 
     private final Path root;
 
@@ -21,9 +23,12 @@ public final class WorkspaceLayout {
         var layout = new WorkspaceLayout(root);
         try {
             Files.createDirectories(layout.metadata());
+            Files.createDirectories(layout.distributionDirectory());
             Files.createDirectories(layout.sources());
             Files.createDirectories(layout.cache());
             Files.createDirectories(layout.sysroot());
+            Files.createSymbolicLink(
+                    layout.root.resolve(WORLD_FILE), Path.of("distribution", WORLD_FILE));
             return layout;
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to create workspace at " + root, e);
@@ -33,7 +38,7 @@ public final class WorkspaceLayout {
     public static WorkspaceLayout find(Path start) {
         var path = start.toAbsolutePath().normalize();
         while (path != null) {
-            if (Files.isDirectory(path.resolve(METADATA_DIRECTORY))) {
+            if (Files.isRegularFile(path.resolve(WORLD_FILE))) {
                 return new WorkspaceLayout(path);
             }
             path = path.getParent();
@@ -47,6 +52,10 @@ public final class WorkspaceLayout {
 
     public Path metadata() {
         return root.resolve(METADATA_DIRECTORY);
+    }
+
+    public Path distributionDirectory() {
+        return root.resolve(DISTRIBUTION_DIRECTORY);
     }
 
     public Path sources() {
@@ -87,13 +96,11 @@ public final class WorkspaceLayout {
     }
 
     public Path worldFile() {
-        var path = root;
-        while (path != null) {
-            var world = path.resolve("world.pkl");
-            if (Files.isRegularFile(world)) return world;
-            path = path.getParent();
+        try {
+            return root.resolve(WORLD_FILE).toRealPath();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to resolve workspace world file", e);
         }
-        throw new IllegalStateException("No world.pkl found above " + root);
     }
 
     public DistributionDescriptor distribution() {

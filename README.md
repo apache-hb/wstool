@@ -97,6 +97,19 @@ forwarded to the build tool. The build tool is responsible for constructing and 
 any sysroots it needs. The standard packages `wstool-cmake` and `wstool-meson` provide
 this interface for CMake and Meson projects.
 
+### workspace layout
+
+Workspaces have a fixed layout
+
+```
+Workspace - The root of the workspace
+  world.pkl - A symlink to distribution/world.pkl
+  distribution - The distribution git repo, containing world.pkl
+  src/ - Any cloned source packages
+    FirstPackage - Package source
+  .wstool/ - wstool internal folder, all internal config is stored here
+```
+
 ## Implementation notes
 
 The build process invokes the executable named by `buildTool` from the package's
