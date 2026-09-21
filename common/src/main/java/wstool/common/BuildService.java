@@ -28,21 +28,59 @@ public final class BuildService {
         this.store = store;
     }
 
-    public void buildWorkspace(WorkspaceLayout layout, boolean docker, String image) {
+    public void buildWorkspace(WorkspaceLayout layout, boolean docker) {
         var packages = discover(layout);
         var order = order(packages);
         for (var descriptor : order) {
             prepareDependencies(layout, descriptor, packages);
-            build(layout, descriptor, docker, image);
+            build(layout, descriptor, docker);
             store.publish(descriptor.version(), layout.stageDirectory(descriptor));
         }
     }
 
-    public void release(
-            WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker, String image) {
+    public void release(WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker) {
         prepareDependencies(layout, descriptor, discover(layout));
-        build(layout, descriptor, docker, image);
+        build(layout, descriptor, docker);
         store.publish(descriptor.version(), layout.stageDirectory(descriptor));
+    }
+
+    public void runTarget(
+            WorkspaceLayout layout,
+            PackageDescriptor descriptor,
+            String target,
+            List<String> arguments,
+            boolean docker) {
+        materializeDependencies(layout, descriptor, "build");
+        var useDocker = docker || descriptor.buildOptions().buildImage().equals("bootstrap");
+        var buildDirectory = layout.buildDirectory(descriptor);
+        var sourcePath = pathForBuild(descriptor.source(), layout, useDocker);
+        var buildPath = pathForBuild(buildDirectory, layout, useDocker);
+        var stagePath = pathForBuild(layout.stageDirectory(descriptor), layout, useDocker);
+        var sysrootPath = pathForBuild(layout.sysroot(), layout, useDocker);
+        var tool = layout.sysroot().resolve("bin").resolve(descriptor.buildTool());
+        if (!Files.exists(tool)) {
+            throw new IllegalStateException(
+                    "Build tool "
+                            + descriptor.buildTool()
+                            + " is not installed in "
+                            + layout.sysroot());
+        }
+        var command =
+                new ArrayList<String>(
+                        List.of(
+                                pathForBuild(tool, layout, useDocker),
+                                sourcePath,
+                                buildPath,
+                                stagePath,
+                                sysrootPath,
+                                target));
+        command.addAll(arguments);
+        run(
+                useDocker,
+                layout,
+                descriptor.buildOptions(),
+                command,
+                descriptor.buildOptions().effectiveDockerImage());
     }
 
     public void fetchDependency(WorkspaceLayout layout, PackageVersion version) {
@@ -99,8 +137,7 @@ public final class BuildService {
         }
     }
 
-    private void build(
-            WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker, String image) {
+    private void build(WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker) {
         var source = descriptor.source();
         var buildOptions = descriptor.buildOptions();
         var useDocker = docker || buildOptions.buildImage().equals("bootstrap");
@@ -110,56 +147,36 @@ public final class BuildService {
         delete(stageDir);
         createDirectories(buildDir, stageDir, layout.sysroot());
 
-        if (!Files.exists(source.resolve("CMakeLists.txt"))) {
+        if (descriptor.buildTool().equals("system")) {
+            copyTree(source.resolve("bin"), stageDir.resolve("bin"));
             writeManifest(stageDir, descriptor);
-            LOG.info(
-                    "{} has no CMake project; treating it as a system package",
-                    descriptor.version());
+            copyTree(stageDir, layout.sysroot());
+            LOG.info("{} is a system package", descriptor.version());
             return;
-        }
-        if (!descriptor.buildTool().equals("cmake")
-                && !descriptor.buildTool().equals("wstool-cmake")) {
-            throw new IllegalArgumentException(
-                    "Unsupported buildTool '"
-                            + descriptor.buildTool()
-                            + "' for "
-                            + descriptor.version());
         }
 
         var sourcePath = pathForBuild(source, layout, useDocker);
         var buildPath = pathForBuild(buildDir, layout, useDocker);
         var stagePath = pathForBuild(stageDir, layout, useDocker);
         var sysrootPath = pathForBuild(layout.sysroot(), layout, useDocker);
-        var configure =
-                new ArrayList<String>(
-                        List.of(
-                                "cmake",
-                                "-S",
-                                sourcePath,
-                                "-B",
-                                buildPath,
-                                "-DCMAKE_BUILD_TYPE=Release",
-                                "-DCMAKE_INSTALL_PREFIX=" + stagePath,
-                                "-DWSTOOL_SYSROOT=" + sysrootPath,
-                                "-DCMAKE_PREFIX_PATH=" + sysrootPath));
-        if (descriptor.importOptions() != null) {
-            configure.add("-DABSL_ENABLE_INSTALL=ON");
-            configure.add("-DINSTALL_GTEST=ON");
+        var tool = layout.sysroot().resolve("bin").resolve(descriptor.buildTool());
+        if (!Files.exists(tool)) {
+            throw new IllegalStateException(
+                    "Build tool "
+                            + descriptor.buildTool()
+                            + " is not installed in "
+                            + layout.sysroot());
         }
-        run(useDocker, image, layout, buildOptions, configure.toArray(String[]::new));
-        run(useDocker, image, layout, buildOptions, "cmake", "--build", buildPath, "--parallel");
-        run(useDocker, image, layout, buildOptions, "cmake", "--install", buildPath);
-        if (Files.exists(buildDir.resolve("CTestTestfile.cmake"))) {
-            run(
-                    useDocker,
-                    image,
-                    layout,
-                    buildOptions,
-                    "ctest",
-                    "--test-dir",
-                    buildPath,
-                    "--output-on-failure");
-        }
+        run(
+                useDocker,
+                layout,
+                buildOptions,
+                buildOptions.effectiveDockerImage(),
+                pathForBuild(tool, layout, useDocker),
+                sourcePath,
+                buildPath,
+                stagePath,
+                sysrootPath);
         copyTree(stageDir, layout.sysroot());
     }
 
@@ -176,10 +193,19 @@ public final class BuildService {
 
     private static void run(
             boolean docker,
-            String image,
             WorkspaceLayout layout,
             BuildOptions buildOptions,
+            String image,
             String... command) {
+        run(docker, layout, buildOptions, List.of(command), image);
+    }
+
+    private static void run(
+            boolean docker,
+            WorkspaceLayout layout,
+            BuildOptions buildOptions,
+            List<String> command,
+            String image) {
         var args = new ArrayList<String>();
         if (docker) {
             args.addAll(List.of("docker", "run", "--rm"));
@@ -191,7 +217,7 @@ public final class BuildService {
                 args.addAll(List.of("-v", layout.metadata() + ":/workspace/.wstool:rw"));
             args.addAll(List.of("-w", "/workspace", image));
         }
-        args.addAll(List.of(command));
+        args.addAll(command);
         LOG.info("Running {}", String.join(" ", args));
         try {
             var process = new ProcessBuilder(args).inheritIO().start();
@@ -217,8 +243,6 @@ public final class BuildService {
                     .forEach(
                             path -> {
                                 var descriptorFile = path.resolve("wstool.pkl");
-                                if (!Files.exists(descriptorFile))
-                                    descriptorFile = path.resolve("Package.pkl");
                                 if (Files.exists(descriptorFile)) {
                                     var descriptor = PackageDescriptorReader.read(path);
                                     result.put(descriptor.version().name(), descriptor);
@@ -282,7 +306,10 @@ public final class BuildService {
                                     else {
                                         Files.createDirectories(target.getParent());
                                         Files.copy(
-                                                path, target, StandardCopyOption.REPLACE_EXISTING);
+                                                path,
+                                                target,
+                                                StandardCopyOption.REPLACE_EXISTING,
+                                                StandardCopyOption.COPY_ATTRIBUTES);
                                     }
                                 } catch (IOException e) {
                                     throw new UncheckedIOException(e);

@@ -5,12 +5,16 @@ package {
   version = "1.0.0"
 }
 
-buildTool = "cmake"
+buildTool = "wstool-cmake"
 
 buildOptions {
   networkIsolation = "isolated"
   sourceMount = "readonly"
   buildImage = "declared"
+}
+
+buildDependencies {
+  ["wstool-cmake"] = "1.0.0"
 }
 
 dependencies {

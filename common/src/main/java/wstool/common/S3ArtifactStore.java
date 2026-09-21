@@ -5,6 +5,8 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -148,7 +150,23 @@ public final class S3ArtifactStore implements ArtifactStore {
                 } else {
                     Files.createDirectories(target.getParent());
                     Files.copy(zip, target);
+                    if (entry.getName().startsWith("bin/")) makeExecutable(target);
                 }
+            }
+        }
+    }
+
+    private static void makeExecutable(Path path) throws IOException {
+        try {
+            var permissions = EnumSet.noneOf(PosixFilePermission.class);
+            permissions.addAll(Files.getPosixFilePermissions(path));
+            permissions.add(PosixFilePermission.OWNER_EXECUTE);
+            permissions.add(PosixFilePermission.GROUP_EXECUTE);
+            permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+            Files.setPosixFilePermissions(path, permissions);
+        } catch (UnsupportedOperationException e) {
+            if (!path.toFile().setExecutable(true, false)) {
+                throw new IOException("Unable to make executable: " + path, e);
             }
         }
     }

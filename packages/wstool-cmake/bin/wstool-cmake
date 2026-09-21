@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -lt 4 ]; then
+  echo "usage: wstool-cmake SOURCE BUILD INSTALL SYSROOT [TARGET] [ARGUMENTS...]" >&2
+  exit 2
+fi
+
+source=$1
+build=$2
+install=$3
+sysroot=$4
+shift 4
+
+if [ "$#" -eq 0 ]; then
+  cmake \
+    -S "$source" \
+    -B "$build" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$install" \
+    -DWSTOOL_SYSROOT="$sysroot" \
+    -DCMAKE_PREFIX_PATH="$sysroot" \
+    -DABSL_ENABLE_INSTALL=ON \
+    -DINSTALL_GTEST=ON
+  cmake --build "$build" --parallel
+  cmake --install "$build"
+  if [ -f "$build/CTestTestfile.cmake" ]; then
+    ctest --test-dir "$build" --output-on-failure
+  fi
+  exit 0
+fi
+
+target=$1
+shift
+case "$target" in
+  test)
+    ctest --test-dir "$build" --output-on-failure "$@"
+    ;;
+  *)
+    cmake --build "$build" --target "$target" -- "$@"
+    ;;
+esac

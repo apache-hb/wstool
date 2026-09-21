@@ -49,10 +49,20 @@ testDependencies {
 
 The main command for configuring and aggregating packages during builds is `wstool sysroot <selector>`, this allows creation of a fake sysroot with installation files from other packages in it. This is most commonly used for creating a build root with all required headers/libraries/binaries in it during build. This can also be used to create a final aggregate package with `wstool aggregate <selector>`. `wstool sysroot <selector>` can accept any of the following arguments as its selector: `build`, `development`, `runtime`, and `<packagename>@<version>/<selector>`. `build` collects all the build time dependencies and their transitive dependents. `development` collects all buildDependencies, dependencies, testDependencies, and runtimeDependencies. And runtime collects only dependencies and runtimeDependencies. Specifying a package name version overrides the package to use as the root for graph traversal as this defaults to the current package.
 
+## writing your own build tools
+
+Build tools are simply scripts in the `bin` folder of your install, to create a new build tool create a package that installs an executable file to its `bin` output. The `buildTool` package key should be the name of the installed binary, as that is what will be run with any other command line parameters.
+
+The executable is invoked as `build-tool SOURCE BUILD INSTALL SYSROOT` for a release
+build. For `wstool package <target>`, the target follows those four paths and any
+remaining arguments are forwarded to the build tool. The standard packages
+`wstool-cmake` and `wstool-meson` provide this interface for CMake and Meson projects.
+
 ## Implementation notes
 
-The current implementation uses CMake for packages whose `buildTool` is `cmake` or
-`wstool-cmake`. Package artifacts are stored under
+The build process invokes the executable named by `buildTool` from the package's
+build dependencies; it does not select a build system based on source files. Package
+artifacts are stored under
 `artifacts/<name>/<version>/artifact.zip` in the configured S3 bucket. The S3 endpoint,
 when using Garage or another local S3-compatible service, is selected with
 `WSTOOL_S3_ENDPOINT`; credentials use `WSTOOL_S3_ACCESS_KEY`, `WSTOOL_S3_SECRET_KEY`,
@@ -60,9 +70,10 @@ when using Garage or another local S3-compatible service, is selected with
 
 For a local repository checkout, use `wstool workspace clone --package name --from
 /path/to/repository`. The `--from` value can also be an HTTP(S) or SSH git URL.
-`wstool distro build --docker --build-image <image>` runs the CMake build in that image;
-without `--docker` it uses the local toolchain, which is useful for a fast development
-loop.
+`wstool distro build --docker` runs package builds in Docker. The image is selected by
+each package's `buildOptions.dockerImage`; packages using `buildImage = "declared"`
+always use the `scratch` image. Without `--docker`, packages use the local toolchain
+unless `buildImage = "bootstrap"` requires Docker.
 
 ### Reproducible local integration demo
 

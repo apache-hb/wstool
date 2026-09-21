@@ -5,7 +5,11 @@ package {
   version = "1.14.0"
 }
 
-buildTool = "cmake"
+buildTool = "wstool-cmake"
+
+buildDependencies {
+  ["wstool-cmake"] = "1.0.0"
+}
 
 importOptions {
   repo = "https://github.com/google/googletest.git"

@@ -45,6 +45,7 @@ class EndToEndIntegrationTest {
                                     .withStartupTimeout(Duration.ofSeconds(45)));
 
     private final Path fixtureRoot = findFixtureRoot();
+    private final Path repositoryRoot = fixtureRoot.getParent().getParent();
     private Path temporaryDirectory;
     private String endpoint;
     private String accessKey;
@@ -96,6 +97,8 @@ class EndToEndIntegrationTest {
                         temporaryDirectory.toString());
         assertEquals(0, firstCreated.exitCode, firstCreated.output);
         assertTrue(Files.isDirectory(firstWorkspace), firstCreated.output);
+        configureAndClone(
+                firstWorkspace, "wstool-cmake", repositoryRoot.resolve("packages/wstool-cmake"));
         configureAndClone(firstWorkspace, "abseil", "abseil");
         configureAndClone(firstWorkspace, "googletest", "googletest");
         configureAndClone(firstWorkspace, "glibc", "glibc");
@@ -143,6 +146,11 @@ class EndToEndIntegrationTest {
 
     private void configureAndClone(Path workspace, String packageName, String fixtureName)
             throws Exception {
+        configureAndClone(workspace, packageName, fixtureRoot.resolve(fixtureName));
+    }
+
+    private void configureAndClone(Path workspace, String packageName, Path source)
+            throws Exception {
         if (!Files.exists(workspace.resolve(".wstool/workspace.properties"))) {
             runCli(workspace, "workspace", "setup", "--distro", "demo");
         }
@@ -154,7 +162,7 @@ class EndToEndIntegrationTest {
                         "--package",
                         packageName,
                         "--from",
-                        fixtureRoot.resolve(fixtureName).toString());
+                        source.toString());
         assertEquals(0, result.exitCode, result.output);
     }
 

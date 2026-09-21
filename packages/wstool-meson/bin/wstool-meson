@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -lt 4 ]; then
+  echo "usage: wstool-meson SOURCE BUILD INSTALL SYSROOT [TARGET] [ARGUMENTS...]" >&2
+  exit 2
+fi
+
+source=$1
+build=$2
+install=$3
+sysroot=$4
+shift 4
+
+if [ "$#" -eq 0 ]; then
+  meson setup \
+    "$build" \
+    "$source" \
+    --prefix "$install" \
+    --buildtype release \
+    -Dc_args=-isystem"$sysroot/include" \
+    -Dcpp_args=-isystem"$sysroot/include"
+  meson compile -C "$build"
+  meson install -C "$build"
+  meson test -C "$build" --print-errorlogs
+  exit 0
+fi
+
+target=$1
+shift
+case "$target" in
+  test)
+    meson test -C "$build" --print-errorlogs "$@"
+    ;;
+  *)
+    meson compile -C "$build" "$target" "$@"
+    ;;
+esac

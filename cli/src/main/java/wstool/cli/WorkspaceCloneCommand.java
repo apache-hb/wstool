@@ -163,15 +163,7 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
     private static void copyDescriptor(Path source, Path target) {
         try {
             var wstool = source.resolve("wstool.pkl");
-            var packageFile = source.resolve("Package.pkl");
-            if (Files.exists(wstool))
-                Files.copy(
-                        wstool, target.resolve("wstool.pkl"), StandardCopyOption.REPLACE_EXISTING);
-            if (Files.exists(packageFile))
-                Files.copy(
-                        packageFile,
-                        target.resolve("Package.pkl"),
-                        StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(wstool, target.resolve("wstool.pkl"), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to copy package descriptor", e);
         }

@@ -37,9 +37,7 @@ public final class AggregateCommand implements Callable<Integer> {
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
         var packageDirectory = Path.of(".").toAbsolutePath().normalize();
-        while (packageDirectory != null
-                && !Files.exists(packageDirectory.resolve("wstool.pkl"))
-                && !Files.exists(packageDirectory.resolve("Package.pkl")))
+        while (packageDirectory != null && !Files.exists(packageDirectory.resolve("wstool.pkl")))
             packageDirectory = packageDirectory.getParent();
         if (packageDirectory == null)
             throw new IllegalStateException("Not inside a package checkout");

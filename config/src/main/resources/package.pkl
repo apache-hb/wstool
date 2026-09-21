@@ -20,12 +20,19 @@ class BuildOptions {
   networkIsolation: NetworkIsolation = "isolated"
   sourceMount: SourceMount = "readonly"
   buildImage: BuildImage = "declared"
+  dockerImage: String = "scratch"
 }
 
 /// Options for 3rd party imports
 class ImportOptions {
   /// The git url where the source code can be located
   repo: Uri
+
+  /// Path to the compressed archive path the code is stored in
+  download: Uri
+
+  // SHA-256 checksum of the compressed archive
+  checksum: String
 
   /// The license of the code, should be a valid SPDX license identifier
   license: String

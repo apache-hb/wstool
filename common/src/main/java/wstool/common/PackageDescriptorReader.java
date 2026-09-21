@@ -25,7 +25,6 @@ public final class PackageDescriptorReader {
 
     public static PackageDescriptor read(Path packageDirectory) {
         var file = packageDirectory.resolve("wstool.pkl");
-        if (!Files.exists(file)) file = packageDirectory.resolve("Package.pkl");
         if (!Files.exists(file)) {
             throw new IllegalArgumentException("No wstool.pkl found in " + packageDirectory);
         }
@@ -84,7 +83,8 @@ public final class PackageDescriptorReader {
         return new BuildOptions(
                 options.getNetworkIsolation().toString(),
                 options.getSourceMount().toString(),
-                options.getBuildImage().toString());
+                options.getBuildImage().toString(),
+                options.getDockerImage());
     }
 
     private static ImportOptions toImportOptions(Package.ImportOptions options) {

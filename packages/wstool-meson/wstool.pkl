@@ -1,0 +1,8 @@
+amends "modulepath:/package.pkl"
+
+package {
+  name = "wstool-meson"
+  version = "1.0.0"
+}
+
+buildTool = "system"

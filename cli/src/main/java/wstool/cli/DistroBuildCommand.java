@@ -26,13 +26,10 @@ public final class DistroBuildCommand implements Callable<Integer> {
     @Option(names = "--docker", description = "Run package builds in the selected Docker image.")
     boolean docker;
 
-    @Option(names = "--build-image", defaultValue = "${WSTOOL_BUILD_IMAGE:-ubuntu:24.04}")
-    String image;
-
     @Override
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
-        buildService.buildWorkspace(layout, docker, image);
+        buildService.buildWorkspace(layout, docker);
         LOG.info("Built distribution {}", layout.state().getProperty("distro", "(unnamed)"));
         return 0;
     }

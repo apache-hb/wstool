@@ -5,7 +5,11 @@ package {
   version = "20240116.2"
 }
 
-buildTool = "cmake"
+buildTool = "wstool-cmake"
+
+buildDependencies {
+  ["wstool-cmake"] = "1.0.0"
+}
 
 importOptions {
   repo = "https://github.com/abseil/abseil-cpp.git"

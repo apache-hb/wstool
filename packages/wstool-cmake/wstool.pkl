@@ -1,0 +1,8 @@
+amends "modulepath:/package.pkl"
+
+package {
+  name = "wstool-cmake"
+  version = "1.0.0"
+}
+
+buildTool = "system"
