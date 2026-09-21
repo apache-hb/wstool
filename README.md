@@ -44,3 +44,7 @@ testDependencies {
     ["google-test"] = "1.18.0"
 }
 ```
+
+### wstool sysroot command
+
+The main command for configuring and aggregating packages during builds is `wstool sysroot <selector>`, this allows creation of a fake sysroot with installation files from other packages in it. This is most commonly used for creating a build root with all required headers/libraries/binaries in it during build. This can also be used to create a final aggregate package with `wstool aggregate <selector>`. `wstool sysroot <selector>` can accept any of the following arguments as its selector: `build`, `development`, `runtime`, and `<packagename>@<version>/<selector>`. `build` collects all the build time dependencies and their transitive dependents. `development` collects all buildDependencies, dependencies, testDependencies, and runtimeDependencies. And runtime collects only dependencies and runtimeDependencies. Specifying a package name version overrides the package to use as the root for graph traversal as this defaults to the current package.
