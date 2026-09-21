@@ -51,12 +51,19 @@ The main command for configuring and aggregating packages during builds is `wsto
 
 ## writing your own build tools
 
-Build tools are simply scripts in the `bin` folder of your install, to create a new build tool create a package that installs an executable file to its `bin` output. The `buildTool` package key should be the name of the installed binary, as that is what will be run with any other command line parameters.
+Build tools are simply scripts in the `bin` folder of your install, to create a new build tool create a package that installs an executable file to its `bin` output. The `buildTool` package key should be the name of the installed binary.
 
-The executable is invoked as `build-tool SOURCE BUILD INSTALL SYSROOT` for a release
-build. For `wstool package <target>`, the target follows those four paths and any
-remaining arguments are forwarded to the build tool. The standard packages
-`wstool-cmake` and `wstool-meson` provide this interface for CMake and Meson projects.
+The executable receives these environment variables:
+
+* `WST_SRCDIR` is the source directory.
+* `WST_PRIVATE` is the private build directory, including any build-tool-owned sysroots.
+* `WST_PREFIX` is the installation prefix for the package.
+
+The release build invokes the executable without arguments. For `wstool package
+<target>`, the target is passed as the first argument and any remaining arguments are
+forwarded to the build tool. The build tool is responsible for constructing and using
+any sysroots it needs. The standard packages `wstool-cmake` and `wstool-meson` provide
+this interface for CMake and Meson projects.
 
 ## Implementation notes
 

@@ -1,16 +1,19 @@
 #!/bin/sh
 set -eu
 
-if [ "$#" -lt 4 ]; then
-  echo "usage: wstool-cmake SOURCE BUILD INSTALL SYSROOT [TARGET] [ARGUMENTS...]" >&2
-  exit 2
-fi
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
 
-source=$1
-build=$2
-install=$3
-sysroot=$4
-shift 4
+source=$WST_SRCDIR
+build=$WST_PRIVATE
+install=$WST_PREFIX
+sysroot=$build/sysroot
+workspace_sysroot=$(dirname "$(dirname "$build")")/sysroot
+mkdir -p "$sysroot"
+if [ -d "$workspace_sysroot" ]; then
+  cp -a "$workspace_sysroot"/. "$sysroot"/
+fi
 
 if [ "$#" -eq 0 ]; then
   cmake \
@@ -18,7 +21,6 @@ if [ "$#" -eq 0 ]; then
     -B "$build" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$install" \
-    -DWSTOOL_SYSROOT="$sysroot" \
     -DCMAKE_PREFIX_PATH="$sysroot" \
     -DABSL_ENABLE_INSTALL=ON \
     -DINSTALL_GTEST=ON

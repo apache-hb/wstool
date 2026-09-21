@@ -56,7 +56,6 @@ public final class BuildService {
         var sourcePath = pathForBuild(descriptor.source(), layout, useDocker);
         var buildPath = pathForBuild(buildDirectory, layout, useDocker);
         var stagePath = pathForBuild(layout.stageDirectory(descriptor), layout, useDocker);
-        var sysrootPath = pathForBuild(layout.sysroot(), layout, useDocker);
         var tool = layout.sysroot().resolve("bin").resolve(descriptor.buildTool());
         if (!Files.exists(tool)) {
             throw new IllegalStateException(
@@ -65,22 +64,15 @@ public final class BuildService {
                             + " is not installed in "
                             + layout.sysroot());
         }
-        var command =
-                new ArrayList<String>(
-                        List.of(
-                                pathForBuild(tool, layout, useDocker),
-                                sourcePath,
-                                buildPath,
-                                stagePath,
-                                sysrootPath,
-                                target));
+        var command = new ArrayList<String>(List.of(pathForBuild(tool, layout, useDocker), target));
         command.addAll(arguments);
         run(
                 useDocker,
                 layout,
                 descriptor.buildOptions(),
                 command,
-                descriptor.buildOptions().effectiveDockerImage());
+                descriptor.buildOptions().effectiveDockerImage(),
+                toolEnvironment(sourcePath, buildPath, stagePath));
     }
 
     public void fetchDependency(WorkspaceLayout layout, PackageVersion version) {
@@ -158,7 +150,6 @@ public final class BuildService {
         var sourcePath = pathForBuild(source, layout, useDocker);
         var buildPath = pathForBuild(buildDir, layout, useDocker);
         var stagePath = pathForBuild(stageDir, layout, useDocker);
-        var sysrootPath = pathForBuild(layout.sysroot(), layout, useDocker);
         var tool = layout.sysroot().resolve("bin").resolve(descriptor.buildTool());
         if (!Files.exists(tool)) {
             throw new IllegalStateException(
@@ -171,13 +162,18 @@ public final class BuildService {
                 useDocker,
                 layout,
                 buildOptions,
+                List.of(pathForBuild(tool, layout, useDocker)),
                 buildOptions.effectiveDockerImage(),
-                pathForBuild(tool, layout, useDocker),
-                sourcePath,
-                buildPath,
-                stagePath,
-                sysrootPath);
+                toolEnvironment(sourcePath, buildPath, stagePath));
         copyTree(stageDir, layout.sysroot());
+    }
+
+    private static Map<String, String> toolEnvironment(
+            String source, String privateDirectory, String prefix) {
+        return Map.of(
+                "WST_SRCDIR", source,
+                "WST_PRIVATE", privateDirectory,
+                "WST_PREFIX", prefix);
     }
 
     private static String pathForBuild(Path path, WorkspaceLayout layout, boolean docker) {
@@ -195,17 +191,9 @@ public final class BuildService {
             boolean docker,
             WorkspaceLayout layout,
             BuildOptions buildOptions,
-            String image,
-            String... command) {
-        run(docker, layout, buildOptions, List.of(command), image);
-    }
-
-    private static void run(
-            boolean docker,
-            WorkspaceLayout layout,
-            BuildOptions buildOptions,
             List<String> command,
-            String image) {
+            String image,
+            Map<String, String> environment) {
         var args = new ArrayList<String>();
         if (docker) {
             args.addAll(List.of("docker", "run", "--rm"));
@@ -215,12 +203,16 @@ public final class BuildService {
             args.addAll(List.of("-v", layout.root() + ":/workspace:" + mountMode));
             if (mountMode.equals("ro"))
                 args.addAll(List.of("-v", layout.metadata() + ":/workspace/.wstool:rw"));
+            for (var variable : environment.entrySet())
+                args.addAll(List.of("-e", variable.getKey() + "=" + variable.getValue()));
             args.addAll(List.of("-w", "/workspace", image));
         }
         args.addAll(command);
         LOG.info("Running {}", String.join(" ", args));
         try {
-            var process = new ProcessBuilder(args).inheritIO().start();
+            var processBuilder = new ProcessBuilder(args).inheritIO();
+            if (!docker) processBuilder.environment().putAll(environment);
+            var process = processBuilder.start();
             if (process.waitFor() != 0) {
                 throw new IllegalStateException(
                         "Build command failed with exit code "

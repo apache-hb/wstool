@@ -1,13 +1,27 @@
 package wstool.cli;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
+import java.util.zip.ZipInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
@@ -22,6 +36,8 @@ import wstool.common.model.PackageDescriptor;
         mixinStandardHelpOptions = true)
 public final class WorkspaceCloneCommand implements Callable<Integer> {
     private static final Logger LOG = LogManager.getLogger(WorkspaceCloneCommand.class);
+    private static final HttpClient HTTP_CLIENT =
+            HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
 
     @Option(names = "--package", required = true, arity = "1..")
     List<String> packages;
@@ -89,65 +105,162 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
         var importOptions = descriptor.importOptions();
         var temporary = createTemporaryDirectory(target);
         try {
-            var reference = findReference(importOptions.repo().toString(), descriptor);
-            gitClone(importOptions.repo().toString(), reference, temporary);
-            copy(temporary, target);
+            var archive = temporary.resolve("source" + archiveSuffix(importOptions.archive()));
+            var extracted = temporary.resolve("source");
+            download(importOptions.archive(), archive);
+            verifyChecksum(archive, importOptions.checksum());
+            extract(archive, extracted);
+            copy(sourceRoot(extracted), target);
             copyDescriptor(descriptorSource, target);
         } finally {
             delete(temporary);
         }
     }
 
-    private static String findReference(String repository, PackageDescriptor descriptor) {
-        var version = descriptor.version().version();
-        var candidates =
-                List.of(version, "v" + version, descriptor.version().name() + "-" + version);
-        for (var candidate : candidates) {
-            try {
-                var process =
-                        new ProcessBuilder(
-                                        "git",
-                                        "ls-remote",
-                                        "--exit-code",
-                                        "--refs",
-                                        repository,
-                                        "refs/tags/" + candidate)
-                                .redirectErrorStream(true)
-                                .start();
-                if (process.waitFor() == 0) return candidate;
-            } catch (IOException e) {
-                throw new UncheckedIOException("Unable to inspect git tags for " + repository, e);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IllegalStateException("Git tag lookup interrupted", e);
-            }
+    private static String archiveSuffix(URI archive) {
+        var path = archive.getPath().toLowerCase(Locale.ROOT);
+        for (var suffix : List.of(".tar.gz", ".tgz", ".tar.xz", ".txz", ".zip")) {
+            if (path.endsWith(suffix)) return suffix;
         }
-        throw new IllegalArgumentException(
-                "No upstream tag found for " + descriptor.version() + " in " + repository);
+        return ".archive";
     }
 
-    private static void gitClone(String source, String reference, Path target) {
+    private static void download(URI archive, Path target) {
         try {
-            var process =
-                    new ProcessBuilder(
-                                    "git",
-                                    "clone",
-                                    "--depth",
-                                    "1",
-                                    "--branch",
-                                    reference,
-                                    source,
-                                    target.toString())
-                            .inheritIO()
-                            .start();
-            if (process.waitFor() != 0)
-                throw new IllegalStateException(
-                        "git clone failed for " + source + " at " + reference);
+            if ("file".equalsIgnoreCase(archive.getScheme())) {
+                Files.copy(Path.of(archive), target, StandardCopyOption.REPLACE_EXISTING);
+                return;
+            }
+            if (!"http".equalsIgnoreCase(archive.getScheme())
+                    && !"https".equalsIgnoreCase(archive.getScheme())) {
+                throw new IllegalArgumentException("Unsupported archive URI: " + archive);
+            }
+            var request = HttpRequest.newBuilder(archive).GET().build();
+            var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(target));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                try {
+                    Files.deleteIfExists(target);
+                } catch (IOException ignored) {
+                    // The HTTP error is the useful failure to report.
+                }
+                throw new IllegalArgumentException(
+                        "Unable to download archive "
+                                + archive
+                                + ": HTTP "
+                                + response.statusCode());
+            }
         } catch (IOException e) {
-            throw new UncheckedIOException("Unable to run git", e);
+            throw new UncheckedIOException("Unable to download archive " + archive, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("git clone interrupted", e);
+            throw new IllegalStateException("Archive download interrupted", e);
+        }
+    }
+
+    private static void verifyChecksum(Path archive, String expectedChecksum) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            try (var input = Files.newInputStream(archive)) {
+                var buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) >= 0) digest.update(buffer, 0, count);
+            }
+            var actual = HexFormat.of().formatHex(digest.digest());
+            if (!actual.equalsIgnoreCase(expectedChecksum)) {
+                throw new IllegalArgumentException(
+                        "Archive checksum mismatch for "
+                                + archive
+                                + ": expected "
+                                + expectedChecksum
+                                + ", got "
+                                + actual);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to read archive " + archive, e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("JVM does not provide SHA-256", e);
+        }
+    }
+
+    private static void extract(Path archive, Path target) {
+        try {
+            Files.createDirectories(target);
+            var name = archive.getFileName().toString().toLowerCase(Locale.ROOT);
+            if (name.endsWith(".zip")) extractZip(archive, target);
+            else if (name.endsWith(".tar.gz") || name.endsWith(".tgz"))
+                extractTar(archive, target, true);
+            else if (name.endsWith(".tar.xz") || name.endsWith(".txz"))
+                extractTar(archive, target, false);
+            else throw new IllegalArgumentException("Unsupported archive format: " + archive);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to extract archive " + archive, e);
+        }
+    }
+
+    private static void extractZip(Path archive, Path target) throws IOException {
+        try (var input = Files.newInputStream(archive);
+                var zip = new ZipInputStream(input)) {
+            var entry = zip.getNextEntry();
+            while (entry != null) {
+                var destination = archiveDestination(target, entry.getName());
+                if (entry.isDirectory()) Files.createDirectories(destination);
+                else {
+                    Files.createDirectories(destination.getParent());
+                    Files.copy(zip, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+                entry = zip.getNextEntry();
+            }
+        }
+    }
+
+    private static void extractTar(Path archive, Path target, boolean gzip) throws IOException {
+        try (var input = Files.newInputStream(archive);
+                InputStream decompressed =
+                        gzip
+                                ? new GzipCompressorInputStream(input)
+                                : new XZCompressorInputStream(input);
+                var tar = new TarArchiveInputStream(decompressed)) {
+            TarArchiveEntry entry = tar.getNextEntry();
+            while (entry != null) {
+                var destination = archiveDestination(target, entry.getName());
+                if (entry.isSymbolicLink() || entry.isLink())
+                    extractLink(target, destination, entry.getLinkName());
+                else if (entry.isDirectory()) Files.createDirectories(destination);
+                else {
+                    Files.createDirectories(destination.getParent());
+                    Files.copy(tar, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+                entry = tar.getNextEntry();
+            }
+        }
+    }
+
+    private static void extractLink(Path target, Path destination, String linkName)
+            throws IOException {
+        var resolved = destination.getParent().resolve(linkName).normalize();
+        if (!resolved.startsWith(target))
+            throw new IllegalArgumentException(
+                    "Archive link escapes extraction directory: " + linkName);
+        Files.createDirectories(destination.getParent());
+        Files.createSymbolicLink(destination, Path.of(linkName));
+    }
+
+    private static Path archiveDestination(Path target, String entryName) {
+        var destination = target.resolve(entryName).normalize();
+        if (!destination.startsWith(target))
+            throw new IllegalArgumentException(
+                    "Archive entry escapes extraction directory: " + entryName);
+        return destination;
+    }
+
+    private static Path sourceRoot(Path extracted) {
+        try (var paths = Files.list(extracted)) {
+            var children = paths.toList();
+            if (children.size() == 1 && Files.isDirectory(children.getFirst()))
+                return children.getFirst();
+            return extracted;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to inspect extracted archive", e);
         }
     }
 
@@ -192,7 +305,11 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
                     path -> {
                         var destination = target.resolve(source.relativize(path).toString());
                         try {
-                            if (Files.isDirectory(path)) Files.createDirectories(destination);
+                            if (Files.isSymbolicLink(path)) {
+                                Files.createDirectories(destination.getParent());
+                                Files.createSymbolicLink(destination, Files.readSymbolicLink(path));
+                            } else if (Files.isDirectory(path))
+                                Files.createDirectories(destination);
                             else {
                                 Files.createDirectories(destination.getParent());
                                 Files.copy(path, destination, StandardCopyOption.REPLACE_EXISTING);

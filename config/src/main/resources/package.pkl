@@ -25,11 +25,8 @@ class BuildOptions {
 
 /// Options for 3rd party imports
 class ImportOptions {
-  /// The git url where the source code can be located
-  repo: Uri
-
   /// Path to the compressed archive path the code is stored in
-  download: Uri
+  archive: Uri
 
   // SHA-256 checksum of the compressed archive
   checksum: String

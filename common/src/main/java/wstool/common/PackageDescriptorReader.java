@@ -89,7 +89,7 @@ public final class PackageDescriptorReader {
 
     private static ImportOptions toImportOptions(Package.ImportOptions options) {
         if (options == null) return null;
-        return new ImportOptions(options.getRepo(), options.getLicense());
+        return new ImportOptions(options.getArchive(), options.getChecksum(), options.getLicense());
     }
 
     private static Map<String, String> valuesOrEmpty(Map<String, String> values) {

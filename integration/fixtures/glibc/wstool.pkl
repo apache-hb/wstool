@@ -8,6 +8,7 @@ package {
 buildTool = "system"
 
 importOptions {
-  repo = "https://sourceware.org/git/glibc.git"
+  archive = "https://ftp.gnu.org/gnu/glibc/glibc-2.39.tar.xz"
+  checksum = "f77bd47cf8170c57365ae7bf86696c118adb3b120d3259c64c502d3dc1e2d926"
   license = "LGPL-2.1-or-later"
 }

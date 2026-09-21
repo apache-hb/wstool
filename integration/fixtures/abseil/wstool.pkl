@@ -12,6 +12,7 @@ buildDependencies {
 }
 
 importOptions {
-  repo = "https://github.com/abseil/abseil-cpp.git"
+  archive = "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.2.tar.gz"
+  checksum = "733726b8c3a6d39a4120d7e45ea8b41a434cdacde401cba500f14236c49b39dc"
   license = "Apache-2.0"
 }
