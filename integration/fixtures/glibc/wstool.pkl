@@ -1,8 +1,13 @@
-amends "package://github.com/apache-hb/wstool/package.pkl"
+amends "modulepath:/package.pkl"
 
 package {
   name = "glibc"
   version = "2.39"
 }
 
-buildTool: "system"
+buildTool = "system"
+
+importOptions {
+  repo = "https://sourceware.org/git/glibc.git"
+  license = "LGPL-2.1-or-later"
+}

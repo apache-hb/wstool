@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import wstool.common.model.BuildOptions;
 import wstool.common.model.PackageDescriptor;
 import wstool.common.model.PackageVersion;
 
@@ -101,6 +102,8 @@ public final class BuildService {
     private void build(
             WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker, String image) {
         var source = descriptor.source();
+        var buildOptions = descriptor.buildOptions();
+        var useDocker = docker || buildOptions.buildImage().equals("bootstrap");
         var buildDir = layout.buildDirectory(descriptor);
         var stageDir = layout.stageDirectory(descriptor);
         delete(buildDir);
@@ -123,27 +126,39 @@ public final class BuildService {
                             + descriptor.version());
         }
 
-        var sourcePath = pathForBuild(source, layout, docker);
-        var buildPath = pathForBuild(buildDir, layout, docker);
-        var stagePath = pathForBuild(stageDir, layout, docker);
-        var sysrootPath = pathForBuild(layout.sysroot(), layout, docker);
-        run(
-                docker,
-                image,
-                layout,
-                "cmake",
-                "-S",
-                sourcePath,
-                "-B",
-                buildPath,
-                "-DCMAKE_BUILD_TYPE=Release",
-                "-DCMAKE_INSTALL_PREFIX=" + stagePath,
-                "-DWSTOOL_SYSROOT=" + sysrootPath,
-                "-DCMAKE_PREFIX_PATH=" + sysrootPath);
-        run(docker, image, layout, "cmake", "--build", buildPath, "--parallel");
-        run(docker, image, layout, "cmake", "--install", buildPath);
+        var sourcePath = pathForBuild(source, layout, useDocker);
+        var buildPath = pathForBuild(buildDir, layout, useDocker);
+        var stagePath = pathForBuild(stageDir, layout, useDocker);
+        var sysrootPath = pathForBuild(layout.sysroot(), layout, useDocker);
+        var configure =
+                new ArrayList<String>(
+                        List.of(
+                                "cmake",
+                                "-S",
+                                sourcePath,
+                                "-B",
+                                buildPath,
+                                "-DCMAKE_BUILD_TYPE=Release",
+                                "-DCMAKE_INSTALL_PREFIX=" + stagePath,
+                                "-DWSTOOL_SYSROOT=" + sysrootPath,
+                                "-DCMAKE_PREFIX_PATH=" + sysrootPath));
+        if (descriptor.importOptions() != null) {
+            configure.add("-DABSL_ENABLE_INSTALL=ON");
+            configure.add("-DINSTALL_GTEST=ON");
+        }
+        run(useDocker, image, layout, buildOptions, configure.toArray(String[]::new));
+        run(useDocker, image, layout, buildOptions, "cmake", "--build", buildPath, "--parallel");
+        run(useDocker, image, layout, buildOptions, "cmake", "--install", buildPath);
         if (Files.exists(buildDir.resolve("CTestTestfile.cmake"))) {
-            run(docker, image, layout, "ctest", "--test-dir", buildPath, "--output-on-failure");
+            run(
+                    useDocker,
+                    image,
+                    layout,
+                    buildOptions,
+                    "ctest",
+                    "--test-dir",
+                    buildPath,
+                    "--output-on-failure");
         }
         copyTree(stageDir, layout.sysroot());
     }
@@ -160,19 +175,21 @@ public final class BuildService {
     }
 
     private static void run(
-            boolean docker, String image, WorkspaceLayout layout, String... command) {
+            boolean docker,
+            String image,
+            WorkspaceLayout layout,
+            BuildOptions buildOptions,
+            String... command) {
         var args = new ArrayList<String>();
         if (docker) {
-            args.addAll(
-                    List.of(
-                            "docker",
-                            "run",
-                            "--rm",
-                            "-v",
-                            layout.root() + ":/workspace",
-                            "-w",
-                            "/workspace",
-                            image));
+            args.addAll(List.of("docker", "run", "--rm"));
+            if (buildOptions.networkIsolation().equals("isolated"))
+                args.addAll(List.of("--network", "none"));
+            var mountMode = buildOptions.sourceMount().equals("readonly") ? "ro" : "rw";
+            args.addAll(List.of("-v", layout.root() + ":/workspace:" + mountMode));
+            if (mountMode.equals("ro"))
+                args.addAll(List.of("-v", layout.metadata() + ":/workspace/.wstool:rw"));
+            args.addAll(List.of("-w", "/workspace", image));
         }
         args.addAll(List.of(command));
         LOG.info("Running {}", String.join(" ", args));

@@ -28,3 +28,11 @@ pkl {
     packagers { register("makePackages") { projectDirectories.from(file("src/main/resources")) } }
   }
 }
+
+tasks.named<Jar>("jar") {
+  dependsOn("makePackages")
+  from(layout.buildDirectory.dir("generated/pkl/packages")) {
+    include("wstool@*.zip")
+    rename { "wstool-package.zip" }
+  }
+}

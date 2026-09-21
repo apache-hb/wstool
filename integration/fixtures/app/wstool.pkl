@@ -1,11 +1,17 @@
-amends "package://github.com/apache-hb/wstool/package.pkl"
+amends "modulepath:/package.pkl"
 
 package {
   name = "sample-app"
   version = "1.0.0"
 }
 
-buildTool: "cmake"
+buildTool = "cmake"
+
+buildOptions {
+  networkIsolation = "isolated"
+  sourceMount = "readonly"
+  buildImage = "declared"
+}
 
 dependencies {
   ["abseil"] = "20240116.2"

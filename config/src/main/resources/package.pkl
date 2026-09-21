@@ -1,12 +1,15 @@
 open module wstool.package
 
-import "pkl:semver"
-
-typealias Version = String(semver.isValid(this))
+typealias Version = String
 typealias DependencyMap = Mapping<String, Version>
 
 typealias NetworkIsolation = "isolated" | "open"
 typealias SourceMount = "readonly" | "readwrite"
+
+/// The type of buildimage to use, when in doubt use declared
+/// "bootstrap" contains a c++ toolchain, libc, and a shell.
+/// "declared" contains nothing except what dependencies are declared
+typealias BuildImage = "declared" | "bootstrap"
 
 class WsToolPackage {
   name: String
@@ -16,11 +19,23 @@ class WsToolPackage {
 class BuildOptions {
   networkIsolation: NetworkIsolation = "isolated"
   sourceMount: SourceMount = "readonly"
+  buildImage: BuildImage = "declared"
+}
+
+/// Options for 3rd party imports
+class ImportOptions {
+  /// The git url where the source code can be located
+  repo: Uri
+
+  /// The license of the code, should be a valid SPDX license identifier
+  license: String
 }
 
 package: WsToolPackage
 
 buildOptions: BuildOptions?
+
+importOptions: ImportOptions?
 
 buildTool: String
 

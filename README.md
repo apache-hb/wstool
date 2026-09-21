@@ -21,14 +21,14 @@ To create a distribution release run `wstool distro build`, this will package al
 In every package there is a file called wstool.pkl in the root directory, which contains information about the package.
 
 ```pkl
-amends "package://<url>/package.pkl"
+amends "package://<package-base-uri>@<version>#/package.pkl"
 
 package {
     name = "my-cxx-package"
     version = "1.x"
 }
 
-buildTool: "wstool-meson"
+buildTool = "wstool-meson"
 
 buildDependencies {
     ["wstool-meson"] = "1.x"

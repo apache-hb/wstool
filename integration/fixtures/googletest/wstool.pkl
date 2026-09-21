@@ -1,8 +1,13 @@
-amends "package://github.com/apache-hb/wstool/package.pkl"
+amends "modulepath:/package.pkl"
 
 package {
   name = "googletest"
   version = "1.14.0"
 }
 
-buildTool: "cmake"
+buildTool = "cmake"
+
+importOptions {
+  repo = "https://github.com/google/googletest.git"
+  license = "BSD-3-Clause"
+}
