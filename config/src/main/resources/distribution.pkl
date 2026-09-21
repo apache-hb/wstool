@@ -11,7 +11,7 @@ class Archive {
 
 /// A package that is stored within the current repository
 class SourceCode {
-    path: Uri
+    path: String
 }
 
 /// A package that is stored in a git repository
@@ -31,6 +31,8 @@ class Storage {
     bucket: String
 }
 
+typealias NameVersion = String(matches(Regex("\\w+@\\w+")))
+
 /// The name of this distribution
 name: String
 
@@ -38,4 +40,4 @@ name: String
 storage: Storage
 
 /// A map of package names to the sources of those packages
-packages: Mapping<String, PackageSource>
+packages: Mapping<NameVersion, PackageSource>

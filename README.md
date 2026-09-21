@@ -10,11 +10,43 @@ A polyrepo workspace management tool.
 
 ## usage
 
-First create a workspace with `wstool workspace create --name "MyWorkspace"`. Then enter the workspace `cd MyWorkspace`, set a distribution with `wstool workspace setup --distro MyDistroName`, and add source packages with `wstool workspace clone --package MyFirstPackage --package MySecondPackage`. Any packages that the distribution requires that are not part of the current workspace have their build artifacts taken from object storage instead.
+First create a workspace with `wstool workspace create --name "MyWorkspace"`. Then enter the workspace `cd MyWorkspace`, set a distribution with `wstool workspace setup --distro MyDistroName --from "<url>"`. url can be either a git repo, or a path on the local filesystem. Add source packages with `wstool workspace clone --package MyFirstPackage --package MySecondPackage`. Any packages that the distribution requires that are not part of the current workspace have their build artifacts taken from object storage instead.
 
 To build a package enter the folder its cloned to, i.e. `MyWorkspace/src/MyFirstPackage` and run `wstool package release`, this will build the package, run any tests, and place its build artifacts into the build folder. To run other targets such as test use `wstool package <target>`. Target is a freeform string, and all cli arguments after it are forwarded to the build tool as is.
 
 To create a distribution release run `wstool distro build`, this will package all updated dependencies and their dependants. The build is run locally in docker containers, the docker build containers by default contain nothing. Base packages can opt into a small installation of gcc, glibc, and shell. Containers also have access to the subset of packages it declares a dependency on that are in the current distribution. Once `wstool distro build` succeeds create a release using `wstool distro release`, this creates a concrete revision of the distro with all build artifacts finalized.
+
+### world.pkl config file
+
+To start using wstool you must first invent the universe. This means creating a "distribution". A distribution is defined using pkl and a file named `world.pkl` in the root of a repository. This config file defines all the packages the distribution requires to build.
+
+```pkl
+amends "package://<package-base-uri>@<version>#/distribution.pkl"
+
+name = "my-wonderful-distribution"
+
+storage {
+    // You can optionally specify a custom s3 endpoint if you want to store artifacts elsewhere (such as locally)
+    // endpoint = "my-custom.s3.provider.com"
+
+    // An s3 bucket name where your distro is stored
+    bucket = "my-distribution-bucket"
+}
+
+packages {
+    // Packages can be sourced from git
+    ["wstool-meson@1.x"] = new GitRepository { repo = "https://github.com/apache-hb/wstool-meson.git"; branch = "master" }
+
+    // Or from an archive
+    ["example@2.x"] = new Archive { uri = "file://example.zip"; checksum = "f77bd47cf8170c57365ae7bf86696c118adb3b120d3259c64c502d3dc1e2d926" }
+
+    // Or from the local filesystem
+    ["internal-package@1.x"] = new SourceCode { path = "./packages/internal-package" }
+
+    // You may also specify multiple versions of the same package
+    ["internal-package@0.x"] = new SourceCode { path = "./legacy-packages/internal" }
+}
+```
 
 ### wstool.pkl config file
 
