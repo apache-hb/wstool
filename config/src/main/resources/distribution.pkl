@@ -1,0 +1,41 @@
+open module wstool.distribution
+
+/// A package that is stored as a source archive
+class Archive {
+    /// Path to the archive, can be remote or on the local filesystem
+    uri: Uri
+
+    /// SHA-256 hash of the archive
+    checksum: String
+}
+
+/// A package that is stored within the current repository
+class SourceCode {
+    path: Uri
+}
+
+/// A package that is stored in a git repository
+class GitRepository {
+    repo: Uri
+
+    branch: String = "master"
+}
+
+typealias PackageSource = Archive | SourceCode | GitRepository
+
+class Storage {
+    /// The endpoint to use for s3 api calls, defaults to aws s3
+    endpoint: Uri?
+
+    /// The bucket this distribution is stored in
+    bucket: String
+}
+
+/// The name of this distribution
+name: String
+
+/// Storage options for this distribution
+storage: Storage
+
+/// A map of package names to the sources of those packages
+packages: Mapping<String, PackageSource>
