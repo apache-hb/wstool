@@ -52,6 +52,12 @@ tasks.register<JavaExec>("pklFormatCheck") {
   inputs.files(pklSourceFiles)
 }
 
+tasks.register("formatGradle") {
+  group = "formatting"
+  description = "Formats Gradle build files with Spotless."
+  dependsOn("spotlessKotlinGradleApply")
+}
+
 tasks.register("format") {
   group = "formatting"
   description = "Formats all project source files with their native formatters."

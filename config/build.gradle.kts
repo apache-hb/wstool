@@ -24,4 +24,11 @@ pkl {
       generateGetters.set(true)
     }
   }
+  project {
+    packagers {
+      register("makePackages") {
+        projectDirectories.from(file("src/main/resources"))
+      }
+    }
+  }
 }

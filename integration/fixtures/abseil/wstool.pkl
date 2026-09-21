@@ -1,4 +1,4 @@
-module wstool.package
+amends "package://github.com/apache-hb/wstool/package.pkl"
 
 package {
   name = "abseil"
