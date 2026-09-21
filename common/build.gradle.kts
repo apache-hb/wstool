@@ -20,7 +20,6 @@ dependencies {
   implementation("io.opentelemetry:opentelemetry-api")
   implementation("software.amazon.awssdk:s3")
   implementation("software.amazon.awssdk:sts")
-  implementation("com.github.docker-java:docker-java:3.7.1")
   implementation("org.xerial:sqlite-jdbc:3.53.4.0")
   implementation("org.pkl-lang:pkl-core")
   implementation("org.pkl-lang:pkl-config-java")

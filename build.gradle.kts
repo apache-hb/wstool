@@ -14,6 +14,7 @@ dependencies {
   api(platform("org.apache.logging.log4j:log4j-bom:2.25.1"))
   api(platform("io.opentelemetry:opentelemetry-bom:1.51.0"))
   api(platform("org.pkl-lang:pkl-bom:0.32.1"))
+  api(platform("org.testcontainers:testcontainers-bom:2.0.5"))
 
   api("com.google.inject:guice:7.0.0")
   api("org.apache.logging.log4j:log4j-api")

@@ -25,10 +25,6 @@ pkl {
     }
   }
   project {
-    packagers {
-      register("makePackages") {
-        projectDirectories.from(file("src/main/resources"))
-      }
-    }
+    packagers { register("makePackages") { projectDirectories.from(file("src/main/resources")) } }
   }
 }

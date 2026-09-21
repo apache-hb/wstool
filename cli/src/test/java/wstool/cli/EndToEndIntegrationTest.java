@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -14,20 +13,39 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.testcontainers.containers.Container;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.MountableFile;
 
+@Testcontainers
+@Tag("integration")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class EndToEndIntegrationTest {
     private static final String GARAGE_IMAGE = "dxflrs/garage:v2.1.0";
+
+    @org.testcontainers.junit.jupiter.Container
+    private static final GenericContainer<?> garage =
+            new GenericContainer<>(GARAGE_IMAGE)
+                    .withExposedPorts(3900)
+                    .withCopyFileToContainer(
+                            MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml")
+                    .waitingFor(
+                            Wait.forHttp("/")
+                                    .forPort(3900)
+                                    .forStatusCodeMatching(status -> status >= 200 && status < 500)
+                                    .withStartupTimeout(Duration.ofSeconds(45)));
+
     private final Path fixtureRoot = findFixtureRoot();
     private Path temporaryDirectory;
-    private String garageContainer;
     private String endpoint;
     private String accessKey;
     private String secretKey;
@@ -35,43 +53,9 @@ class EndToEndIntegrationTest {
     @BeforeAll
     void startGarage() throws Exception {
         temporaryDirectory = Files.createTempDirectory("wstool-integration-");
-        var port = freePort();
-        endpoint = "http://127.0.0.1:" + port;
-        garageContainer = "wstool-garage-" + UUID.randomUUID().toString().substring(0, 8);
-        var config = temporaryDirectory.resolve("garage.toml");
-        Files.writeString(
-                config,
-                """
-                metadata_dir = "/var/lib/garage/meta"
-                data_dir = "/var/lib/garage/data"
-                db_engine = "sqlite"
-                replication_factor = 1
-                rpc_bind_addr = "0.0.0.0:3901"
-                rpc_public_addr = "127.0.0.1:3901"
-                rpc_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        endpoint = "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
 
-                [s3_api]
-                s3_region = "us-east-1"
-                api_bind_addr = "0.0.0.0:3900"
-                """);
-        assertEquals(
-                0,
-                run(List.of(
-                                "docker",
-                                "run",
-                                "--detach",
-                                "--name",
-                                garageContainer,
-                                "--publish",
-                                port + ":3900",
-                                "--volume",
-                                config + ":/etc/garage.toml:ro",
-                                GARAGE_IMAGE))
-                        .exitCode,
-                "Garage container did not start");
-        waitForGarage();
-
-        var node = output(List.of("docker", "exec", garageContainer, "/garage", "node", "id"));
+        var node = garageOutput("node", "id");
         var nodeId =
                 Pattern.compile("[0-9a-f]{16,}")
                         .matcher(node)
@@ -82,77 +66,18 @@ class EndToEndIntegrationTest {
                                         new IllegalStateException(
                                                 "Could not determine Garage node id from: " + node))
                         .group();
-        assertEquals(
-                0,
-                run(List.of(
-                                "docker",
-                                "exec",
-                                garageContainer,
-                                "/garage",
-                                "layout",
-                                "assign",
-                                "-z",
-                                "dc1",
-                                "-c",
-                                "1G",
-                                nodeId))
-                        .exitCode);
-        assertEquals(
-                0,
-                run(List.of(
-                                "docker",
-                                "exec",
-                                garageContainer,
-                                "/garage",
-                                "layout",
-                                "apply",
-                                "--version",
-                                "1"))
-                        .exitCode);
+        runGarage("layout", "assign", "-z", "dc1", "-c", "1G", nodeId);
+        runGarage("layout", "apply", "--version", "1");
 
-        var key =
-                output(
-                        List.of(
-                                "docker",
-                                "exec",
-                                garageContainer,
-                                "/garage",
-                                "key",
-                                "create",
-                                "wstool-integration"));
+        var key = garageOutput("key", "create", "wstool-integration");
         accessKey = capture(key, "Key ID:\\s*(\\S+)");
         secretKey = capture(key, "Secret key:\\s*(\\S+)");
-        assertEquals(
-                0,
-                run(List.of(
-                                "docker",
-                                "exec",
-                                garageContainer,
-                                "/garage",
-                                "bucket",
-                                "create",
-                                "storage"))
-                        .exitCode);
-        assertEquals(
-                0,
-                run(List.of(
-                                "docker",
-                                "exec",
-                                garageContainer,
-                                "/garage",
-                                "bucket",
-                                "allow",
-                                "--read",
-                                "--write",
-                                "storage",
-                                "--key",
-                                "wstool-integration"))
-                        .exitCode);
+        runGarage("bucket", "create", "storage");
+        runGarage("bucket", "allow", "--read", "--write", "storage", "--key", "wstool-integration");
     }
 
     @AfterAll
-    void stopGarage() throws Exception {
-        if (garageContainer != null) run(List.of("docker", "rm", "--force", garageContainer));
+    void cleanupTemporaryDirectory() throws Exception {
         if (temporaryDirectory != null) delete(temporaryDirectory);
     }
 
@@ -259,20 +184,22 @@ class EndToEndIntegrationTest {
         return run(process);
     }
 
-    private void waitForGarage() throws Exception {
-        var deadline = System.nanoTime() + Duration.ofSeconds(45).toNanos();
-        while (System.nanoTime() < deadline) {
-            var result = run(List.of("docker", "exec", garageContainer, "/garage", "status"));
-            if (result.exitCode == 0) return;
-            Thread.sleep(250);
-        }
-        throw new IllegalStateException("Garage did not become ready");
+    private static String garageOutput(String... command) throws Exception {
+        var result = executeGarage(command);
+        assertEquals(0, result.getExitCode(), result.getStderr());
+        return result.getStdout();
     }
 
-    private static String output(List<String> command) throws Exception {
-        var result = run(command);
-        assertEquals(0, result.exitCode, result.output);
-        return result.output;
+    private static void runGarage(String... command) throws Exception {
+        var result = executeGarage(command);
+        assertEquals(0, result.getExitCode(), result.getStderr());
+    }
+
+    private static Container.ExecResult executeGarage(String... command) throws Exception {
+        var garageCommand = new String[command.length + 1];
+        garageCommand[0] = "/garage";
+        System.arraycopy(command, 0, garageCommand, 1, command.length);
+        return garage.execInContainer(garageCommand);
     }
 
     private static String capture(String text, String expression) {
@@ -292,12 +219,6 @@ class EndToEndIntegrationTest {
         var output = new String(process.getInputStream().readAllBytes());
         var exitCode = process.waitFor();
         return new Result(exitCode, output);
-    }
-
-    private static int freePort() throws IOException {
-        try (var socket = new ServerSocket(0)) {
-            return socket.getLocalPort();
-        }
     }
 
     private static Path findFixtureRoot() {

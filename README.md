@@ -72,7 +72,7 @@ and then builds the application again in a clean workspace using artifacts fetch
 Garage. Run it with:
 
 ```shell
-./gradlew :cli:integrationTest
+./gradlew :cli:test --tests wstool.cli.EndToEndIntegrationTest
 ```
 
 It requires Java 25 and a working Docker daemon. No repository-level shell script is used
