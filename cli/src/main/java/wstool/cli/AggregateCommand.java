@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 import wstool.common.BuildService;
@@ -18,7 +20,13 @@ import wstool.common.WorkspaceLayout;
         description = "Create an aggregate tree from a sysroot selector.",
         mixinStandardHelpOptions = true)
 public final class AggregateCommand implements Callable<Integer> {
-    @Inject BuildService buildService;
+    private static final Logger LOG = LogManager.getLogger(AggregateCommand.class);
+    private final BuildService buildService;
+
+    @Inject
+    public AggregateCommand(BuildService buildService) {
+        this.buildService = buildService;
+    }
 
     @Parameters(
             index = "0",
@@ -45,7 +53,7 @@ public final class AggregateCommand implements Callable<Integer> {
                         .resolve("aggregate")
                         .resolve(descriptor.version().name() + "-" + normalizedSelector);
         copy(layout.sysroot(), aggregate);
-        System.out.println("Created aggregate at " + aggregate);
+        LOG.info("Created aggregate at {}", aggregate);
         return 0;
     }
 

@@ -4,6 +4,8 @@ import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 import wstool.common.BuildService;
@@ -15,7 +17,13 @@ import wstool.common.WorkspaceLayout;
         description = "Materialize dependency files into the workspace sysroot.",
         mixinStandardHelpOptions = true)
 public final class SysrootCommand implements Callable<Integer> {
-    @Inject BuildService buildService;
+    private static final Logger LOG = LogManager.getLogger(SysrootCommand.class);
+    private final BuildService buildService;
+
+    @Inject
+    public SysrootCommand(BuildService buildService) {
+        this.buildService = buildService;
+    }
 
     @Parameters(
             index = "0",
@@ -37,7 +45,7 @@ public final class SysrootCommand implements Callable<Integer> {
         var slash = selector.indexOf('/');
         if (slash >= 0) normalizedSelector = selector.substring(slash + 1);
         buildService.materializeDependencies(layout, descriptor, normalizedSelector);
-        System.out.println("Materialized sysroot selector " + selector + " at " + layout.sysroot());
+        LOG.info("Materialized sysroot selector {} at {}", selector, layout.sysroot());
         return 0;
     }
 }

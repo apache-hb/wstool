@@ -19,6 +19,7 @@ dependencies {
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
   testImplementation("info.picocli:picocli:4.7.6")
+  testImplementation("com.tngtech.archunit:archunit-junit5:1.5.0")
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:testcontainers-junit-jupiter")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")

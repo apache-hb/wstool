@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.common.WorkspaceLayout;
@@ -16,6 +18,8 @@ import wstool.common.WorkspaceLayout;
         description = "Clone a local package repository into the workspace.",
         mixinStandardHelpOptions = true)
 public final class WorkspaceCloneCommand implements Callable<Integer> {
+    private static final Logger LOG = LogManager.getLogger(WorkspaceCloneCommand.class);
+
     @Option(names = "--package", required = true, arity = "1..")
     List<String> packages;
 
@@ -40,7 +44,7 @@ public final class WorkspaceCloneCommand implements Callable<Integer> {
                         Path.of(source).toAbsolutePath().normalize(),
                         layout.sources().resolve(targetName));
             }
-            System.out.println("Cloned " + targetName);
+            LOG.info("Cloned {}", targetName);
         }
         return 0;
     }

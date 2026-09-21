@@ -5,6 +5,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import wstool.common.WorkspaceLayout;
 
@@ -13,6 +15,8 @@ import wstool.common.WorkspaceLayout;
         description = "Mark the current distribution as released.",
         mixinStandardHelpOptions = true)
 public final class DistroReleaseCommand implements Callable<Integer> {
+    private static final Logger LOG = LogManager.getLogger(DistroReleaseCommand.class);
+
     @Override
     public Integer call() {
         var layout = WorkspaceLayout.find(Path.of("."));
@@ -23,8 +27,7 @@ public final class DistroReleaseCommand implements Callable<Integer> {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        System.out.println(
-                "Released distribution " + layout.state().getProperty("distro", "(unnamed)"));
+        LOG.info("Released distribution {}", layout.state().getProperty("distro", "(unnamed)"));
         return 0;
     }
 }

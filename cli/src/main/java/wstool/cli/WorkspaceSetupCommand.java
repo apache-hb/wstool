@@ -2,6 +2,8 @@ package wstool.cli;
 
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.common.WorkspaceLayout;
@@ -11,6 +13,8 @@ import wstool.common.WorkspaceLayout;
         description = "Select the workspace distribution.",
         mixinStandardHelpOptions = true)
 public final class WorkspaceSetupCommand implements Callable<Integer> {
+    private static final Logger LOG = LogManager.getLogger(WorkspaceSetupCommand.class);
+
     @Option(names = "--distro", required = true)
     String distro;
 
@@ -20,7 +24,7 @@ public final class WorkspaceSetupCommand implements Callable<Integer> {
         var properties = layout.state();
         properties.setProperty("distro", distro);
         layout.saveState(properties);
-        System.out.println("Configured distribution " + distro);
+        LOG.info("Configured distribution {}", distro);
         return 0;
     }
 }

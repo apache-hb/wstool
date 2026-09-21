@@ -1,5 +1,7 @@
 package wstool.cli;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 
 @Command(
@@ -12,8 +14,10 @@ import picocli.CommandLine.Command;
             WorkspaceCloneCommand.class
         })
 public final class WorkspaceCommand implements Runnable {
+    private static final Logger LOG = LogManager.getLogger(WorkspaceCommand.class);
+
     @Override
     public void run() {
-        System.out.println("Use workspace create, setup, or clone.");
+        LOG.info("Use workspace create, setup, or clone.");
     }
 }

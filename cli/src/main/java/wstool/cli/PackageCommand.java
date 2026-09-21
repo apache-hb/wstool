@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -15,7 +17,13 @@ import wstool.common.WorkspaceLayout;
 
 @Command(name = "package", description = "Build a package.", mixinStandardHelpOptions = true)
 public final class PackageCommand implements Callable<Integer> {
-    @Inject BuildService buildService;
+    private static final Logger LOG = LogManager.getLogger(PackageCommand.class);
+    private final BuildService buildService;
+
+    @Inject
+    public PackageCommand(BuildService buildService) {
+        this.buildService = buildService;
+    }
 
     @Parameters(index = "0", description = "Build target, or release.", defaultValue = "release")
     String target;
@@ -62,7 +70,7 @@ public final class PackageCommand implements Callable<Integer> {
             return 0;
         }
         buildService.release(layout, descriptor, docker, image);
-        System.out.println("Released " + descriptor.version());
+        LOG.info("Released {}", descriptor.version());
         return 0;
     }
 

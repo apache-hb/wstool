@@ -2,6 +2,8 @@ package wstool.cli;
 
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.common.WorkspaceLayout;
@@ -11,6 +13,8 @@ import wstool.common.WorkspaceLayout;
         description = "Create a workspace directory.",
         mixinStandardHelpOptions = true)
 public final class WorkspaceCreateCommand implements Callable<Integer> {
+    private static final Logger LOG = LogManager.getLogger(WorkspaceCreateCommand.class);
+
     @Option(names = "--name", required = true)
     String name;
 
@@ -24,7 +28,7 @@ public final class WorkspaceCreateCommand implements Callable<Integer> {
         var properties = layout.state();
         properties.setProperty("name", name);
         layout.saveState(properties);
-        System.out.println("Created workspace " + layout.root());
+        LOG.info("Created workspace {}", layout.root());
         return 0;
     }
 }
