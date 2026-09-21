@@ -48,3 +48,32 @@ testDependencies {
 ### wstool sysroot command
 
 The main command for configuring and aggregating packages during builds is `wstool sysroot <selector>`, this allows creation of a fake sysroot with installation files from other packages in it. This is most commonly used for creating a build root with all required headers/libraries/binaries in it during build. This can also be used to create a final aggregate package with `wstool aggregate <selector>`. `wstool sysroot <selector>` can accept any of the following arguments as its selector: `build`, `development`, `runtime`, and `<packagename>@<version>/<selector>`. `build` collects all the build time dependencies and their transitive dependents. `development` collects all buildDependencies, dependencies, testDependencies, and runtimeDependencies. And runtime collects only dependencies and runtimeDependencies. Specifying a package name version overrides the package to use as the root for graph traversal as this defaults to the current package.
+
+## Implementation notes
+
+The current implementation uses CMake for packages whose `buildTool` is `cmake` or
+`wstool-cmake`. Package artifacts are stored under
+`artifacts/<name>/<version>/artifact.zip` in the configured S3 bucket. The S3 endpoint,
+when using Garage or another local S3-compatible service, is selected with
+`WSTOOL_S3_ENDPOINT`; credentials use `WSTOOL_S3_ACCESS_KEY`, `WSTOOL_S3_SECRET_KEY`,
+`WSTOOL_S3_REGION`, and `WSTOOL_S3_BUCKET` (the default bucket is `storage`).
+
+For a local repository checkout, use `wstool workspace clone --package name --from
+/path/to/repository`. The `--from` value can also be an HTTP(S) or SSH git URL.
+`wstool distro build --docker --build-image <image>` runs the CMake build in that image;
+without `--docker` it uses the local toolchain, which is useful for a fast development
+loop.
+
+### Reproducible local integration demo
+
+The JUnit integration test starts Garage in Docker, creates its single-node layout and
+S3 credentials, builds the checked-in Abseil/GoogleTest/glibc/sample application fixtures,
+and then builds the application again in a clean workspace using artifacts fetched from
+Garage. Run it with:
+
+```shell
+./gradlew :cli:integrationTest
+```
+
+It requires Java 25 and a working Docker daemon. No repository-level shell script is used
+to orchestrate the test; the test owns the Garage container and all CLI subprocesses.

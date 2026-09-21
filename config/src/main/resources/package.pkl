@@ -5,12 +5,22 @@ import "pkl:semver"
 typealias Version = String(semver.isValid(this))
 typealias DependencyMap = Mapping<String, Version>
 
+typealias NetworkIsolation = "isolated" | "open"
+typealias SourceMount = "readonly" | "readwrite"
+
 class WsToolPackage {
-    name: String
-    version: Version
+  name: String
+  version: Version
+}
+
+class BuildOptions {
+  networkIsolation: NetworkIsolation = "isolated"
+  sourceMount: SourceMount = "readonly"
 }
 
 package: WsToolPackage
+
+buildOptions: BuildOptions?
 
 buildTool: String
 

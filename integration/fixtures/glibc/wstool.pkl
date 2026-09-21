@@ -1,0 +1,8 @@
+module wstool.package
+
+package {
+  name = "glibc"
+  version = "2.39"
+}
+
+buildTool: "system"

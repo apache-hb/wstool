@@ -1,0 +1,17 @@
+module wstool.package
+
+package {
+  name = "sample-app"
+  version = "1.0.0"
+}
+
+buildTool: "cmake"
+
+dependencies {
+  ["abseil"] = "20240116.2"
+  ["glibc"] = "2.39"
+}
+
+testDependencies {
+  ["googletest"] = "1.14.0"
+}

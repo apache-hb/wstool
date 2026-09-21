@@ -2,7 +2,6 @@ package wstool.common.impl;
 
 import java.nio.file.Path;
 import java.util.Objects;
-
 import wstool.common.CodePackage;
 import wstool.common.model.PackageVersion;
 

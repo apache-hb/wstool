@@ -1,0 +1,8 @@
+module wstool.package
+
+package {
+  name = "abseil"
+  version = "20240116.2"
+}
+
+buildTool: "cmake"
