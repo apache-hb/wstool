@@ -1,0 +1,29 @@
+amends "modulepath:/package.pkl"
+
+package { name = "alsa-lib"; version = "1.2.12" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "declared"
+  buildConfig {
+    ["enable-ucm"] = "no"
+    ["enable-topology"] = "no"
+  }
+  buildEnvironment {
+    ["CFLAGS"] = "-include linux/limits.h"
+    ["WST_MAKE_SKIP_SUBDIRS"] = "aserver"
+  }
+}
+
+buildDependencies {
+  ["glibc"] = "2.39"
+  ["autoconf"] = "2.72"
+  ["automake"] = "1.17"
+  ["libtool"] = "2.4.7"
+}
+
+importOptions {
+  archive = "https://github.com/alsa-project/alsa-lib/archive/refs/tags/v1.2.12.tar.gz"
+  checksum = "f067dbba9376e5bbbb417b77751d2a9f2f277c54fb3a2b5c023cc2c7dfb4e3c1"
+  license = "LGPL-2.1-or-later"
+}

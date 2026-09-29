@@ -39,20 +39,21 @@ public final class S3ArtifactStore implements ArtifactStore {
                 workspaceStorage.getEndpoint() == null
                         ? env("WSTOOL_S3_ENDPOINT", null)
                         : workspaceStorage.getEndpoint().toString();
-        var accessKey = env("WSTOOL_S3_ACCESS_KEY", env("AWS_ACCESS_KEY_ID", "garage-key"));
-        var secretKey = env("WSTOOL_S3_SECRET_KEY", env("AWS_SECRET_ACCESS_KEY", "garage-secret"));
-        var builder =
-                S3Client.builder()
-                        .region(Region.of(env("WSTOOL_S3_REGION", "us-east-1")))
-                        // Garage 2.1 accepts ordinary signed payloads, but not the AWS SDK's
-                        // newer trailing-checksum/chunked upload variant.
-                        .serviceConfiguration(
-                                S3Configuration.builder()
-                                        .checksumValidationEnabled(false)
-                                        .chunkedEncodingEnabled(false)
-                                        .build());
+
+        var accessKey = env("WSTOOL_S3_ACCESS_KEY", env("AWS_ACCESS_KEY_ID", null));
+        var secretKey = env("WSTOOL_S3_SECRET_KEY", env("AWS_SECRET_ACCESS_KEY", null));
+
+        var builder = S3Client.builder().region(Region.of(env("WSTOOL_S3_REGION", "us-east-1")));
+
         if (endpoint != null && !endpoint.isBlank()) {
             builder.endpointOverride(URI.create(endpoint)).forcePathStyle(true);
+            builder.serviceConfiguration(
+                    S3Configuration.builder()
+                            .checksumValidationEnabled(false)
+                            .chunkedEncodingEnabled(false)
+                            .build());
+        }
+        if (accessKey != null && secretKey != null) {
             builder.credentialsProvider(
                     StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(accessKey, secretKey)));

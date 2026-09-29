@@ -1,0 +1,18 @@
+amends "modulepath:/package.pkl"
+
+package { name = "expat"; version = "2.6.4" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "declared"
+}
+
+buildDependencies {
+  ["glibc"] = "2.39"
+}
+
+importOptions {
+  archive = "https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.xz"
+  checksum = "a695629dae047055b37d50a0ff4776d1d45d0a4c842cf4ccee158441f55ff7ee"
+  license = "MIT"
+}

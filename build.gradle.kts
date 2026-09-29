@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 plugins {
   id("java-platform")
   id("com.diffplug.spotless") version "8.10.2"
@@ -30,6 +32,18 @@ val pklSourceFiles =
     include("**/*.pkl", "**/PklProject")
     exclude("**/build/**", ".gradle/**")
   }
+
+val textSourceFiles =
+  rootDir
+    .walkTopDown()
+    .onEnter { file ->
+      !Files.isSymbolicLink(file.toPath()) && file.name !in setOf("build", ".gradle")
+    }
+    .filter { file ->
+      file.isFile &&
+        (file.extension in setOf("md", "xml") || file.name in setOf(".gitattributes", ".gitignore"))
+    }
+    .toList()
 
 tasks.register<JavaExec>("pklFormat") {
   group = "formatting"
@@ -86,8 +100,7 @@ spotless {
   }
 
   format("text") {
-    target("**/*.md", "**/*.xml", ".gitattributes", ".gitignore")
-    targetExclude("build/**", "**/build/**", ".gradle/**")
+    target(project.files(textSourceFiles))
     trimTrailingWhitespace()
     endWithNewline()
   }

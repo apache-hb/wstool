@@ -1,0 +1,23 @@
+amends "modulepath:/package.pkl"
+
+package { name = "mpfr"; version = "4.2.1" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment {
+    ["WST_MAKE_SUBDIRS"] = "src tune"
+    ["WST_JOBS"] = "1"
+  }
+}
+
+buildDependencies {
+  ["gmp"] = "6.3.0"
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz"
+  checksum = "277807353a6726978996945af13e52829e3abd7a9a5b7fb2793894e18f1fcbb2"
+  license = "LGPL-3.0-or-later"
+}

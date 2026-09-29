@@ -1,0 +1,31 @@
+amends "modulepath:/package.pkl"
+
+package { name = "openjdk"; version = "25.0.0" }
+
+buildOptions {
+  tool = "wstool-openjdk"
+  buildImage = "declared"
+}
+
+buildDependencies {
+  ["jdk-bootstrap"] = "25.0.1+8"
+  ["gcc"] = "14.2.0"
+  ["glibc"] = "2.39"
+  ["zlib"] = "1.3.1"
+  ["libffi"] = "3.4.6"
+  ["freetype"] = "2.13.3"
+  ["fontconfig"] = "2.15.0"
+  ["libx11"] = "1.8.10"
+  ["libxext"] = "1.3.6"
+  ["libxrender"] = "0.9.12"
+  ["libxtst"] = "1.2.5"
+  ["libxi"] = "1.8.2"
+  ["alsa-lib"] = "1.2.12"
+  ["cups"] = "2.4.10"
+}
+
+importOptions {
+  archive = "https://github.com/openjdk/jdk/archive/refs/tags/jdk-25+36.tar.gz"
+  checksum = "b54e6d4316c1b396d46cbce47924d65ae0d7ecd2cd54817cfc39fd9020434635"
+  license = "GPL-2.0-with-classpath-exception"
+}

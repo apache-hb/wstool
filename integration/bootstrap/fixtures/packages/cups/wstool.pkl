@@ -1,0 +1,24 @@
+amends "modulepath:/package.pkl"
+
+package { name = "cups"; version = "2.4.10" }
+
+buildOptions {
+  tool = "wstool-cups"
+  buildImage = "declared"
+  buildConfig {
+    ["with-tls"] = "no"
+    ["with-components"] = "libcups"
+  }
+}
+
+buildDependencies {
+  ["glibc"] = "2.39"
+  ["gcc"] = "14.2.0"
+}
+
+importOptions {
+  archive =
+    "https://github.com/OpenPrinting/cups/releases/download/v2.4.10/cups-2.4.10-source.tar.gz"
+  checksum = "d75757c2bc0f7a28b02ee4d52ca9e4b1aa1ba2affe16b985854f5336940e5ad7"
+  license = "Apache-2.0"
+}

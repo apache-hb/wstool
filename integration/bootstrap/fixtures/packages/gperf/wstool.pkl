@@ -1,0 +1,15 @@
+amends "modulepath:/package.pkl"
+
+package { name = "gperf"; version = "3.1" }
+
+buildOptions {
+  tool = "wstool-gperf"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/gperf/gperf-3.1.tar.gz"
+  checksum = "588546b945bba4b70b6a3a616e80b4ab466e3f33024a352fc2198112cdbb3ae2"
+  license = "GPL-3.0-or-later"
+}

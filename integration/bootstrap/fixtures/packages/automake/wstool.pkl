@@ -1,0 +1,26 @@
+amends "modulepath:/package.pkl"
+
+package { name = "automake"; version = "1.17" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment {
+    ["WST_JOBS"] = "1"
+    ["WST_MAKE_TARGET"] = "bin/automake-1.17 bin/aclocal-1.17"
+    ["WST_SKIP_INSTALL"] = "true"
+    ["WST_COPY_BIN"] = "automake-1.17 aclocal-1.17"
+  }
+}
+
+buildDependencies {
+  ["autoconf"] = "2.72"
+  ["make"] = "4.4.1"
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz"
+  checksum = "8920c1fc411e13b90bf704ef9db6f29d540e76d232cb3b2c9f4dc4cc599bd990"
+  license = "GPL-2.0-or-later"
+}

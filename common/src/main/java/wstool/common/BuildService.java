@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -33,14 +34,14 @@ public final class BuildService {
         var packages = discover(layout);
         var order = order(packages);
         for (var descriptor : order) {
-            prepareDependencies(layout, descriptor, packages);
+            materializeDependencies(layout, descriptor);
             build(layout, descriptor, docker);
             store.publish(descriptor.version(), layout.stageDirectory(descriptor));
         }
     }
 
     public void release(WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker) {
-        prepareDependencies(layout, descriptor, discover(layout));
+        materializeDependencies(layout, descriptor);
         build(layout, descriptor, docker);
         store.publish(descriptor.version(), layout.stageDirectory(descriptor));
     }
@@ -52,19 +53,21 @@ public final class BuildService {
             List<String> arguments,
             boolean docker) {
         layout.ensureBuildDirectoryLink(descriptor.source(), descriptor);
-        materializeDependencies(layout, descriptor, "build");
         var useDocker = docker || descriptor.buildOptions().buildImage().equals("bootstrap");
         var buildDirectory = layout.buildDirectory(descriptor);
+        var privateSysroot = buildDirectory.resolve("sysroot");
+        createDirectories(privateSysroot);
+        materializeDependencies(layout, descriptor, "development", privateSysroot);
         var sourcePath = pathForBuild(descriptor.source(), layout, useDocker);
         var buildPath = pathForBuild(buildDirectory, layout, useDocker);
         var stagePath = pathForBuild(layout.stageDirectory(descriptor), layout, useDocker);
-        var tool = buildTool(layout, descriptor);
+        var tool = buildTool(descriptor, privateSysroot);
         if (!Files.exists(tool)) {
             throw new IllegalStateException(
                     "Build tool "
                             + descriptor.buildOptions().tool()
                             + " was not found in the package or "
-                            + layout.sysroot());
+                            + privateSysroot);
         }
         var command = new ArrayList<String>(List.of(pathForBuild(tool, layout, useDocker), target));
         command.addAll(arguments);
@@ -88,27 +91,62 @@ public final class BuildService {
 
     public void materializeDependencies(
             WorkspaceLayout layout, PackageDescriptor descriptor, String selector) {
+        materializeDependencies(layout, descriptor, selector, layout.sysroot());
+    }
+
+    private void materializeDependencies(
+            WorkspaceLayout layout, PackageDescriptor descriptor, String selector, Path target) {
         var local = discover(layout);
-        var dependencies =
-                switch (selector) {
-                    case "build" -> descriptor.buildDependencies();
-                    case "runtime" ->
-                            merge(descriptor.dependencies(), descriptor.runtimeDependencies());
-                    case "development" -> descriptor.allDependencies();
-                    default ->
-                            throw new IllegalArgumentException(
-                                    "Unknown sysroot selector: " + selector);
-                };
+        var dependencies = dependencies(descriptor, selector);
+        var visited = new HashSet<String>();
         for (var dependency : dependencies.entrySet()) {
-            if (local.containsKey(dependency.getKey())) {
-                var localDescriptor = local.get(dependency.getKey());
-                var stage = layout.stageDirectory(localDescriptor);
-                if (Files.exists(stage)) copyTree(stage, layout.sysroot());
-            } else {
-                fetchDependency(
-                        layout, new PackageVersion(dependency.getKey(), dependency.getValue()));
-            }
+            materializeDependency(
+                    layout,
+                    local,
+                    dependency.getKey(),
+                    dependency.getValue(),
+                    selector,
+                    target,
+                    visited);
         }
+    }
+
+    private void materializeDependency(
+            WorkspaceLayout layout,
+            Map<String, PackageDescriptor> local,
+            String name,
+            String version,
+            String selector,
+            Path target,
+            Set<String> visited) {
+        if (!visited.add(name + "@" + version)) return;
+        var descriptor = local.get(name);
+        if (descriptor == null) {
+            var artifacts = store.fetch(new PackageVersion(name, version), layout.cache());
+            copyTree(artifacts, target);
+            return;
+        }
+        for (var dependency : dependencies(descriptor, selector).entrySet()) {
+            materializeDependency(
+                    layout,
+                    local,
+                    dependency.getKey(),
+                    dependency.getValue(),
+                    selector,
+                    target,
+                    visited);
+        }
+        var stage = layout.stageDirectory(descriptor);
+        if (Files.exists(stage)) copyTree(stage, target);
+    }
+
+    private static Map<String, String> dependencies(PackageDescriptor descriptor, String selector) {
+        return switch (selector) {
+            case "build" -> descriptor.buildDependencies();
+            case "runtime" -> merge(descriptor.dependencies(), descriptor.runtimeDependencies());
+            case "development" -> descriptor.allDependencies();
+            default -> throw new IllegalArgumentException("Unknown sysroot selector: " + selector);
+        };
     }
 
     private static Map<String, String> merge(
@@ -116,19 +154,6 @@ public final class BuildService {
         var result = new LinkedHashMap<String, String>(first);
         result.putAll(second);
         return result;
-    }
-
-    private void prepareDependencies(
-            WorkspaceLayout layout,
-            PackageDescriptor descriptor,
-            Map<String, PackageDescriptor> localPackages) {
-        for (var dependency : descriptor.allDependencies().entrySet()) {
-            var local = localPackages.get(dependency.getKey());
-            if (local != null) {
-                continue;
-            }
-            fetchDependency(layout, new PackageVersion(dependency.getKey(), dependency.getValue()));
-        }
     }
 
     private void build(WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker) {
@@ -140,7 +165,9 @@ public final class BuildService {
         var stageDir = layout.stageDirectory(descriptor);
         delete(buildDir);
         delete(stageDir);
-        createDirectories(buildDir, stageDir, layout.sysroot());
+        var privateSysroot = buildDir.resolve("sysroot");
+        createDirectories(buildDir, stageDir, privateSysroot, layout.sysroot());
+        materializeDependencies(layout, descriptor, "development", privateSysroot);
 
         if (buildOptions.tool().equals("system")) {
             copyTree(source.resolve("bin"), stageDir.resolve("bin"));
@@ -153,13 +180,13 @@ public final class BuildService {
         var sourcePath = pathForBuild(source, layout, useDocker);
         var buildPath = pathForBuild(buildDir, layout, useDocker);
         var stagePath = pathForBuild(stageDir, layout, useDocker);
-        var tool = buildTool(layout, descriptor);
+        var tool = buildTool(descriptor, privateSysroot);
         if (!Files.exists(tool)) {
             throw new IllegalStateException(
                     "Build tool "
                             + buildOptions.tool()
                             + " was not found in the package or "
-                            + layout.sysroot());
+                            + privateSysroot);
         }
         run(
                 useDocker,
@@ -185,11 +212,11 @@ public final class BuildService {
         return Map.copyOf(environment);
     }
 
-    private static Path buildTool(WorkspaceLayout layout, PackageDescriptor descriptor) {
+    private static Path buildTool(PackageDescriptor descriptor, Path privateSysroot) {
         var toolName = descriptor.buildOptions().tool();
         var bespoke = descriptor.source().resolve("wstool").resolve("bin").resolve(toolName);
         if (Files.exists(bespoke)) return bespoke;
-        return layout.sysroot().resolve("bin").resolve(toolName);
+        return privateSysroot.resolve("bin").resolve(toolName);
     }
 
     private static String pathForBuild(Path path, WorkspaceLayout layout, boolean docker) {
@@ -303,14 +330,20 @@ public final class BuildService {
 
     private static void copyTree(Path source, Path destination) {
         try {
-            if (!Files.exists(source)) return;
+            if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) return;
             Files.walk(source)
                     .forEach(
                             path -> {
                                 var target =
                                         destination.resolve(source.relativize(path).toString());
                                 try {
-                                    if (Files.isDirectory(path)) Files.createDirectories(target);
+                                    if (Files.isSymbolicLink(path)) {
+                                        Files.createDirectories(target.getParent());
+                                        Files.deleteIfExists(target);
+                                        Files.createSymbolicLink(
+                                                target, Files.readSymbolicLink(path));
+                                    } else if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
+                                        Files.createDirectories(target);
                                     else {
                                         Files.createDirectories(target.getParent());
                                         Files.copy(

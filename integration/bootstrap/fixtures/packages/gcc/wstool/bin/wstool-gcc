@@ -1,0 +1,46 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+sysroot="$WST_PRIVATE/sysroot"
+build="$WST_PRIVATE/build"
+mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+mkdir -p "$sysroot/usr/include"
+export PATH="$sysroot/bin:$PATH"
+
+if [ ! -f "$build/Makefile" ]; then
+  cd "$build"
+  "$WST_SRCDIR/configure" \
+    --prefix="$WST_PREFIX" \
+    --target=x86_64-linux-gnu \
+    --with-sysroot="$sysroot" \
+    --with-gmp="$sysroot" \
+    --with-mpfr="$sysroot" \
+    --with-mpc="$sysroot" \
+    --with-isl="$sysroot" \
+    --with-newlib \
+    --without-headers \
+    --disable-threads \
+    --disable-shared \
+    --disable-nls \
+    --disable-multilib \
+    --disable-bootstrap \
+    --disable-libssp \
+    --disable-libquadmath \
+    --disable-libgomp \
+    --enable-languages=c,c++
+fi
+
+if [ "$#" -eq 0 ]; then
+  make -C "$build" -j"${WST_JOBS:-2}" all-gcc all-target-libgcc
+  make -C "$build" install-gcc install-target-libgcc
+  ln -sfn x86_64-linux-gnu-gcc "$WST_PREFIX/bin/gcc"
+  ln -sfn x86_64-linux-gnu-g++ "$WST_PREFIX/bin/g++"
+  ln -sfn x86_64-linux-gnu-gcc "$WST_PREFIX/bin/cc"
+else
+  make -C "$build" "$@"
+fi
+

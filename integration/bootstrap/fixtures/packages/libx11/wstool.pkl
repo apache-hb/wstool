@@ -1,0 +1,22 @@
+amends "modulepath:/package.pkl"
+
+package { name = "libx11"; version = "1.8.10" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "declared"
+  buildEnvironment {
+    ["WST_JOBS"] = "1"
+  }
+  buildConfig { ["with-xcb"] = "no" }
+}
+
+buildDependencies {
+  ["glibc"] = "2.39"
+}
+
+importOptions {
+  archive = "https://xorg.freedesktop.org/archive/individual/lib/libX11-1.8.10.tar.xz"
+  checksum = "2b3b3dad9347db41dca56beb7db5878f283bde1142f04d9f8e478af435dfdc53"
+  license = "MIT"
+}

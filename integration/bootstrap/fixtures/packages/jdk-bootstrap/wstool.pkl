@@ -1,0 +1,15 @@
+amends "modulepath:/package.pkl"
+
+package { name = "jdk-bootstrap"; version = "25.0.1+8" }
+
+buildOptions {
+  tool = "wstool-jdk"
+  buildImage = "declared"
+}
+
+importOptions {
+  archive =
+    "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.1%2B8/OpenJDK25U-jdk_x64_linux_hotspot_25.0.1_8.tar.gz"
+  checksum = "8daf77d1aacffe38c9889689bc224a13557de77559d9a5bb91991e6a298baa0d"
+  license = "GPL-2.0-with-classpath-exception"
+}

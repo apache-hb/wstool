@@ -9,11 +9,15 @@ source=$WST_SRCDIR
 build=$WST_PRIVATE
 install=$WST_PREFIX
 sysroot=$build/sysroot
-workspace_sysroot=$(dirname "$(dirname "$build")")/sysroot
 mkdir -p "$sysroot"
-if [ -d "$workspace_sysroot" ]; then
-  cp -a "$workspace_sysroot"/. "$sysroot"/
+export PATH="$sysroot/bin:$PATH"
+if [ -x "$sysroot/bin/gcc" ]; then
+  export CC="${CC:-$sysroot/bin/gcc}"
 fi
+if [ -x "$sysroot/bin/g++" ]; then
+  export CXX="${CXX:-$sysroot/bin/g++}"
+fi
+export PKG_CONFIG_PATH="$sysroot/lib/pkgconfig:$sysroot/share/pkgconfig"
 
 if [ "$#" -eq 0 ]; then
   set --

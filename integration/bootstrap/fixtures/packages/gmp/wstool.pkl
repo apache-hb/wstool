@@ -1,0 +1,21 @@
+amends "modulepath:/package.pkl"
+
+package { name = "gmp"; version = "6.3.0" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment {
+    ["WST_MAKE_PREPARE_TARGET"] =
+      "gmp.h fac_table.h sieve_table.h fib_table.h mpn/fib_table.c mp_bases.h mpn/mp_bases.c trialdivtab.h mpn/jacobitab.h mpn/perfsqr.h"
+    ["WST_MAKE_TARGET"] = "all-recursive"
+    ["WST_MAKE_SUBDIRS"] = "mpn mpz mpq mpf printf scanf rand cxx tune"
+  }
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
+  checksum = "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
+  license = "LGPL-3.0-or-later"
+}

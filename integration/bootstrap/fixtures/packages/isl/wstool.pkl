@@ -1,0 +1,20 @@
+amends "modulepath:/package.pkl"
+
+package { name = "isl"; version = "0.26" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment { ["WST_MAKE_SUBDIRS"] = "." }
+}
+
+buildDependencies {
+  ["gmp"] = "6.3.0"
+}
+
+importOptions {
+  archive = "https://libisl.sourceforge.io/isl-0.26.tar.xz"
+  checksum = "a0b5cb06d24f9fa9e77b55fabbe9a3c94a336190345c2555f9915bb38e976504"
+  license = "MIT"
+}

@@ -1,0 +1,19 @@
+amends "modulepath:/package.pkl"
+
+package { name = "perl"; version = "5.40.0" }
+
+buildOptions {
+  tool = "wstool-perl"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment {
+    ["WST_COPY_BIN"] = "perl"
+    ["WST_MARKER"] = "perl"
+  }
+}
+
+importOptions {
+  archive = "https://www.cpan.org/src/5.0/perl-5.40.0.tar.gz"
+  checksum = "c740348f357396327a9795d3e8323bafd0fe8a5c7835fc1cbaba0cc8dfe7161f"
+  license = "Artistic-1.0-Perl"
+}

@@ -1,0 +1,26 @@
+amends "modulepath:/package.pkl"
+
+package { name = "gawk"; version = "5.3.0" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment {
+    ["WST_MAKEINFO"] = "true"
+    ["WST_JOBS"] = "1"
+    ["WST_USE_HOST_COMPILER"] = "true"
+    ["YACC"] = "bison"
+    ["M4"] = "m4"
+  }
+}
+
+buildDependencies {
+  ["bison"] = "3.8.2"
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/gawk/gawk-5.3.0.tar.xz"
+  checksum = "ca9c16d3d11d0ff8c69d79dc0b47267e1329a69b39b799895604ed447d3ca90b"
+  license = "GPL-3.0-or-later"
+}

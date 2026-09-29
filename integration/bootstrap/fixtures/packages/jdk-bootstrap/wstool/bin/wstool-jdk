@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+mkdir -p "$WST_PREFIX/jdk"
+cp -a "$WST_SRCDIR"/. "$WST_PREFIX/jdk"/
+

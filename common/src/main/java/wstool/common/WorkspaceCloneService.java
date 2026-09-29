@@ -7,7 +7,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -30,7 +29,6 @@ import wstool.common.model.PackageDescriptor;
 
 /** Clones or imports packages into a workspace. */
 public final class WorkspaceCloneService {
-    private static final String GIT_CACHE_ENVIRONMENT = "WSTOOL_GIT_CACHE";
     private static final HttpClient HTTP_CLIENT =
             HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
 
@@ -117,39 +115,10 @@ public final class WorkspaceCloneService {
     }
 
     private static void gitClone(String source, String branch, Path target) {
-        try {
-            var command = new ArrayList<String>(List.of("git", "clone", "--depth", "1"));
-            var cache = gitCache(source, branch);
-            if (cache != null) {
-                if (!Files.isDirectory(cache)) {
-                    Files.createDirectories(cache.getParent());
-                    runGit(List.of("git", "clone", "--mirror", source, cache.toString()));
-                }
-                command.addAll(List.of("--reference-if-able", cache.toString()));
-            }
-            if (branch != null && !branch.isBlank()) command.addAll(List.of("--branch", branch));
-            command.addAll(List.of(source, target.toString()));
-            runGit(command);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to run git", e);
-        }
-    }
-
-    private static Path gitCache(String source, String branch) {
-        var cacheRoot = System.getenv(GIT_CACHE_ENVIRONMENT);
-        if (cacheRoot == null || cacheRoot.isBlank()) return null;
-        try {
-            var digest = MessageDigest.getInstance("SHA-256");
-            var key =
-                    source.substring(
-                            Math.max(source.lastIndexOf('/'), source.lastIndexOf(':')) + 1);
-            if (branch != null) key += "@" + branch;
-            var name =
-                    HexFormat.of().formatHex(digest.digest(key.getBytes(StandardCharsets.UTF_8)));
-            return Path.of(cacheRoot).resolve(name + ".git");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("JVM does not provide SHA-256", e);
-        }
+        var command = new ArrayList<String>(List.of("git", "clone", "--depth", "1"));
+        if (branch != null && !branch.isBlank()) command.addAll(List.of("--branch", branch));
+        command.addAll(List.of(source, target.toString()));
+        runGit(command);
     }
 
     private static void runGit(List<String> command) {

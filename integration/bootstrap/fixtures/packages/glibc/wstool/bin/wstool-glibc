@@ -1,0 +1,76 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+sysroot="$WST_PRIVATE/sysroot"
+build="$WST_PRIVATE/build"
+headers="$WST_PRIVATE/kernel-headers"
+source="$WST_PRIVATE/source"
+mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+if [ ! -f "$source/.wstool-source-ready" ]; then
+  mkdir -p "$source"
+  cp -a "$WST_SRCDIR"/. "$source"/
+  rm -f "$source/builddir"
+  rm -rf "$source/.git"
+  touch "$source/.wstool-source-ready"
+fi
+if [ ! -d "$headers/linux" ]; then
+  mkdir -p "$headers"
+  cp -a /usr/include/linux "$headers"/
+  cp -a /usr/include/asm-generic "$headers"/
+  cp -a /usr/include/x86_64-linux-gnu/asm "$headers"/
+fi
+export PATH="$sysroot/bin:$PATH"
+export M4="${M4:-m4}"
+export CC="$sysroot/bin/x86_64-linux-gnu-gcc"
+export AR="$sysroot/bin/x86_64-linux-gnu-ar"
+export RANLIB="$sysroot/bin/x86_64-linux-gnu-ranlib"
+
+if [ ! -f "$build/Makefile" ]; then
+  cd "$build"
+  "$source/configure" \
+    --prefix=/usr \
+    --build=x86_64-linux-gnu \
+    --host=x86_64-linux-gnu \
+    --with-headers="$headers" \
+    --disable-werror \
+    --disable-multilib \
+    --enable-kernel=4.14
+fi
+
+if [ "$#" -eq 0 ]; then
+  make -C "$build" -j"${WST_JOBS:-2}"
+  make -C "$build" install_root="$WST_PREFIX" install
+  if [ -d "$WST_PREFIX/usr" ]; then
+    cp -a "$WST_PREFIX/usr"/. "$WST_PREFIX"/
+    rm -rf "$WST_PREFIX/usr"
+  fi
+  if [ -d "$WST_PREFIX/lib64" ]; then
+    mkdir -p "$WST_PREFIX/lib"
+    cp -a "$WST_PREFIX/lib64"/. "$WST_PREFIX/lib"/
+    rm -rf "$WST_PREFIX/lib64"
+  fi
+  ln -s lib "$WST_PREFIX/lib64"
+  mkdir -p "$WST_PREFIX/usr"
+  ln -s ../lib "$WST_PREFIX/usr/lib64"
+  while IFS= read -r link; do
+    if [ ! -e "$link" ]; then
+      target_name="$(basename "$(readlink "$link")")"
+      target_path=""
+      while IFS= read -r candidate; do
+        if [ -z "$target_path" ] && [ "$(basename "$candidate")" = "$target_name" ]; then
+          target_path="$candidate"
+        fi
+      done < <(find "$WST_PREFIX" \( -type f -o -type d \))
+      if [ -n "$target_path" ]; then
+        relative_target="$(realpath --relative-to="$(dirname "$link")" "$target_path")"
+        ln -sfn "$relative_target" "$link"
+      fi
+    fi
+  done < <(find "$WST_PREFIX" -type l)
+else
+  make -C "$build" "$@"
+fi

@@ -1,0 +1,58 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+sysroot="$WST_PRIVATE/sysroot"
+build="$WST_PRIVATE/build"
+mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+
+mkdir -p "$sysroot/usr"
+if [ ! -e "$sysroot/usr/include" ]; then
+  ln -s ../include "$sysroot/usr/include"
+fi
+if [ -e "$sysroot/lib/ld-linux-x86-64.so.2" ]; then
+  mkdir -p /lib64
+  if [ ! -e /lib64/ld-linux-x86-64.so.2 ]; then
+    ln -s "$sysroot/lib/ld-linux-x86-64.so.2" /lib64/ld-linux-x86-64.so.2
+  fi
+fi
+
+export PATH="$sysroot/bin:$PATH"
+export JAVA_HOME="$sysroot/jdk"
+export CC="$sysroot/bin/gcc"
+export CXX="$sysroot/bin/g++"
+export CFLAGS="--sysroot=$sysroot ${CFLAGS:-}"
+export CXXFLAGS="--sysroot=$sysroot ${CXXFLAGS:-}"
+export CPPFLAGS="-I$sysroot/include ${CPPFLAGS:-}"
+export LDFLAGS="--sysroot=$sysroot -L$sysroot/lib ${LDFLAGS:-}"
+export PKG_CONFIG_PATH="$sysroot/lib/pkgconfig:$sysroot/share/pkgconfig"
+
+if [ ! -f "$build/spec.gmk" ]; then
+  cd "$build"
+  bash "$WST_SRCDIR/configure" \
+    --with-boot-jdk="$JAVA_HOME" \
+    --with-debug-level=release \
+    --with-native-debug-symbols=none \
+    --disable-warnings-as-errors \
+    --with-freetype=system \
+    --with-fontconfig=system \
+    --with-cups=system \
+    --with-alsa=system \
+    --with-x=system \
+    --with-zlib=system \
+    --with-extra-cflags="--sysroot=$sysroot" \
+    --with-extra-cxxflags="--sysroot=$sysroot" \
+    --with-extra-ldflags="--sysroot=$sysroot -L$sysroot/lib"
+fi
+
+if [ "$#" -eq 0 ]; then
+  make -C "$build" -j"${WST_JOBS:-2}" images
+  image=$(find "$build" -type d -path '*/images/jdk' -print -quit)
+  [ -n "$image" ] || { echo "OpenJDK image was not produced" >&2; exit 1; }
+  cp -a "$image"/. "$WST_PREFIX"/
+else
+  make -C "$build" "$@"
+fi

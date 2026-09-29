@@ -1,0 +1,23 @@
+amends "modulepath:/package.pkl"
+
+package { name = "m4"; version = "1.4.19" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+  buildEnvironment {
+    ["WST_MAKE_SUBDIRS"] = ". lib src"
+    ["AUTOMAKE"] = "true"
+  }
+}
+
+buildDependencies {
+  ["gperf"] = "3.1"
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz"
+  checksum = "63aede5c6d33b6d9b13511cd0be2cac046f2e70fd0a07aa9573a04a82783af96"
+  license = "GPL-3.0-or-later"
+}

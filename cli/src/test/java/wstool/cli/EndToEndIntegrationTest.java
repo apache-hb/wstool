@@ -41,8 +41,6 @@ class EndToEndIntegrationTest {
     private static final Path repositoryRoot = fixtureRoot.getParent().getParent();
     private static final Path integrationDirectory = prepareIntegrationDirectory();
     private static final Path gitDirectory = integrationDirectory.resolve("git");
-    private static final Path gitClientCache =
-            repositoryRoot.resolve("build/integration-git-cache");
 
     @org.testcontainers.junit.jupiter.Container
     private static final GenericContainer<?> garage =
@@ -136,7 +134,6 @@ class EndToEndIntegrationTest {
         assertBuildDirectoryLink(firstWorkspace, "googletest");
         assertBuildDirectoryLink(firstWorkspace, "glibc");
         assertBuildDirectoryLink(firstWorkspace, "sample-app");
-        assertEquals(6, cachedGitRepositories());
         var firstBuild = runCli(firstWorkspace, "distro", "build");
         assertEquals(0, firstBuild.exitCode, firstBuild.output);
         assertTrue(firstBuild.output.contains("Built distribution"));
@@ -267,12 +264,6 @@ class EndToEndIntegrationTest {
         assertEquals(0, result.exitCode, result.output);
     }
 
-    private static long cachedGitRepositories() throws IOException {
-        try (var entries = Files.list(gitClientCache)) {
-            return entries.filter(path -> path.getFileName().toString().endsWith(".git")).count();
-        }
-    }
-
     private Result runCli(Path directory, String... args) throws Exception {
         var command = new ArrayList<String>();
         command.add("java");
@@ -296,7 +287,6 @@ class EndToEndIntegrationTest {
         process.environment().put("WSTOOL_S3_ACCESS_KEY", accessKey);
         process.environment().put("WSTOOL_S3_SECRET_KEY", secretKey);
         process.environment().put("WSTOOL_S3_BUCKET", "storage");
-        process.environment().put("WSTOOL_GIT_CACHE", gitClientCache.toString());
         return run(process);
     }
 

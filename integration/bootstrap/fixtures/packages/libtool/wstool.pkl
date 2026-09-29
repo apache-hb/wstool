@@ -1,0 +1,19 @@
+amends "modulepath:/package.pkl"
+
+package { name = "libtool"; version = "2.4.7" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+}
+
+buildDependencies {
+  ["automake"] = "1.17"
+}
+
+importOptions {
+  archive = "https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz"
+  checksum = "4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d"
+  license = "GPL-2.0-or-later"
+}

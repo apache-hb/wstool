@@ -1,0 +1,24 @@
+amends "modulepath:/package.pkl"
+
+package { name = "libxtst"; version = "1.2.5" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildEnvironment {
+    ["WST_JOBS"] = "1"
+  }
+  buildImage = "declared"
+}
+
+buildDependencies {
+  ["glibc"] = "2.39"
+  ["libx11"] = "1.8.10"
+  ["libxext"] = "1.3.6"
+  ["libxi"] = "1.8.2"
+}
+
+importOptions {
+  archive = "https://xorg.freedesktop.org/archive/individual/lib/libXtst-1.2.5.tar.xz"
+  checksum = "b50d4c25b97009a744706c1039c598f4d8e64910c9fde381994e1cae235d9242"
+  license = "MIT"
+}

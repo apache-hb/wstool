@@ -1,0 +1,22 @@
+amends "modulepath:/package.pkl"
+
+package { name = "libxrender"; version = "0.9.12" }
+
+buildOptions {
+  tool = "wstool-autotools"
+  buildEnvironment {
+    ["WST_JOBS"] = "1"
+  }
+  buildImage = "declared"
+}
+
+buildDependencies {
+  ["glibc"] = "2.39"
+  ["libx11"] = "1.8.10"
+}
+
+importOptions {
+  archive = "https://xorg.freedesktop.org/archive/individual/lib/libXrender-0.9.12.tar.xz"
+  checksum = "b832128da48b39c8d608224481743403ad1691bf4e554e4be9c174df171d1b97"
+  license = "MIT"
+}

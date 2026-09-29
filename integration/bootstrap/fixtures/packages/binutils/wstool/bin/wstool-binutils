@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+sysroot="$WST_PRIVATE/sysroot"
+build="$WST_PRIVATE/build"
+mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+export PATH="$sysroot/bin:$PATH"
+
+if [ ! -f "$build/Makefile" ]; then
+  cd "$build"
+  "$WST_SRCDIR/configure" \
+    --prefix="$WST_PREFIX" \
+    --target=x86_64-linux-gnu \
+    --disable-nls \
+    --disable-werror \
+    --disable-gdb \
+    --disable-gdbserver \
+    --disable-sim \
+    --disable-readline
+fi
+
+if [ "$#" -eq 0 ]; then
+  make_options=()
+  if [ -n "${WST_MAKEINFO:-}" ]; then make_options+=("MAKEINFO=$WST_MAKEINFO"); fi
+  make -C "$build" -j"${WST_JOBS:-2}" "${make_options[@]}" all-binutils all-gas all-ld
+  make -C "$build" "${make_options[@]}" install-binutils install-gas install-ld
+else
+  make -C "$build" "$@"
+fi
+

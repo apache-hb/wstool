@@ -1,0 +1,50 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+sysroot="$WST_PRIVATE/sysroot"
+source="$WST_PRIVATE/source"
+mkdir -p "$sysroot" "$source" "$WST_PREFIX"
+if [ ! -f "$sysroot/include/linux/limits.h" ]; then
+  mkdir -p "$sysroot/include"
+  cp -a /usr/include/linux "$sysroot/include/"
+  cp -a /usr/include/asm-generic "$sysroot/include/"
+  cp -a /usr/include/x86_64-linux-gnu/asm "$sysroot/include/"
+fi
+mkdir -p "$sysroot/usr"
+if [ ! -e "$sysroot/usr/include" ]; then
+  ln -s ../include "$sysroot/usr/include"
+fi
+
+if [ ! -f "$source/.wstool-source-ready" ]; then
+  cp -a "$WST_SRCDIR"/. "$source"/
+  rm -f "$source/builddir"
+  rm -rf "$source/.git"
+  touch "$source/.wstool-source-ready"
+fi
+
+export PATH="$sysroot/bin:$PATH"
+export CC="${CC:-$sysroot/bin/gcc --sysroot=$sysroot}"
+export CXX="${CXX:-$sysroot/bin/g++ --sysroot=$sysroot}"
+export CPPFLAGS="-I$sysroot/include ${CPPFLAGS:-}"
+export LDFLAGS="-L$sysroot/lib -Wl,-rpath-link,$sysroot/lib ${LDFLAGS:-}"
+export PKG_CONFIG_PATH="$sysroot/lib/pkgconfig:$sysroot/share/pkgconfig"
+
+configure_options=()
+while IFS='=' read -r name value; do
+  if [ -n "$name" ]; then
+    if [ -n "$value" ]; then configure_options+=("--$name=$value")
+    else configure_options+=("--$name")
+    fi
+  fi
+done <<< "${WST_USER_OPTIONS:-}"
+
+cd "$source"
+if [ ! -f Makefile ] || [ ! -f Makedefs ]; then
+  ./configure --prefix="$WST_PREFIX" "${configure_options[@]}"
+fi
+make -j"${WST_JOBS:-2}"
+make install

@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+sysroot="$WST_PRIVATE/sysroot"
+source="$WST_PRIVATE/source"
+build="$source"
+mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+export PATH="$sysroot/bin:$PATH"
+
+if [ ! -f "$source/.wstool-source-ready" ]; then
+  mkdir -p "$source"
+  cp -a "$WST_SRCDIR"/. "$source"/
+  rm -f "$source/builddir"
+  rm -rf "$source/.git"
+  touch "$source/.wstool-source-ready"
+fi
+
+if [ ! -f "$build/Makefile" ]; then
+  cd "$source"
+  ./Configure -des -Dprefix="$WST_PREFIX" -Dman1dir=none -Dman3dir=none
+fi
+
+if [ "$#" -eq 0 ]; then
+  make -C "$build" -j"${WST_JOBS:-2}"
+  make -C "$build" install
+else
+  make -C "$build" "$@"
+fi
+
