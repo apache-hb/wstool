@@ -5,23 +5,15 @@ set -euo pipefail
 : "${WST_PRIVATE:?WST_PRIVATE is required}"
 : "${WST_PREFIX:?WST_PREFIX is required}"
 
-source="$WST_PRIVATE/source"
-mkdir -p "$WST_PREFIX" "$source"
-if [ ! -f "$source/.wstool-source-ready" ]; then
-  cp -a "$WST_SRCDIR"/. "$source"/
-  rm -f "$source/builddir"
-  rm -rf "$source/.git"
-  touch "$source/.wstool-source-ready"
+source="$WST_SRCDIR"
+build="$WST_PRIVATE/build"
+mkdir -p "$WST_PREFIX" "$build"
+
+if [ ! -f "$build/Makefile" ]; then
+  cd "$build"
+  "$source/configure" --disable-maintainer-mode --prefix="$WST_PREFIX"
 fi
 
-if [ ! -f "$source/lib/Makefile" ]; then
-  cd "$source"
-  ./configure --disable-maintainer-mode --prefix="$WST_PREFIX"
-fi
-
-make -C "$source/lib" -j"${WST_JOBS:-2}"
-make -C "$source/src" -j"${WST_JOBS:-2}"
-mkdir -p "$WST_PREFIX/bin"
-cp "$source/src/gperf" "$WST_PREFIX/bin/gperf"
-chmod 755 "$WST_PREFIX/bin/gperf"
-
+make -C "$build/lib" -j"${WST_JOBS:-2}"
+make -C "$build/src" -j"${WST_JOBS:-2}"
+make -C "$build" install

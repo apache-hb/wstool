@@ -8,13 +8,11 @@ buildOptions {
   dockerImage = "ubuntu:24.04"
   buildEnvironment {
     ["WST_JOBS"] = "1"
-    ["WST_MAKE_TARGET"] = "bin/automake-1.17 bin/aclocal-1.17"
-    ["WST_SKIP_INSTALL"] = "true"
-    ["WST_COPY_BIN"] = "automake-1.17 aclocal-1.17"
   }
 }
 
 buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
   ["autoconf"] = "2.72"
   ["make"] = "4.4.1"
 }

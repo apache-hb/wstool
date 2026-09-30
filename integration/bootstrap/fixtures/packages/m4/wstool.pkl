@@ -13,6 +13,7 @@ buildOptions {
 }
 
 buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
   ["gperf"] = "3.1"
 }
 

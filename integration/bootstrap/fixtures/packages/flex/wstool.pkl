@@ -16,6 +16,7 @@ buildOptions {
 }
 
 buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
   ["m4"] = "1.4.19"
   ["bison"] = "3.8.2"
 }

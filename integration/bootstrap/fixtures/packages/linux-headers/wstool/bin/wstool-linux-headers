@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+: "${WST_SRCDIR:?WST_SRCDIR is required}"
+: "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
+
+build="$WST_PRIVATE/build"
+mkdir -p "$build" "$WST_PREFIX/usr"
+make -C "$WST_SRCDIR" O="$build" ARCH=x86 headers_install INSTALL_HDR_PATH="$WST_PREFIX/usr"

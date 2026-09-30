@@ -10,6 +10,7 @@ buildOptions {
 }
 
 buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
   ["gmp"] = "6.3.0"
   ["mpfr"] = "4.2.1"
 }

@@ -8,75 +8,79 @@ storage {
   bucket = "bootstrap"
 }
 
+gitServer = "__GIT_SERVER__"
+
 packages {
-  ["gperf@3.1"] = new distribution.GitRepository { repo = "__GIT_SERVER__/gperf.git" }
-  ["bison@3.8.2"] = new distribution.GitRepository { repo = "__GIT_SERVER__/bison.git" }
-  ["flex@2.6.4"] = new distribution.GitRepository { repo = "__GIT_SERVER__/flex.git" }
-  ["gawk@5.3.0"] = new distribution.GitRepository { repo = "__GIT_SERVER__/gawk.git" }
-  ["m4@1.4.19"] = new distribution.GitRepository { repo = "__GIT_SERVER__/m4.git" }
-  ["make@4.4.1"] = new distribution.GitRepository { repo = "__GIT_SERVER__/make.git" }
-  ["perl@5.40.0"] = new distribution.GitRepository { repo = "__GIT_SERVER__/perl.git" }
+  ["gperf@3.1"] = new distribution.GitRepository { repo = "\(gitServer)/gperf.git" }
+  ["bison@3.8.2"] = new distribution.GitRepository { repo = "\(gitServer)/bison.git" }
+  ["flex@2.6.4"] = new distribution.GitRepository { repo = "\(gitServer)/flex.git" }
+  ["gawk@5.3.0"] = new distribution.GitRepository { repo = "\(gitServer)/gawk.git" }
+  ["m4@1.4.19"] = new distribution.GitRepository { repo = "\(gitServer)/m4.git" }
+  ["make@4.4.1"] = new distribution.GitRepository { repo = "\(gitServer)/make.git" }
+  ["perl@5.40.0"] = new distribution.GitRepository { repo = "\(gitServer)/perl.git" }
   ["autoconf@2.72"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/autoconf.git"
+    repo = "\(gitServer)/autoconf.git"
   }
   ["automake@1.17"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/automake.git"
+    repo = "\(gitServer)/automake.git"
   }
   ["libtool@2.4.7"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/libtool.git"
+    repo = "\(gitServer)/libtool.git"
   }
   ["pkg-config@0.29.2"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/pkg-config.git"
+    repo = "\(gitServer)/pkg-config.git"
   }
   ["binutils@2.43.1"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/binutils.git"
+    repo = "\(gitServer)/binutils.git"
   }
   ["gmp@6.3.0"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/gmp.git"
+    repo = "\(gitServer)/gmp.git"
   }
   ["mpfr@4.2.1"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/mpfr.git"
+    repo = "\(gitServer)/mpfr.git"
   }
   ["mpc@1.3.1"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/mpc.git"
+    repo = "\(gitServer)/mpc.git"
   }
   ["isl@0.26"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/isl.git"
+    repo = "\(gitServer)/isl.git"
   }
-  ["gcc@14.2.0"] = new distribution.GitRepository { repo = "__GIT_SERVER__/gcc.git" }
-  ["glibc@2.39"] = new distribution.GitRepository { repo = "__GIT_SERVER__/glibc.git" }
-  ["zlib@1.3.1"] = new distribution.GitRepository { repo = "__GIT_SERVER__/zlib.git" }
+  ["gcc@14.2.0"] = new distribution.GitRepository { repo = "\(gitServer)/gcc.git" }
+  ["glibc@2.39"] = new distribution.GitRepository { repo = "\(gitServer)/glibc.git" }
+  ["linux-headers@6.12.54"] = new distribution.GitRepository { repo = "\(gitServer)/linux-headers.git" }
+  ["wstool-autotools@1.0.0"] = new distribution.GitRepository { repo = "\(gitServer)/wstool-autotools.git" }
+  ["zlib@1.3.1"] = new distribution.GitRepository { repo = "\(gitServer)/zlib.git" }
   ["expat@2.6.4"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/expat.git"
+    repo = "\(gitServer)/expat.git"
   }
-  ["libffi@3.4.6"] = new distribution.GitRepository { repo = "__GIT_SERVER__/libffi.git" }
+  ["libffi@3.4.6"] = new distribution.GitRepository { repo = "\(gitServer)/libffi.git" }
   ["freetype@2.13.3"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/freetype.git"
+    repo = "\(gitServer)/freetype.git"
   }
   ["fontconfig@2.15.0"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/fontconfig.git"
+    repo = "\(gitServer)/fontconfig.git"
   }
   ["libx11@1.8.10"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/libx11.git"
+    repo = "\(gitServer)/libx11.git"
   }
   ["libxext@1.3.6"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/libxext.git"
+    repo = "\(gitServer)/libxext.git"
   }
   ["libxrender@0.9.12"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/libxrender.git"
+    repo = "\(gitServer)/libxrender.git"
   }
   ["libxtst@1.2.5"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/libxtst.git"
+    repo = "\(gitServer)/libxtst.git"
   }
-  ["libxi@1.8.2"] = new distribution.GitRepository { repo = "__GIT_SERVER__/libxi.git" }
+  ["libxi@1.8.2"] = new distribution.GitRepository { repo = "\(gitServer)/libxi.git" }
   ["alsa-lib@1.2.12"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/alsa-lib.git"
+    repo = "\(gitServer)/alsa-lib.git"
   }
-  ["cups@2.4.10"] = new distribution.GitRepository { repo = "__GIT_SERVER__/cups.git" }
+  ["cups@2.4.10"] = new distribution.GitRepository { repo = "\(gitServer)/cups.git" }
   ["jdk-bootstrap@25.0.1+8"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/jdk-bootstrap.git"
+    repo = "\(gitServer)/jdk-bootstrap.git"
   }
   ["openjdk@25.0.0"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/openjdk.git"
+    repo = "\(gitServer)/openjdk.git"
   }
 }

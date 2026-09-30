@@ -1,0 +1,10 @@
+amends "modulepath:/package.pkl"
+
+package {
+  name = "wstool-autotools"
+  version = "1.0.0"
+}
+
+buildOptions {
+  tool = "system"
+}

@@ -9,6 +9,7 @@ buildOptions {
 }
 
 buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
   ["automake"] = "1.17"
 }
 

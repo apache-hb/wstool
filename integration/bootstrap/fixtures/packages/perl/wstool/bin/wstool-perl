@@ -11,12 +11,11 @@ build="$source"
 mkdir -p "$sysroot" "$build" "$WST_PREFIX"
 export PATH="$sysroot/bin:$PATH"
 
-if [ ! -f "$source/.wstool-source-ready" ]; then
+if [ ! -f "$source/Configure" ]; then
   mkdir -p "$source"
   cp -a "$WST_SRCDIR"/. "$source"/
   rm -f "$source/builddir"
   rm -rf "$source/.git"
-  touch "$source/.wstool-source-ready"
 fi
 
 if [ ! -f "$build/Makefile" ]; then

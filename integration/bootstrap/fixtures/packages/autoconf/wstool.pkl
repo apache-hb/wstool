@@ -10,6 +10,7 @@ buildOptions {
 }
 
 buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
   ["m4"] = "1.4.19"
   ["perl"] = "5.40.0"
 }

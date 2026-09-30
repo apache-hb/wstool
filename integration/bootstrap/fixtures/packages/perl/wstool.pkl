@@ -7,7 +7,6 @@ buildOptions {
   buildImage = "bootstrap"
   dockerImage = "ubuntu:24.04"
   buildEnvironment {
-    ["WST_COPY_BIN"] = "perl"
     ["WST_MARKER"] = "perl"
   }
 }

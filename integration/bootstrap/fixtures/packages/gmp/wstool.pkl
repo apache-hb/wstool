@@ -14,6 +14,10 @@ buildOptions {
   }
 }
 
+buildDependencies {
+  ["wstool-autotools"] = "1.0.0"
+}
+
 importOptions {
   archive = "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
   checksum = "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"

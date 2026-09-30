@@ -56,6 +56,7 @@ class BootstrapIntegrationTest {
                     "isl",
                     "gcc",
                     "glibc",
+                    "linux-headers",
                     "zlib",
                     "expat",
                     "libffi",
@@ -68,6 +69,7 @@ class BootstrapIntegrationTest {
                     "libxi",
                     "alsa-lib",
                     "cups",
+                    "wstool-autotools",
                     "jdk-bootstrap",
                     "openjdk");
 
@@ -190,11 +192,19 @@ class BootstrapIntegrationTest {
             assertTrue(Files.isExecutable(sysroot.resolve("bin").resolve(binary)), binary);
         }
         for (var binary :
-                List.of("ld", "as", "ar", "ranlib", "gcc", "g++", "cc", "java", "javac")) {
+                List.of(
+                        "ld",
+                        "as",
+                        "ar",
+                        "ranlib",
+                        "x86_64-linux-gnu-gcc",
+                        "x86_64-linux-gnu-g++",
+                        "java",
+                        "javac")) {
             assertTrue(Files.isExecutable(sysroot.resolve("bin").resolve(binary)), binary);
         }
         assertTrue(Files.exists(sysroot.resolve("bin/libtool")));
-        assertTrue(Files.exists(sysroot.resolve("lib/libc.so.6")));
+        assertTrue(Files.exists(sysroot.resolve("usr/lib/libc.so.6")));
         assertTrue(Files.exists(sysroot.resolve("jdk/bin/java")));
         assertTrue(Files.exists(sysroot.resolve("lib/server/libjvm.so")));
 
@@ -287,7 +297,11 @@ class BootstrapIntegrationTest {
     private void publishRepositories() throws Exception {
         publishRepository("distribution", createDistributionSource());
         for (var packageName : PACKAGE_NAMES) {
-            publishRepository(packageName, fixtureRoot.resolve("packages").resolve(packageName));
+            var source = fixtureRoot.resolve("packages").resolve(packageName);
+            if (packageName.equals("wstool-autotools")) {
+                source = repositoryRoot.resolve("packages/wstool-autotools");
+            }
+            publishRepository(packageName, source);
         }
     }
 

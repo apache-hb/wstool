@@ -1,0 +1,15 @@
+amends "modulepath:/package.pkl"
+
+package { name = "linux-headers"; version = "6.12.54" }
+
+buildOptions {
+  tool = "wstool-linux-headers"
+  buildImage = "bootstrap"
+  dockerImage = "ubuntu:24.04"
+}
+
+importOptions {
+  archive = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.54.tar.xz"
+  checksum = "1b0dcd3390efeec44e528748609bafcf36eae895bb68c8f62ac5e5940943de62"
+  license = "GPL-2.0-only"
+}

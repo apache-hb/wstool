@@ -9,26 +9,15 @@ sysroot="$WST_PRIVATE/sysroot"
 build="$WST_PRIVATE/build"
 mkdir -p "$sysroot" "$build" "$WST_PREFIX"
 
-mkdir -p "$sysroot/usr"
-if [ ! -e "$sysroot/usr/include" ]; then
-  ln -s ../include "$sysroot/usr/include"
-fi
-if [ -e "$sysroot/lib/ld-linux-x86-64.so.2" ]; then
-  mkdir -p /lib64
-  if [ ! -e /lib64/ld-linux-x86-64.so.2 ]; then
-    ln -s "$sysroot/lib/ld-linux-x86-64.so.2" /lib64/ld-linux-x86-64.so.2
-  fi
-fi
-
 export PATH="$sysroot/bin:$PATH"
 export JAVA_HOME="$sysroot/jdk"
-export CC="$sysroot/bin/gcc"
-export CXX="$sysroot/bin/g++"
+export CC="$sysroot/bin/x86_64-linux-gnu-gcc --sysroot=$sysroot"
+export CXX="$sysroot/bin/x86_64-linux-gnu-g++ --sysroot=$sysroot"
 export CFLAGS="--sysroot=$sysroot ${CFLAGS:-}"
 export CXXFLAGS="--sysroot=$sysroot ${CXXFLAGS:-}"
-export CPPFLAGS="-I$sysroot/include ${CPPFLAGS:-}"
-export LDFLAGS="--sysroot=$sysroot -L$sysroot/lib ${LDFLAGS:-}"
-export PKG_CONFIG_PATH="$sysroot/lib/pkgconfig:$sysroot/share/pkgconfig"
+export CPPFLAGS="-I$sysroot/usr/include -I$sysroot/include ${CPPFLAGS:-}"
+export LDFLAGS="--sysroot=$sysroot -L$sysroot/usr/lib -L$sysroot/lib ${LDFLAGS:-}"
+export PKG_CONFIG_PATH="$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig:$sysroot/lib/pkgconfig:$sysroot/share/pkgconfig"
 
 if [ ! -f "$build/spec.gmk" ]; then
   cd "$build"

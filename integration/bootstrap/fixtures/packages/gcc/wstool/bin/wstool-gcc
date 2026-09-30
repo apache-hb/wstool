@@ -8,7 +8,6 @@ set -euo pipefail
 sysroot="$WST_PRIVATE/sysroot"
 build="$WST_PRIVATE/build"
 mkdir -p "$sysroot" "$build" "$WST_PREFIX"
-mkdir -p "$sysroot/usr/include"
 export PATH="$sysroot/bin:$PATH"
 
 if [ ! -f "$build/Makefile" ]; then
@@ -37,10 +36,6 @@ fi
 if [ "$#" -eq 0 ]; then
   make -C "$build" -j"${WST_JOBS:-2}" all-gcc all-target-libgcc
   make -C "$build" install-gcc install-target-libgcc
-  ln -sfn x86_64-linux-gnu-gcc "$WST_PREFIX/bin/gcc"
-  ln -sfn x86_64-linux-gnu-g++ "$WST_PREFIX/bin/g++"
-  ln -sfn x86_64-linux-gnu-gcc "$WST_PREFIX/bin/cc"
 else
   make -C "$build" "$@"
 fi
-
