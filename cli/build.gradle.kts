@@ -27,7 +27,7 @@ dependencies {
 
 application {
   applicationName = "wstool"
-  mainClass = "wstool.cli.RootCommand"
+  mainClass = "wstool.cli.Main"
 }
 
 tasks.test { useJUnitPlatform() }

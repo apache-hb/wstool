@@ -47,7 +47,6 @@ val textSourceFiles =
 
 tasks.register<JavaExec>("pklFormat") {
   group = "formatting"
-  description = "Formats Pkl source files with the native Pkl formatter."
   classpath = pklTools
   mainClass.set("org.pkl.cli.Main")
   jvmArgs("--enable-native-access=ALL-UNNAMED")
@@ -58,7 +57,6 @@ tasks.register<JavaExec>("pklFormat") {
 
 tasks.register<JavaExec>("pklFormatCheck") {
   group = "verification"
-  description = "Checks Pkl source files with the native Pkl formatter."
   classpath = pklTools
   mainClass.set("org.pkl.cli.Main")
   jvmArgs("--enable-native-access=ALL-UNNAMED")
@@ -69,13 +67,11 @@ tasks.register<JavaExec>("pklFormatCheck") {
 
 tasks.register("formatGradle") {
   group = "formatting"
-  description = "Formats Gradle build files with Spotless."
   dependsOn("spotlessKotlinGradleApply")
 }
 
 tasks.register("format") {
   group = "formatting"
-  description = "Formats all project source files with their native formatters."
   dependsOn("spotlessApply", "pklFormat")
 }
 
@@ -90,12 +86,6 @@ spotless {
   kotlinGradle {
     target("*.gradle.kts", "**/*.gradle.kts")
     ktfmt("0.61").googleStyle()
-    endWithNewline()
-  }
-
-  cpp {
-    target("integration/**/*.cc", "integration/**/*.h")
-    clangFormat("*").style("LLVM")
     endWithNewline()
   }
 
