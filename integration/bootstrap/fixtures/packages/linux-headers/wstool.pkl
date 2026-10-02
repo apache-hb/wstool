@@ -5,7 +5,7 @@ package { name = "linux-headers"; version = "6.12.54" }
 buildOptions {
   tool = "wstool-linux-headers"
   buildImage = "bootstrap"
-  dockerImage = "ubuntu:24.04"
+  dockerImage = "wstool-bootstrap-integration:rsync"
 }
 
 importOptions {

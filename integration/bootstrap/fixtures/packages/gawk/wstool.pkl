@@ -12,6 +12,7 @@ buildOptions {
     ["WST_USE_HOST_COMPILER"] = "true"
     ["YACC"] = "bison"
     ["M4"] = "m4"
+    ["WST_COPY_SOURCE"] = "true"
   }
 }
 

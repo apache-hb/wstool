@@ -14,6 +14,7 @@ if [ ! -f "$build/Makefile" ]; then
   "$source/configure" --disable-maintainer-mode --prefix="$WST_PREFIX"
 fi
 
-make -C "$build/lib" -j"${WST_JOBS:-2}"
-make -C "$build/src" -j"${WST_JOBS:-2}"
-make -C "$build" install
+make -C "$build/lib" MAKEINFO=true -j"${WST_JOBS:-2}"
+make -C "$build/src" MAKEINFO=true -j"${WST_JOBS:-2}"
+make -C "$build/lib" MAKEINFO=true install
+make -C "$build/src" MAKEINFO=true install

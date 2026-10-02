@@ -6,7 +6,10 @@ buildOptions {
   tool = "wstool-autotools"
   buildImage = "bootstrap"
   dockerImage = "ubuntu:24.04"
-  buildEnvironment { ["WST_CACHE_REVISION"] = "portable-tool-paths" }
+  buildEnvironment {
+    ["WST_CACHE_REVISION"] = "portable-tool-paths"
+    ["WST_COPY_SOURCE"] = "true"
+  }
 }
 
 buildDependencies {

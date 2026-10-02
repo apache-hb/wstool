@@ -9,6 +9,15 @@ sysroot="$WST_PRIVATE/sysroot"
 build="$WST_PRIVATE/build"
 source="$WST_SRCDIR"
 mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+if [ "${WST_COPY_SOURCE:-}" = "true" ]; then
+  source="$WST_PRIVATE/source"
+  if [ ! -d "$source" ]; then
+    mkdir -p "$source"
+    cp -a "$WST_SRCDIR"/. "$source"/
+    rm -f "$source/builddir"
+    rm -rf "$source/.git"
+  fi
+fi
 export PATH="$sysroot/bin:$PATH"
 export M4="${M4:-m4}"
 export CC="$sysroot/bin/x86_64-linux-gnu-gcc --sysroot=$sysroot"

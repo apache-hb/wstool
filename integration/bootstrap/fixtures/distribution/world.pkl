@@ -8,7 +8,7 @@ storage {
   bucket = "bootstrap"
 }
 
-gitServer = "__GIT_SERVER__"
+local gitServer = "__GIT_SERVER__"
 
 packages {
   ["gperf@3.1"] = new distribution.GitRepository { repo = "\(gitServer)/gperf.git" }

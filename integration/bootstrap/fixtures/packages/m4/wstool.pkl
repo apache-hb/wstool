@@ -9,6 +9,7 @@ buildOptions {
   buildEnvironment {
     ["WST_MAKE_SUBDIRS"] = ". lib src"
     ["AUTOMAKE"] = "true"
+    ["WST_COPY_SOURCE"] = "true"
   }
 }
 

@@ -12,6 +12,7 @@ buildOptions {
     ["AUTOMAKE"] = "true"
     ["WST_JOBS"] = "1"
     ["WST_CACHE_REVISION"] = "package-local-tools"
+    ["WST_COPY_SOURCE"] = "true"
   }
 }
 

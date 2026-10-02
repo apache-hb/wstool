@@ -5,10 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +32,7 @@ class BootstrapIntegrationTest {
     private static final String GIT_IMAGE =
             "castlemilk/git-http-backend@sha256:38c38edb7af62240da3830c9176cf5ba5374b85579d664986c481fa0eb494ab0";
     private static final String BOOTSTRAP_IMAGE = "ubuntu:24.04";
+    private static final String CACHED_BOOTSTRAP_IMAGE = "wstool-bootstrap-integration:rsync";
     private static final String GIT_USERNAME = "wstool";
     private static final String GIT_PASSWORD = "integration";
     private static final List<String> PACKAGE_NAMES =
@@ -77,7 +76,14 @@ class BootstrapIntegrationTest {
     private static final Path fixtureRoot =
             repositoryRoot.resolve("integration/bootstrap/fixtures");
     private static final Path integrationDirectory = prepareIntegrationDirectory();
-    private static final Path gitDirectory = integrationDirectory.resolve("git");
+    private static final Path integrationCacheDirectory =
+            IntegrationRepositoryCache.createDirectory(
+                    repositoryRoot.resolve(".gradle/integration-test-cache/bootstrap"));
+    private static final Path downloadCacheDirectory =
+            IntegrationRepositoryCache.createDirectory(
+                    repositoryRoot.resolve(".gradle/integration-test-cache/downloads"));
+    private static final Path gitDirectory =
+            IntegrationRepositoryCache.createDirectory(integrationCacheDirectory.resolve("git"));
 
     @org.testcontainers.junit.jupiter.Container
     private static final GenericContainer<?> garage =
@@ -121,7 +127,12 @@ class BootstrapIntegrationTest {
     @BeforeAll
     void startServices() throws Exception {
         previousBootstrapImage = imageId(BOOTSTRAP_IMAGE);
-        prepareBootstrapImage();
+        if (imageId(CACHED_BOOTSTRAP_IMAGE) != null) {
+            var restored = runDocker("tag", CACHED_BOOTSTRAP_IMAGE, BOOTSTRAP_IMAGE);
+            assertEquals(0, restored.exitCode, restored.output);
+        } else {
+            prepareBootstrapImage();
+        }
         garageEndpoint = "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
         gitEndpoint =
                 "http://"
@@ -280,6 +291,7 @@ class BootstrapIntegrationTest {
                         "perl",
                         "pkg-config",
                         "python3",
+                        "rsync",
                         "texinfo",
                         "unzip",
                         "xz-utils",
@@ -287,6 +299,8 @@ class BootstrapIntegrationTest {
         assertEquals(0, install.getExitCode(), install.getStderr());
         var committed = runDocker("commit", bootstrapImage.getContainerId(), BOOTSTRAP_IMAGE);
         assertEquals(0, committed.exitCode, committed.output);
+        var cached = runDocker("tag", BOOTSTRAP_IMAGE, CACHED_BOOTSTRAP_IMAGE);
+        assertEquals(0, cached.exitCode, cached.output);
     }
 
     private static String imageId(String image) throws Exception {
@@ -295,13 +309,13 @@ class BootstrapIntegrationTest {
     }
 
     private void publishRepositories() throws Exception {
-        publishRepository("distribution", createDistributionSource());
+        publishRepository("distribution", createDistributionSource(), false);
         for (var packageName : PACKAGE_NAMES) {
             var source = fixtureRoot.resolve("packages").resolve(packageName);
             if (packageName.equals("wstool-autotools")) {
                 source = repositoryRoot.resolve("packages/wstool-autotools");
             }
-            publishRepository(packageName, source);
+            publishRepository(packageName, source, true);
         }
     }
 
@@ -314,21 +328,15 @@ class BootstrapIntegrationTest {
         return source;
     }
 
-    private void publishRepository(String name, Path source) throws Exception {
+    private void publishRepository(String name, Path source, boolean persistent) throws Exception {
         assertTrue(Files.isDirectory(source), source.toString());
-        var working = integrationDirectory.resolve("git-working").resolve(name);
-        copy(source, working);
-        runGit(working, "init", "--initial-branch", "master");
-        runGit(working, "config", "user.name", "wstool integration");
-        runGit(working, "config", "user.email", "wstool@example.invalid");
-        runGit(working, "add", ".");
-        runGit(working, "commit", "-m", "fixture");
-        var bare = gitDirectory.resolve(name + ".git");
-        var result =
-                run(
-                        new ProcessBuilder(
-                                "git", "clone", "--bare", working.toString(), bare.toString()));
-        assertEquals(0, result.exitCode, result.output);
+        IntegrationRepositoryCache.publish(
+                name,
+                source,
+                integrationDirectory.resolve("git-working"),
+                gitDirectory,
+                integrationCacheDirectory.resolve("repository-state"),
+                persistent);
     }
 
     private String gitUrl(String name) {
@@ -358,17 +366,8 @@ class BootstrapIntegrationTest {
         process.environment().put("WSTOOL_S3_ACCESS_KEY", accessKey);
         process.environment().put("WSTOOL_S3_SECRET_KEY", secretKey);
         process.environment().put("WSTOOL_S3_BUCKET", "bootstrap");
+        process.environment().put("WSTOOL_DOWNLOAD_CACHE", downloadCacheDirectory.toString());
         return run(process);
-    }
-
-    private static void runGit(Path directory, String... arguments) throws Exception {
-        var command = new ArrayList<String>();
-        command.add("git");
-        command.add("-C");
-        command.add(directory.toString());
-        command.addAll(List.of(arguments));
-        var result = run(new ProcessBuilder(command));
-        assertEquals(0, result.exitCode, result.output);
     }
 
     private static String garageOutput(String... command) throws Exception {
@@ -429,7 +428,7 @@ class BootstrapIntegrationTest {
         var directory = findRepositoryRoot().resolve("build/bootstrap-integration-test");
         try {
             removeGeneratedDirectory(directory);
-            Files.createDirectories(directory.resolve("git"));
+            Files.createDirectories(directory);
             return directory;
         } catch (Exception e) {
             throw new IllegalStateException("Unable to prepare integration directory", e);
@@ -453,34 +452,6 @@ class BootstrapIntegrationTest {
         if (result.exitCode != 0)
             throw new IllegalStateException(
                     "Unable to remove integration directory: " + result.output);
-    }
-
-    private static void copy(Path source, Path target) {
-        try (var paths = Files.walk(source)) {
-            paths.forEach(
-                    path -> {
-                        var destination = target.resolve(source.relativize(path).toString());
-                        try {
-                            if (Files.isSymbolicLink(path)) {
-                                Files.createDirectories(destination.getParent());
-                                Files.createSymbolicLink(destination, Files.readSymbolicLink(path));
-                            } else if (Files.isDirectory(path)) {
-                                Files.createDirectories(destination);
-                            } else {
-                                Files.createDirectories(destination.getParent());
-                                Files.copy(
-                                        path,
-                                        destination,
-                                        StandardCopyOption.REPLACE_EXISTING,
-                                        StandardCopyOption.COPY_ATTRIBUTES);
-                            }
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                    });
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to copy fixture " + source, e);
-        }
     }
 
     private record Result(int exitCode, String output) {}

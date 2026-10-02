@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,7 +39,14 @@ class EndToEndIntegrationTest {
     private static final Path fixtureRoot = findFixtureRoot();
     private static final Path repositoryRoot = fixtureRoot.getParent().getParent();
     private static final Path integrationDirectory = prepareIntegrationDirectory();
-    private static final Path gitDirectory = integrationDirectory.resolve("git");
+    private static final Path integrationCacheDirectory =
+            IntegrationRepositoryCache.createDirectory(
+                    repositoryRoot.resolve(".gradle/integration-test-cache/end-to-end"));
+    private static final Path downloadCacheDirectory =
+            IntegrationRepositoryCache.createDirectory(
+                    repositoryRoot.resolve(".gradle/integration-test-cache/downloads"));
+    private static final Path gitDirectory =
+            IntegrationRepositoryCache.createDirectory(integrationCacheDirectory.resolve("git"));
 
     @org.testcontainers.junit.jupiter.Container
     private static final GenericContainer<?> garage =
@@ -217,12 +223,12 @@ class EndToEndIntegrationTest {
     }
 
     private void publishRepositories() throws Exception {
-        publishRepository("distribution", createDistributionSource());
-        publishRepository("wstool-cmake", repositoryRoot.resolve("packages/wstool-cmake"));
-        publishRepository("abseil", fixtureRoot.resolve("abseil"));
-        publishRepository("googletest", fixtureRoot.resolve("googletest"));
-        publishRepository("glibc", fixtureRoot.resolve("glibc"));
-        publishRepository("sample-app", fixtureRoot.resolve("app"));
+        publishRepository("distribution", createDistributionSource(), false);
+        publishRepository("wstool-cmake", repositoryRoot.resolve("packages/wstool-cmake"), true);
+        publishRepository("abseil", fixtureRoot.resolve("abseil"), true);
+        publishRepository("googletest", fixtureRoot.resolve("googletest"), true);
+        publishRepository("glibc", fixtureRoot.resolve("glibc"), true);
+        publishRepository("sample-app", fixtureRoot.resolve("app"), true);
     }
 
     private Path createDistributionSource() throws IOException {
@@ -234,34 +240,18 @@ class EndToEndIntegrationTest {
         return source;
     }
 
-    private void publishRepository(String name, Path source) throws Exception {
-        var working = integrationDirectory.resolve("git-working").resolve(name);
-        copy(source, working);
-        runGit(working, "init", "--initial-branch", "master");
-        runGit(working, "config", "user.name", "wstool integration");
-        runGit(working, "config", "user.email", "wstool@example.invalid");
-        runGit(working, "add", ".");
-        runGit(working, "commit", "-m", "fixture");
-        var bare = gitDirectory.resolve(name + ".git");
-        var result =
-                run(
-                        new ProcessBuilder(
-                                "git", "clone", "--bare", working.toString(), bare.toString()));
-        assertEquals(0, result.exitCode, result.output);
+    private void publishRepository(String name, Path source, boolean persistent) throws Exception {
+        IntegrationRepositoryCache.publish(
+                name,
+                source,
+                integrationDirectory.resolve("git-working"),
+                gitDirectory,
+                integrationCacheDirectory.resolve("repository-state"),
+                persistent);
     }
 
     private String gitUrl(String name) {
         return gitEndpoint + "/" + name + ".git";
-    }
-
-    private static void runGit(Path directory, String... arguments) throws Exception {
-        var command = new ArrayList<String>();
-        command.add("git");
-        command.add("-C");
-        command.add(directory.toString());
-        command.addAll(List.of(arguments));
-        var result = run(new ProcessBuilder(command));
-        assertEquals(0, result.exitCode, result.output);
     }
 
     private Result runCli(Path directory, String... args) throws Exception {
@@ -287,6 +277,7 @@ class EndToEndIntegrationTest {
         process.environment().put("WSTOOL_S3_ACCESS_KEY", accessKey);
         process.environment().put("WSTOOL_S3_SECRET_KEY", secretKey);
         process.environment().put("WSTOOL_S3_BUCKET", "storage");
+        process.environment().put("WSTOOL_DOWNLOAD_CACHE", downloadCacheDirectory.toString());
         return run(process);
     }
 
@@ -342,38 +333,10 @@ class EndToEndIntegrationTest {
         var directory = repositoryRoot.resolve("build/integration-test");
         try {
             delete(directory);
-            Files.createDirectories(directory.resolve("git"));
+            Files.createDirectories(directory);
             return directory;
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to prepare integration directory", e);
-        }
-    }
-
-    private static void copy(Path source, Path target) {
-        try (var paths = Files.walk(source)) {
-            paths.forEach(
-                    path -> {
-                        var destination = target.resolve(source.relativize(path).toString());
-                        try {
-                            if (Files.isSymbolicLink(path)) {
-                                Files.createDirectories(destination.getParent());
-                                Files.createSymbolicLink(destination, Files.readSymbolicLink(path));
-                            } else if (Files.isDirectory(path)) {
-                                Files.createDirectories(destination);
-                            } else {
-                                Files.createDirectories(destination.getParent());
-                                Files.copy(
-                                        path,
-                                        destination,
-                                        StandardCopyOption.REPLACE_EXISTING,
-                                        StandardCopyOption.COPY_ATTRIBUTES);
-                            }
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                    });
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to copy fixture " + source, e);
         }
     }
 

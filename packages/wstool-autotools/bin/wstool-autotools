@@ -10,6 +10,16 @@ build="$WST_PRIVATE/build"
 source="$WST_SRCDIR"
 mkdir -p "$sysroot" "$build" "$WST_PREFIX"
 
+if [ "${WST_COPY_SOURCE:-}" = "true" ]; then
+  source="$WST_PRIVATE/source"
+  if [ ! -d "$source" ]; then
+    mkdir -p "$source"
+    cp -a "$WST_SRCDIR"/. "$source"/
+    rm -f "$source/builddir"
+    rm -rf "$source/.git"
+  fi
+fi
+
 if [ ! -x "$source/configure" ] && { [ -x "$source/autogen.sh" ] || [ -f "$source/configure.ac" ]; }; then
   source="$WST_PRIVATE/source"
   if [ ! -f "$source/configure.ac" ] && [ ! -x "$source/autogen.sh" ]; then
@@ -22,11 +32,39 @@ fi
 if [ ! -x "$source/configure" ] && [ -x "$source/autogen.sh" ]; then
   (cd "$source" && ./autogen.sh)
 elif [ ! -x "$source/configure" ] && [ -f "$source/configure.ac" ]; then
-  (cd "$source" && autoreconf --force --install)
+  (cd "$source" && env -u AUTOMAKE autoreconf --force --install)
 fi
 
-export PATH="$sysroot/bin:$PATH"
+touch_wrapper_directory="$WST_PRIVATE/tools"
+mkdir -p "$touch_wrapper_directory"
+real_touch=$(command -v touch)
+cat > "$touch_wrapper_directory/touch" <<'EOF'
+#!/bin/sh
+set -eu
+for path in "$@"; do
+  case "$path" in
+    "$WST_SRCDIR"/*) exit 0 ;;
+  esac
+done
+exec "$WST_REAL_TOUCH" "$@"
+EOF
+chmod +x "$touch_wrapper_directory/touch"
+export WST_REAL_TOUCH="$real_touch"
+export PATH="$touch_wrapper_directory:$sysroot/bin:$PATH"
 export PKG_CONFIG_PATH="$sysroot/usr/lib/pkgconfig:$sysroot/usr/share/pkgconfig:$sysroot/lib/pkgconfig:$sysroot/share/pkgconfig"
+aclocal_paths=()
+IFS=: read -r -a build_tool_paths <<< "${WST_BUILD_PATH:-}"
+for build_tool_path in "${build_tool_paths[@]}"; do
+  if [ -n "$build_tool_path" ]; then
+    aclocal_path="${build_tool_path%/bin}/share/aclocal"
+    if [ -d "$aclocal_path" ]; then
+      aclocal_paths+=("$aclocal_path")
+    fi
+  fi
+done
+if [ "${#aclocal_paths[@]}" -gt 0 ]; then
+  export ACLOCAL_PATH="$(IFS=:; echo "${aclocal_paths[*]}")${ACLOCAL_PATH:+:$ACLOCAL_PATH}"
+fi
 export CPPFLAGS="-I$sysroot/usr/include -I$sysroot/include ${CPPFLAGS:-}"
 export LDFLAGS="-L$sysroot/usr/lib -L$sysroot/lib ${LDFLAGS:-}"
 export CFLAGS="-I$sysroot/usr/include -I$sysroot/include ${CFLAGS:-}"
@@ -36,6 +74,7 @@ export CC="${CC:-$sysroot/bin/x86_64-linux-gnu-gcc --sysroot=$sysroot}"
 export CXX="${CXX:-$sysroot/bin/x86_64-linux-gnu-g++ --sysroot=$sysroot}"
 export CFLAGS="--sysroot=$sysroot -I$sysroot/usr/include -I$sysroot/include ${CFLAGS:-}"
 export CXXFLAGS="--sysroot=$sysroot -I$sysroot/usr/include -I$sysroot/include ${CXXFLAGS:-}"
+requested_host_compiler="${WST_USE_HOST_COMPILER:-false}"
 if [ ! -e "$sysroot/usr/lib/libc.so.6" ]; then
   export WST_USE_HOST_COMPILER=true
 fi
@@ -46,16 +85,27 @@ if [ "${WST_USE_HOST_COMPILER:-}" = "true" ]; then
   export AR="${WST_HOST_AR:-/usr/bin/ar}"
   export RANLIB="${WST_HOST_RANLIB:-/usr/bin/ranlib}"
   export CPPFLAGS="-I$sysroot/usr/include -I$sysroot/include ${WST_HOST_CPPFLAGS:-}"
-  export LDFLAGS="-L$sysroot/usr/lib -L$sysroot/lib ${WST_HOST_LDFLAGS:-}"
+  if [ "$requested_host_compiler" = "true" ]; then
+    export LDFLAGS="${WST_HOST_LDFLAGS:-}"
+  else
+    export LDFLAGS="-L$sysroot/usr/lib -L$sysroot/lib ${WST_HOST_LDFLAGS:-}"
+  fi
   export CFLAGS="-I$sysroot/usr/include -I$sysroot/include ${WST_HOST_CFLAGS:-}"
   export CXXFLAGS="-I$sysroot/usr/include -I$sysroot/include ${WST_HOST_CXXFLAGS:-}"
 fi
 
 # Imported archives are immutable in the build container.  Preserve the
 # generated files shipped in them and pass this policy to recursive makes.
+autotools_make_options=()
 while IFS= read -r old_file; do
   MAKEFLAGS="${MAKEFLAGS:-} -o $old_file"
-done < <(find "$source" -type f \( -name configure -o -name Makefile.in -o -name '*.in' \) -print)
+  autotools_make_options+=("-o" "$old_file")
+done < <(
+  find "$source" -type f \
+    \( -name configure -o -name Makefile.in -o -name '*.in' \
+       -o -name '*.ac' -o -name '*.am' -o -name '*.m4' -o -name '*.gperf' \) \
+    -print
+)
 if [ -f "$source/aclocal.m4" ]; then
   MAKEFLAGS="${MAKEFLAGS:-} -o $source/aclocal.m4"
 fi
@@ -79,7 +129,15 @@ fi
 mkdir -p "$build/t"
 
 if [ "$#" -eq 0 ]; then
-  make_options=()
+  make_options=("${autotools_make_options[@]}")
+  make_options+=(
+    ACLOCAL=true
+    AUTOCONF=true
+    AUTOHEADER=true
+    AUTOMAKE=true
+    am__aclocal_m4_deps=
+    am__configure_deps=
+  )
   make_options+=("-o" "$WST_SRCDIR/configure" "-o" "$WST_SRCDIR/Makefile.in")
   make_options+=("-o" "$source/configure" "-o" "$source/Makefile.in" "-o" "$source/aclocal.m4")
   if [ -n "${WST_MAKE_SUBDIRS:-}" ]; then
@@ -109,7 +167,10 @@ if [ "$#" -eq 0 ]; then
     make -C "$build" "${make_options[@]}" install
   fi
 else
-  make -C "$build" -o "$WST_SRCDIR/configure" -o "$WST_SRCDIR/Makefile.in" \
+  make -C "$build" "${autotools_make_options[@]}" \
+    ACLOCAL=true AUTOCONF=true AUTOHEADER=true AUTOMAKE=true \
+    am__aclocal_m4_deps= am__configure_deps= \
+    -o "$WST_SRCDIR/configure" -o "$WST_SRCDIR/Makefile.in" \
     -o "$source/configure" -o "$source/Makefile.in" -o "$source/aclocal.m4" "$@"
 fi
 

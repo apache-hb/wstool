@@ -9,6 +9,7 @@ buildOptions {
     ["with-tls"] = "no"
     ["with-components"] = "libcups"
   }
+  buildEnvironment { ["WST_COPY_SOURCE"] = "true" }
 }
 
 buildDependencies {

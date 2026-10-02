@@ -7,6 +7,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -30,7 +33,10 @@ import wstool.common.model.PackageDescriptor;
 /** Clones or imports packages into a workspace. */
 public final class WorkspaceCloneService {
     private static final HttpClient HTTP_CLIENT =
-            HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+            HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
 
     public void clonePackages(WorkspaceLayout layout, List<String> packages, String from) {
         for (var packageName : packages) clonePackage(layout, packageName, packages, from);
@@ -141,8 +147,7 @@ public final class WorkspaceCloneService {
         try {
             var archive = temporary.resolve("source" + archiveSuffix(importOptions.archive()));
             var extracted = temporary.resolve("source");
-            download(importOptions.archive(), archive);
-            verifyChecksum(archive, importOptions.checksum());
+            download(importOptions.archive(), archive, importOptions.checksum());
             extract(archive, extracted);
             copy(sourceRoot(extracted), target);
             copyDescriptor(descriptorSource, target);
@@ -156,8 +161,7 @@ public final class WorkspaceCloneService {
         try {
             var archive = temporary.resolve("source" + archiveSuffix(source.getUri()));
             var extracted = temporary.resolve("extracted");
-            download(source.getUri(), archive);
-            verifyChecksum(archive, source.getChecksum());
+            download(source.getUri(), archive, source.getChecksum());
             extract(archive, extracted);
             copy(sourceRoot(extracted), target);
         } finally {
@@ -173,39 +177,128 @@ public final class WorkspaceCloneService {
         return ".archive";
     }
 
-    private static void download(URI archive, Path target) {
-        try {
-            if ("file".equalsIgnoreCase(archive.getScheme())) {
+    private static void download(URI archive, Path target, String expectedChecksum) {
+        if ("file".equalsIgnoreCase(archive.getScheme())) {
+            try {
                 Files.copy(Path.of(archive), target, StandardCopyOption.REPLACE_EXISTING);
+                verifyChecksum(target, expectedChecksum);
                 return;
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to copy archive " + archive, e);
             }
-            if (!"http".equalsIgnoreCase(archive.getScheme())
-                    && !"https".equalsIgnoreCase(archive.getScheme())) {
-                throw new IllegalArgumentException("Unsupported archive URI: " + archive);
-            }
-            var request = HttpRequest.newBuilder(archive).GET().build();
-            var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(target));
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        }
+
+        var cacheSetting = System.getenv("WSTOOL_DOWNLOAD_CACHE");
+        if (cacheSetting == null || cacheSetting.isBlank()) {
+            downloadRemote(archive, target);
+            verifyChecksum(target, expectedChecksum);
+            return;
+        }
+
+        var cacheDirectory = Path.of(cacheSetting).toAbsolutePath().normalize();
+        var cachePath = cacheDirectory.resolve(cacheKey(archive, expectedChecksum));
+        try {
+            Files.createDirectories(cacheDirectory);
+            if (Files.isRegularFile(cachePath)) {
+                Files.copy(cachePath, target, StandardCopyOption.REPLACE_EXISTING);
                 try {
+                    verifyChecksum(target, expectedChecksum);
+                    return;
+                } catch (IllegalArgumentException invalidCache) {
+                    Files.deleteIfExists(cachePath);
                     Files.deleteIfExists(target);
-                } catch (IOException ignored) {
-                    // The HTTP error is the useful failure to report.
                 }
-                throw new IllegalArgumentException(
-                        "Unable to download archive "
-                                + archive
-                                + ": HTTP "
-                                + response.statusCode());
+            }
+            downloadRemote(archive, target);
+            verifyChecksum(target, expectedChecksum);
+            var temporaryCacheFile =
+                    Files.createTempFile(cacheDirectory, cachePath.getFileName().toString(), ".tmp");
+            try {
+                Files.copy(target, temporaryCacheFile, StandardCopyOption.REPLACE_EXISTING);
+                try {
+                    Files.move(
+                            temporaryCacheFile,
+                            cachePath,
+                            StandardCopyOption.ATOMIC_MOVE,
+                            StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(
+                            temporaryCacheFile,
+                            cachePath,
+                            StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally {
+                Files.deleteIfExists(temporaryCacheFile);
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("Unable to download archive " + archive, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Archive download interrupted", e);
+            throw new UncheckedIOException("Unable to cache downloaded archive " + archive, e);
         }
     }
 
+    private static String cacheKey(URI archive, String expectedChecksum) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            digest.update(archive.toString().getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) 0);
+            if (expectedChecksum != null)
+                digest.update(expectedChecksum.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("JVM does not provide SHA-256", e);
+        }
+    }
+
+    private static void downloadRemote(URI archive, Path target) {
+        if (!"http".equalsIgnoreCase(archive.getScheme())
+                && !"https".equalsIgnoreCase(archive.getScheme())) {
+            throw new IllegalArgumentException("Unsupported archive URI: " + archive);
+        }
+        IOException lastFailure = null;
+        for (var candidate : downloadCandidates(archive)) {
+            var request =
+                    HttpRequest.newBuilder(candidate)
+                            .timeout(Duration.ofMinutes(30))
+                            .GET()
+                            .build();
+            try {
+                var response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(target));
+                if (response.statusCode() >= 200 && response.statusCode() < 300) return;
+                var failure =
+                        new IOException(
+                                "HTTP " + response.statusCode() + " downloading " + candidate);
+                try {
+                    Files.deleteIfExists(target);
+                } catch (IOException cleanupFailure) {
+                    failure.addSuppressed(cleanupFailure);
+                }
+                lastFailure = failure;
+            } catch (IOException e) {
+                try {
+                    Files.deleteIfExists(target);
+                } catch (IOException cleanupFailure) {
+                    e.addSuppressed(cleanupFailure);
+                }
+                lastFailure = e;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Archive download interrupted", e);
+            }
+        }
+        throw new UncheckedIOException("Unable to download archive " + archive, lastFailure);
+    }
+
+    private static List<URI> downloadCandidates(URI archive) {
+        var candidates = new ArrayList<URI>();
+        candidates.add(archive);
+        if ("ftp.gnu.org".equalsIgnoreCase(archive.getHost())) {
+            var mirror = URI.create("https://mirrors.kernel.org" + archive.getRawPath());
+            if (!mirror.equals(archive)) candidates.add(mirror);
+        }
+        return candidates;
+    }
+
     private static void verifyChecksum(Path archive, String expectedChecksum) {
+        if (expectedChecksum == null || expectedChecksum.isBlank()) return;
         try {
             var digest = MessageDigest.getInstance("SHA-256");
             try (var input = Files.newInputStream(archive)) {

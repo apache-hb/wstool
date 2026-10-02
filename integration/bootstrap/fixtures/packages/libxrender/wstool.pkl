@@ -6,6 +6,7 @@ buildOptions {
   tool = "wstool-autotools"
   buildEnvironment {
     ["WST_JOBS"] = "1"
+    ["WST_USE_HOST_COMPILER"] = "true"
   }
   buildImage = "declared"
 }

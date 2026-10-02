@@ -5,6 +5,9 @@ package { name = "libffi"; version = "3.4.6" }
 buildOptions {
   tool = "wstool-autotools"
   buildImage = "declared"
+  buildEnvironment {
+    ["WST_COPY_SOURCE"] = "true"
+  }
 }
 
 buildDependencies {

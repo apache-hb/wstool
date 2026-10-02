@@ -9,6 +9,7 @@ buildOptions {
   buildEnvironment {
     ["WST_MAKE_SUBDIRS"] = "src tune"
     ["WST_JOBS"] = "1"
+    ["WST_COPY_SOURCE"] = "true"
   }
 }
 

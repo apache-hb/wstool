@@ -8,6 +8,7 @@ buildOptions {
   dockerImage = "ubuntu:24.04"
   buildEnvironment {
     ["M4"] = "m4"
+    ["WST_COPY_SOURCE"] = "true"
   }
 }
 

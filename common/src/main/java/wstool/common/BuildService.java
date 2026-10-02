@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,15 +62,14 @@ public final class BuildService {
         var sourcePath = pathForBuild(descriptor.source(), layout, useDocker);
         var buildPath = pathForBuild(buildDirectory, layout, useDocker);
         var stagePath = pathForBuild(layout.stageDirectory(descriptor), layout, useDocker);
-        var tool = buildTool(descriptor, privateSysroot);
-        if (!Files.exists(tool)) {
-            throw new IllegalStateException(
-                    "Build tool "
-                            + descriptor.buildOptions().tool()
-                            + " was not found in the package or "
-                            + privateSysroot);
-        }
-        var command = new ArrayList<String>(List.of(pathForBuild(tool, layout, useDocker), target));
+        var command = new ArrayList<String>(
+                List.of(
+                        "sh",
+                        "-c",
+                        "export PATH=\"$WST_BUILD_PATH${PATH:+:$PATH}\"; exec \"$@\"",
+                        "wstool",
+                        descriptor.buildOptions().tool(),
+                        target));
         command.addAll(arguments);
         run(
                 useDocker,
@@ -77,7 +77,12 @@ public final class BuildService {
                 descriptor.buildOptions(),
                 command,
                 descriptor.buildOptions().effectiveDockerImage(),
-                toolEnvironment(sourcePath, buildPath, stagePath, descriptor.buildOptions()));
+                toolEnvironment(
+                        sourcePath,
+                        buildPath,
+                        stagePath,
+                        descriptor.buildOptions(),
+                        buildPathEntries(layout, descriptor, useDocker)));
     }
 
     public void fetchDependency(WorkspaceLayout layout, PackageVersion version) {
@@ -180,30 +185,38 @@ public final class BuildService {
         var sourcePath = pathForBuild(source, layout, useDocker);
         var buildPath = pathForBuild(buildDir, layout, useDocker);
         var stagePath = pathForBuild(stageDir, layout, useDocker);
-        var tool = buildTool(descriptor, privateSysroot);
-        if (!Files.exists(tool)) {
-            throw new IllegalStateException(
-                    "Build tool "
-                            + buildOptions.tool()
-                            + " was not found in the package or "
-                            + privateSysroot);
-        }
+        var command = List.of(
+                "sh",
+                "-c",
+                "export PATH=\"$WST_BUILD_PATH${PATH:+:$PATH}\"; exec \"$@\"",
+                "wstool",
+                buildOptions.tool());
         run(
                 useDocker,
                 layout,
                 buildOptions,
-                List.of(pathForBuild(tool, layout, useDocker)),
+                command,
                 buildOptions.effectiveDockerImage(),
-                toolEnvironment(sourcePath, buildPath, stagePath, buildOptions));
+                toolEnvironment(
+                        sourcePath,
+                        buildPath,
+                        stagePath,
+                        buildOptions,
+                        buildPathEntries(layout, descriptor, useDocker)));
         copyTree(stageDir, layout.sysroot());
     }
 
     private static Map<String, String> toolEnvironment(
-            String source, String privateDirectory, String prefix, BuildOptions buildOptions) {
+            String source,
+            String privateDirectory,
+            String prefix,
+            BuildOptions buildOptions,
+            String buildPath) {
         var environment = new LinkedHashMap<>(buildOptions.buildEnvironment());
         environment.put("WST_SRCDIR", source);
         environment.put("WST_PRIVATE", privateDirectory);
         environment.put("WST_PREFIX", prefix);
+        environment.put("WST_BUILD_PATH", buildPath);
         environment.put(
                 "WST_USER_OPTIONS",
                 buildOptions.buildConfig().entrySet().stream()
@@ -212,11 +225,56 @@ public final class BuildService {
         return Map.copyOf(environment);
     }
 
-    private static Path buildTool(PackageDescriptor descriptor, Path privateSysroot) {
-        var toolName = descriptor.buildOptions().tool();
-        var bespoke = descriptor.source().resolve("wstool").resolve("bin").resolve(toolName);
-        if (Files.exists(bespoke)) return bespoke;
-        return privateSysroot.resolve("bin").resolve(toolName);
+    private String buildPathEntries(
+            WorkspaceLayout layout, PackageDescriptor descriptor, boolean docker) {
+        var bins = new LinkedHashSet<Path>();
+        var local = discover(layout);
+        var visited = new HashSet<String>();
+        for (var dependency : descriptor.buildDependencies().entrySet()) {
+            collectBuildDependencyBins(
+                    layout,
+                    local,
+                    dependency.getKey(),
+                    dependency.getValue(),
+                    bins,
+                    visited);
+        }
+        Path packageBin = descriptor.source().resolve("wstool").resolve("bin");
+        if (Files.isDirectory(packageBin)) {
+            bins.add(packageBin);
+        }
+        return bins.stream()
+                .filter(Files::isDirectory)
+                .map(path -> pathForBuild(path, layout, docker))
+                .collect(Collectors.joining(java.io.File.pathSeparator));
+    }
+
+    private void collectBuildDependencyBins(
+            WorkspaceLayout layout,
+            Map<String, PackageDescriptor> local,
+            String name,
+            String version,
+            Set<Path> bins,
+            Set<String> visited) {
+        if (!visited.add(name + "@" + version)) return;
+        var dependency = local.get(name);
+        if (dependency == null || !dependency.version().version().equals(version)) {
+            var artifacts = store.fetch(new PackageVersion(name, version), layout.cache());
+            var bin = artifacts.resolve("bin");
+            if (Files.isDirectory(bin)) bins.add(bin);
+            return;
+        }
+        var bin = layout.stageDirectory(dependency).resolve("bin");
+        if (Files.isDirectory(bin)) bins.add(bin);
+        for (var transitive : dependency.buildDependencies().entrySet()) {
+            collectBuildDependencyBins(
+                    layout,
+                    local,
+                    transitive.getKey(),
+                    transitive.getValue(),
+                    bins,
+                    visited);
+        }
     }
 
     private static String pathForBuild(Path path, WorkspaceLayout layout, boolean docker) {

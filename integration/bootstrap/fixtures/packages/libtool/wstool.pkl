@@ -6,6 +6,7 @@ buildOptions {
   tool = "wstool-autotools"
   buildImage = "bootstrap"
   dockerImage = "ubuntu:24.04"
+  buildEnvironment { ["WST_COPY_SOURCE"] = "true" }
 }
 
 buildDependencies {

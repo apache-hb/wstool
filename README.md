@@ -169,3 +169,7 @@ Workspace configuration is derived directly from `world.pkl`; Commands locate th
 ```shell
 wstool workspace setup --distro my-wonderful-distribution
 ```
+
+Build tools are resolved by name through `PATH`. The build process adds the `bin` directories
+of build dependencies and the package's `wstool/bin` directory before the existing environment
+`PATH`, so build tools can invoke tools supplied by their dependencies.

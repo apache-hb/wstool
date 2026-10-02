@@ -4,24 +4,26 @@ import "modulepath:/distribution.pkl"
 
 name = "demo"
 
+local gitServer = "__GIT_SERVER__"
+
 storage {
   bucket = "storage"
 }
 
 packages {
   ["wstool-cmake@1.0.0"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/wstool-cmake.git"
+    repo = "\(gitServer)/wstool-cmake.git"
   }
   ["abseil@20240116.2"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/abseil.git"
+    repo = "\(gitServer)/abseil.git"
   }
   ["googletest@1.14.0"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/googletest.git"
+    repo = "\(gitServer)/googletest.git"
   }
   ["glibc@2.39"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/glibc.git"
+    repo = "\(gitServer)/glibc.git"
   }
   ["sample-app@1.0.0"] = new distribution.GitRepository {
-    repo = "__GIT_SERVER__/sample-app.git"
+    repo = "\(gitServer)/sample-app.git"
   }
 }
