@@ -33,6 +33,10 @@ dependencies {
   implementation("org.pkl-lang:pkl-config-java")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
+  testImplementation("io.github.le-shi:java-gitea-api:1.27.3")
+  testImplementation("dev.parsick.testcontainers.gitserver:testcontainers-gitea:0.16.0")
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:testcontainers-junit-jupiter")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 }
 

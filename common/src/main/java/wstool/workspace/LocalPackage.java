@@ -6,8 +6,6 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.pkl.config.java.Config;
-import org.pkl.config.java.ConfigEvaluator;
-import org.pkl.core.ModuleSource;
 import wstool.Package;
 
 public class LocalPackage {
@@ -17,18 +15,16 @@ public class LocalPackage {
     /** Supplied lazily to allow cloning package without a wstool.pkl file yet */
     private final Supplier<Package> packageConfig;
 
-    public LocalPackage(Path source, Path prefix) {
+    public LocalPackage(Path source, Path prefix, PklHelper pkl) {
         this.source = Objects.requireNonNull(source);
         this.prefix = Objects.requireNonNull(prefix);
 
         this.packageConfig =
                 Suppliers.memoize(
                         () -> {
-                            try (ConfigEvaluator evaluator = ConfigEvaluator.preconfigured()) {
-                                Path path = source.resolve("wstool.pkl");
-                                Config config = evaluator.evaluate(ModuleSource.path(path));
-                                return config.as(Package.class);
-                            }
+                            Path path = source.resolve("wstool.pkl");
+                            Config config = pkl.evaluate(path);
+                            return config.as(Package.class);
                         });
     }
 

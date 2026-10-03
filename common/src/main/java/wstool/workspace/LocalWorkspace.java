@@ -1,31 +1,32 @@
 package wstool.workspace;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.pkl.config.java.Config;
-import org.pkl.config.java.ConfigEvaluator;
-import org.pkl.core.ModuleSource;
 import wstool.Distribution.DistributionConfig;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
 import wstool.common.model.PackageMajorVersion;
 
 public class LocalWorkspace {
+    private final GitHelper git;
+    private final PklHelper pkl;
+
     private final Path root;
     private final DistributionConfig distribution;
     private final WorkspaceSchema storage;
     private final Map<String, LocalPackage> packages;
 
-    public LocalWorkspace(Path root) throws Exception {
+    public LocalWorkspace(GitHelper git, PklHelper pkl, Path root) throws Exception {
+        Path path = root.resolve("distribution").resolve("distribution.pkl");
+        Config config = pkl.evaluate(path);
+
+        this.git = git;
+        this.pkl = pkl;
         this.root = Objects.requireNonNull(root);
-        try (ConfigEvaluator evaluator = ConfigEvaluator.preconfigured()) {
-            Path path = root.resolve("distribution").resolve("distribution.pkl");
-            Config config = evaluator.evaluate(ModuleSource.path(path));
-            this.distribution = config.get("distribution").as(DistributionConfig.class);
-        }
+        this.distribution = config.get("distribution").as(DistributionConfig.class);
         this.storage = new WorkspaceSchema(root.resolve("workspace.db"));
         this.packages = new HashMap<>();
     }
@@ -45,8 +46,9 @@ public class LocalWorkspace {
 
             LocalPackage cloned =
                     new LocalPackage(
-                            root.resolve("src").resolve(name), root.resolve("build").resolve(name));
-            storage.addPackage(new PackageMajorVersion(name, ""), cloned.source(), true);
+                            sourcedir().resolve(name), root.resolve("build").resolve(name), pkl);
+            storage.addPackage(
+                    new PackageMajorVersion(name, ""), cloned.source().relativize(root), true);
             this.packages.put(name, cloned);
         } else {
             throw new IllegalArgumentException(
@@ -54,22 +56,16 @@ public class LocalWorkspace {
         }
     }
 
-    private void gitClone(GitRepository repository) throws IOException, InterruptedException {
-        ProcessBuilder pb =
-                new ProcessBuilder(
-                        "git",
-                        "clone",
-                        repository.getRepo().toString(),
-                        "--branch",
-                        repository.getBranch(),
-                        repository.getName());
+    private Path sourcedir() {
+        return root.resolve("src");
+    }
 
-        pb.directory(root.resolve("src").toFile());
-        Process process = pb.start();
-        int status = process.waitFor();
-        if (status != 0) {
-            throw new IOException("Failed to clone repository: " + repository);
-        }
+    private void gitClone(GitRepository repository) throws Exception {
+        git.clone(
+                root.resolve("src"),
+                repository.getRepo(),
+                repository.getBranch(),
+                repository.getName());
     }
 
     private PackageSource findPackageSource(String name) {
