@@ -3,7 +3,6 @@ package wstool.common.impl;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-
 import wstool.common.api.CodePackage;
 import wstool.common.api.Workspace;
 

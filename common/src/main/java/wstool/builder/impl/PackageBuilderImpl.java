@@ -1,9 +1,8 @@
 package wstool.builder.impl;
 
-import java.util.List;
-
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 import wstool.builder.api.PackageBuilder;
 import wstool.common.api.CodePackage;
 import wstool.common.api.Workspace;
@@ -11,9 +10,7 @@ import wstool.common.api.Workspace;
 @Singleton
 public class PackageBuilderImpl implements PackageBuilder {
     @Inject
-    public PackageBuilderImpl() {
-
-    }
+    public PackageBuilderImpl() {}
 
     @Override
     public void runBuildTarget(Workspace workspace, CodePackage pkg, List<String> cmd) {

@@ -1,6 +1,10 @@
 open module wstool.distribution
 
-abstract class PackageSource {}
+typealias NameVersion = String(matches(Regex("[A-Za-z0-9_.+-]+@[A-Za-z0-9_.+-]+")))
+
+abstract class PackageSource {
+  name: String
+}
 
 /// A package that is stored as a source archive
 class Archive extends PackageSource {
@@ -31,13 +35,15 @@ class Storage {
   bucket: String
 }
 
-typealias NameVersion = String(matches(Regex("[A-Za-z0-9_.+-]+@[A-Za-z0-9_.+-]+")))
+class DistributionConfig {
+  /// The name of this distribution
+  name: String
 
-/// The name of this distribution
-name: String
+  /// Storage options for this distribution
+  storage: Storage
 
-/// Storage options for this distribution
-storage: Storage
+  /// A map of package names to the sources of those packages
+  packages: Listing<PackageSource>
+}
 
-/// A map of package names to the sources of those packages
-packages: Mapping<NameVersion, PackageSource>
+distribution: DistributionConfig

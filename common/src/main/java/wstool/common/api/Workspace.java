@@ -10,12 +10,14 @@ public interface Workspace {
 
     /**
      * Packages that have been cloned and are in the workspace
+     *
      * @return
      */
     List<CodePackage> sources();
 
     /**
      * Packages that have not been cloned and as just build artifacts
+     *
      * @return
      */
     List<CodePackage> artifacts();

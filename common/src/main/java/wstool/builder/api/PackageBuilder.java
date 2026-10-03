@@ -1,7 +1,6 @@
 package wstool.builder.api;
 
 import java.util.List;
-
 import wstool.common.api.CodePackage;
 import wstool.common.api.Workspace;
 
