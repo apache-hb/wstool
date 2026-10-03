@@ -1,4 +1,4 @@
-package wstool.cli.commands;
+package wstool.cli.commands.workspace;
 
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
