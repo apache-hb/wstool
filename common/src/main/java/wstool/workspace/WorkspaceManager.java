@@ -1,22 +1,21 @@
 package wstool.workspace;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 
 public class WorkspaceManager {
-    private final Path pwd;
+    public WorkspaceManager() {}
 
-    public WorkspaceManager(Path pwd) {
-        this.pwd = Objects.requireNonNull(pwd);
-    }
-
-    public void setupWorkspace(String name) throws IOException {
+    public LocalWorkspace setupWorkspace(Path pwd, String name) throws Exception {
         Path root = pwd.resolve(name);
         Files.createDirectories(root);
         Files.createDirectories(root.resolve("packages"));
         Files.createDirectories(root.resolve("build"));
         Files.createDirectories(root.resolve("distribution"));
+        return openWorkspace(root);
+    }
+
+    public LocalWorkspace openWorkspace(Path path) throws Exception {
+        return new LocalWorkspace(path);
     }
 }

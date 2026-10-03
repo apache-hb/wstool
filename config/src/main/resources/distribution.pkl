@@ -3,7 +3,11 @@ open module wstool.distribution
 typealias NameVersion = String(matches(Regex("[A-Za-z0-9_.+-]+@[A-Za-z0-9_.+-]+")))
 
 abstract class PackageSource {
+  /// The name of this package
   name: String
+
+  /// The major version of this package
+  version: String
 }
 
 /// A package that is stored as a source archive
@@ -28,8 +32,8 @@ class GitRepository extends PackageSource {
 }
 
 class Storage {
-  /// The endpoint to use for s3 api calls, defaults to aws s3
-  endpoint: Uri?
+  /// The endpoint to use for s3 api calls, defaults to your regional aws s3 endpoint
+  endpoint: Uri? = null
 
   /// The bucket this distribution is stored in
   bucket: String

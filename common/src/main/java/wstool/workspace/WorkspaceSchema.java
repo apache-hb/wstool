@@ -20,6 +20,7 @@ public class WorkspaceSchema {
                 name TEXT NOT NULL
             )
             """;
+
     private static final String CREATE_PACKAGES_TABLE =
             """
             CREATE TABLE IF NOT EXISTS packages (
@@ -30,6 +31,7 @@ public class WorkspaceSchema {
                 PRIMARY KEY (name, version)
             )
             """;
+
     private static final String UPSERT_PACKAGE =
             """
             INSERT INTO packages (name, version, path, cloned)
@@ -38,6 +40,7 @@ public class WorkspaceSchema {
                 path = excluded.path,
                 cloned = excluded.cloned
             """;
+
     private static final String SELECT_PACKAGE =
             """
             SELECT name, version, path
@@ -58,6 +61,7 @@ public class WorkspaceSchema {
 
     public void addPackage(PackageMajorVersion version, Path packagePath, boolean cloned)
             throws SQLException {
+
         Objects.requireNonNull(version);
         Objects.requireNonNull(packagePath);
         try (Connection connection = openConnection();
@@ -72,10 +76,13 @@ public class WorkspaceSchema {
 
     public CodePackage getPackage(PackageMajorVersion version) throws SQLException {
         Objects.requireNonNull(version);
+
         try (Connection connection = openConnection();
                 PreparedStatement statement = connection.prepareStatement(SELECT_PACKAGE)) {
+
             statement.setString(1, version.name());
             statement.setString(2, version.version());
+
             try (ResultSet result = statement.executeQuery()) {
                 if (!result.next()) {
                     return null;

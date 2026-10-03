@@ -3,6 +3,6 @@ amends "pkl:Project"
 package {
   name = "wstool"
   version = "1.0.0"
-  baseUri = "package://github.com/apache-hb/wstool"
-  packageZipUrl = "https://github.com/apache-hb/wstool/releases/\(name).\(version).zip"
+  baseUri = "package://pkl.konna.cloud/wstool"
+  packageZipUrl = "https://pkl.konna.cloud/pkl/\(name)@\(version).zip"
 }
