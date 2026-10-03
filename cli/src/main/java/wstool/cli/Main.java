@@ -1,7 +1,16 @@
 package wstool.cli;
 
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import wstool.cli.commands.WorkspaceCommand;
+
+@Command(
+        name = "wstool",
+        description = "Manage workspaces and packages.",
+        subcommands = {WorkspaceCommand.class})
 public class Main {
     public static void main(String[] args) {
-
+        int exitCode = new CommandLine(Main.class).execute(args);
+        System.exit(exitCode);
     }
 }
