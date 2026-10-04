@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.pkl.config.java.Config;
-import wstool.Distribution.DistributionConfig;
+import wstool.Distribution;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
 import wstool.common.model.PackageMajorVersion;
@@ -16,7 +16,7 @@ public class LocalWorkspace {
     private final PklHelper pkl;
 
     private final Path root;
-    private final DistributionConfig distribution;
+    private final Distribution distribution;
     private final WorkspaceSchema storage;
     private final Map<String, LocalPackage> packages;
 
@@ -41,7 +41,7 @@ public class LocalWorkspace {
         this.git = git;
         this.pkl = pkl;
         this.root = Objects.requireNonNull(root);
-        this.distribution = config.get("distribution").as(DistributionConfig.class);
+        this.distribution = config.get("distribution").as(Distribution.class);
         this.storage = new WorkspaceSchema(root.resolve("workspace.db"));
         this.packages = new HashMap<>();
     }
@@ -50,7 +50,7 @@ public class LocalWorkspace {
         return root;
     }
 
-    public DistributionConfig distributionConfig() {
+    public Distribution distributionConfig() {
         return distribution;
     }
 
@@ -75,7 +75,30 @@ public class LocalWorkspace {
 
     public boolean packageIsCloned(String name) throws Exception {
         var source = findPackageSource(name);
-        return storage.packageIsCloned(new PackageMajorVersion(source.getName(), source.getVersion()));
+        return storage.packageIsCloned(
+                new PackageMajorVersion(source.getName(), source.getVersion()));
+    }
+
+    /** Returns a package checkout, cloning it from the distribution when needed. */
+    public LocalPackage getPackage(String name) throws Exception {
+        LocalPackage localPackage = packages.get(name);
+        if (localPackage != null) {
+            return localPackage;
+        }
+
+        PackageSource source = findPackageSource(name);
+        PackageMajorVersion version =
+                new PackageMajorVersion(source.getName(), source.getVersion());
+        if (!storage.packageIsCloned(version)) {
+            clone(name);
+            return packages.get(name);
+        }
+
+        localPackage =
+                new LocalPackage(
+                        sourcedir().resolve(name), root.resolve("build").resolve(name), pkl);
+        packages.put(name, localPackage);
+        return localPackage;
     }
 
     private Path sourcedir() {

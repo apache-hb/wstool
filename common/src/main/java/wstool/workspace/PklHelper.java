@@ -8,6 +8,7 @@ import org.pkl.config.java.Config;
 import org.pkl.config.java.ConfigEvaluator;
 import org.pkl.config.java.ConfigEvaluatorBuilder;
 import org.pkl.core.ModuleSource;
+import wstool.Package;
 
 public class PklHelper implements AutoCloseable {
     private final ConfigEvaluator evaluator;
@@ -22,6 +23,10 @@ public class PklHelper implements AutoCloseable {
 
     public Config evaluate(Path path) {
         return evaluator.evaluate(ModuleSource.path(path));
+    }
+
+    public Package evaluatePackage(Path path) {
+        return evaluate(path).as(Package.class);
     }
 
     @Override

@@ -1,4 +1,10 @@
-plugins { `java-library` }
+import org.gradle.plugins.ide.eclipse.model.Classpath
+import org.gradle.plugins.ide.eclipse.model.SourceFolder
+
+plugins {
+  `java-library`
+  eclipse
+}
 
 group = rootProject.group
 
@@ -12,6 +18,7 @@ java {
 dependencies {
   implementation(platform(project(":")))
   api(project(":config"))
+  api("org.jspecify:jspecify:1.0.0")
 
   implementation("com.google.dagger:dagger:2.60.1")
   annotationProcessor("com.google.dagger:dagger-compiler:2.60.1")
@@ -41,3 +48,16 @@ dependencies {
 }
 
 tasks.test { useJUnitPlatform() }
+
+eclipse {
+  classpath {
+    file {
+      whenMerged {
+        // Make annotation-processor output visible to Buildship and JDT.
+        (this as Classpath)
+          .entries
+          .add(SourceFolder("build/generated/sources/annotationProcessor/java/main", null))
+      }
+    }
+  }
+}

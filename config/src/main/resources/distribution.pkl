@@ -19,8 +19,10 @@ class Archive extends PackageSource {
   checksum: String
 }
 
-/// A package that is stored within the current repository
+/// A package that is stored within another package
 class SourceCode extends PackageSource {
+  from: PackageSource
+
   path: String
 }
 
@@ -39,15 +41,11 @@ class Storage {
   bucket: String
 }
 
-class DistributionConfig {
-  /// The name of this distribution
-  name: String
+/// The name of this distribution
+name: String
 
-  /// Storage options for this distribution
-  storage: Storage
+/// Storage options for this distribution
+storage: Storage
 
-  /// A map of package names to the sources of those packages
-  packages: Listing<PackageSource>
-}
-
-distribution: DistributionConfig
+/// A map of package names to the sources of those packages
+packages: Listing<PackageSource>
