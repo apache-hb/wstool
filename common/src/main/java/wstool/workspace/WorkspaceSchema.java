@@ -74,6 +74,25 @@ public class WorkspaceSchema {
         }
     }
 
+    public boolean packageIsCloned(PackageMajorVersion version) throws SQLException {
+        Objects.requireNonNull(version);
+
+        try (Connection connection = openConnection();
+                PreparedStatement statement = connection.prepareStatement(SELECT_PACKAGE)) {
+
+            statement.setString(1, version.name());
+            statement.setString(2, version.version());
+
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) {
+                    return false;
+                }
+                String clonedValue = result.getString("cloned");
+                return "1".equals(clonedValue);
+            }
+        }
+    }
+
     public CodePackage getPackage(PackageMajorVersion version) throws SQLException {
         Objects.requireNonNull(version);
 

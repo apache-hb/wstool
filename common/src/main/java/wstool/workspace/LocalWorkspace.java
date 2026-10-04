@@ -1,5 +1,6 @@
 package wstool.workspace;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,6 +19,20 @@ public class LocalWorkspace {
     private final DistributionConfig distribution;
     private final WorkspaceSchema storage;
     private final Map<String, LocalPackage> packages;
+
+    public static LocalWorkspace findUp(GitHelper git, PklHelper pkl, Path cwd) throws Exception {
+        Path current = cwd.toAbsolutePath();
+        while (current != null && !Files.exists(current.resolve("workspace.db"))) {
+            current = current.getParent();
+        }
+
+        if (current == null) {
+            throw new IllegalArgumentException(
+                    "No workspace found in current directory or any parent directories.");
+        }
+
+        return new LocalWorkspace(git, pkl, current);
+    }
 
     public LocalWorkspace(GitHelper git, PklHelper pkl, Path root) throws Exception {
         Path path = root.resolve("distribution").resolve("distribution.pkl");
@@ -48,12 +63,19 @@ public class LocalWorkspace {
                     new LocalPackage(
                             sourcedir().resolve(name), root.resolve("build").resolve(name), pkl);
             storage.addPackage(
-                    new PackageMajorVersion(name, ""), cloned.source().relativize(root), true);
-            this.packages.put(name, cloned);
+                    new PackageMajorVersion(repository.getName(), repository.getVersion()),
+                    cloned.source().relativize(root),
+                    true);
+            this.packages.put(repository.getName(), cloned);
         } else {
             throw new IllegalArgumentException(
                     "Unsupported package source type: " + source.getClass().getName());
         }
+    }
+
+    public boolean packageIsCloned(String name) throws Exception {
+        var source = findPackageSource(name);
+        return storage.packageIsCloned(new PackageMajorVersion(source.getName(), source.getVersion()));
     }
 
     private Path sourcedir() {
@@ -70,7 +92,7 @@ public class LocalWorkspace {
 
     private PackageSource findPackageSource(String name) {
         for (PackageSource source : distribution.getPackages()) {
-            if (source.getName().equalsIgnoreCase(name)) {
+            if (source.getName().equals(name)) {
                 return source;
             }
         }
