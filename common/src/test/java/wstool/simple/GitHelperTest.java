@@ -115,7 +115,8 @@ public class GitHelperTest {
         runGit(uploadDirectory, "init", "--initial-branch=main");
         runGit(uploadDirectory, "config", "user.name", gitServer.getUserName());
         runGit(uploadDirectory, "config", "user.email", "git-helper@example.test");
-        Files.writeString(uploadDirectory.resolve("README.md"), "fixture\n", StandardCharsets.UTF_8);
+        Files.writeString(
+                uploadDirectory.resolve("README.md"), "fixture\n", StandardCharsets.UTF_8);
         runGit(uploadDirectory, "add", "--all");
         runGit(uploadDirectory, "commit", "--message", "Add fixture");
         runGit(uploadDirectory, "remote", "add", "origin", repository.toString());

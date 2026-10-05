@@ -5,7 +5,9 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
+import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
 import wstool.simple.git.GitRepositoryLocation;
@@ -37,8 +39,10 @@ public class CreateWorkspaceCommand implements Callable<Integer> {
     public Integer call() {
         try {
             GitHelper git = new GitHelper(interactive);
+            PklHelper pkl = new PklHelper(null);
             StorageHelper storage = new StorageHelper();
-            WorkspaceHelper workspace = new WorkspaceHelper(git, storage);
+            DistributionHelper dist = new DistributionHelper(pkl);
+            WorkspaceHelper workspace = new WorkspaceHelper(git, storage, dist);
 
             GitRepositoryLocation location =
                     ImmutableGitRepositoryLocation.builder()

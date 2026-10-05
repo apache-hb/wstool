@@ -4,7 +4,7 @@ typealias NameVersion = String(matches(Regex("[A-Za-z0-9_.+-]+@[A-Za-z0-9_.+-]+"
 
 abstract class PackageSource {
   /// The name of this package
-  name: String
+  name: String(isNotEmpty)
 
   /// The major version of this package
   version: String
@@ -19,9 +19,11 @@ class Archive extends PackageSource {
   checksum: String
 }
 
+local const function isNotRecursive() = (pkg) -> !(pkg is SourceCode)
+
 /// A package that is stored within another package
 class SourceCode extends PackageSource {
-  from: PackageSource
+  from: PackageSource(isNotRecursive())
 
   path: String
 }
@@ -38,7 +40,7 @@ class Storage {
   endpoint: Uri? = null
 
   /// The bucket this distribution is stored in
-  bucket: String
+  bucket: String(isNotEmpty)
 }
 
 /// The name of this distribution
@@ -47,5 +49,8 @@ name: String
 /// Storage options for this distribution
 storage: Storage
 
+local const function noDuplicatePackageMajorVersions() = (pkgs: Listing<PackageSource>) ->
+  pkgs.toList().map((pkg) -> "\(pkg.name)-\(pkg.version)").isDistinct
+
 /// A map of package names to the sources of those packages
-packages: Listing<PackageSource>
+packages: Listing<PackageSource>(noDuplicatePackageMajorVersions())
