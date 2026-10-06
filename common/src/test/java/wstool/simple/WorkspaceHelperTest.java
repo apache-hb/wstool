@@ -106,8 +106,7 @@ public class WorkspaceHelperTest {
 
     @Test
     void addPackageToWorkspaceClonesPackageAndRecordsItInStorage() throws Exception {
-        URI packageRepository =
-                uploadRepository("add-package/package", "workspace-package");
+        URI packageRepository = uploadRepository("add-package/package", "workspace-package");
         URI distributionRepository =
                 uploadRepository("add-package/distribution", "package-distribution");
 
@@ -115,8 +114,7 @@ public class WorkspaceHelperTest {
         Path workspace = parent.resolve("demo");
         StorageHelper storage = new StorageHelper();
         try (PklHelper pkl =
-                new PklHelper(
-                        Map.of("PACKAGE_GIT_REPOSITORY", packageRepository.toString()))) {
+                new PklHelper(Map.of("PACKAGE_GIT_REPOSITORY", packageRepository.toString()))) {
             WorkspaceHelper helper =
                     new WorkspaceHelper(new GitHelper(false), storage, new DistributionHelper(pkl));
             helper.createWorkspace(
@@ -143,7 +141,8 @@ public class WorkspaceHelperTest {
         assertEquals("package fixture\n", Files.readString(clonedPackage.resolve("README.md")));
 
         try (Connection connection =
-                        DriverManager.getConnection("jdbc:sqlite:" + workspace.resolve("wstool.db"));
+                        DriverManager.getConnection(
+                                "jdbc:sqlite:" + workspace.resolve("wstool.db"));
                 var statement = connection.createStatement();
                 ResultSet result = statement.executeQuery("SELECT * FROM packages")) {
             assertTrue(result.next());
@@ -151,7 +150,8 @@ public class WorkspaceHelperTest {
             assertEquals("1.0", result.getString("version"));
             assertEquals(workspace.resolve("src/root").toString(), result.getString("source"));
             assertEquals(
-                    workspace.resolve("private/prefix/root").toString(), result.getString("prefix"));
+                    workspace.resolve("private/prefix/root").toString(),
+                    result.getString("prefix"));
             assertEquals(
                     workspace.resolve("private/build/root").toString(), result.getString("build"));
             assertEquals("1", result.getString("cloned"));

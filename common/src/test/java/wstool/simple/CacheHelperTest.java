@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -45,7 +44,7 @@ public class CacheHelperTest {
                             MountableFile.forClasspathResource("garage/garage.toml"),
                             "/etc/garage.toml")
                     .withCommand("/garage", "-c", "/etc/garage.toml", "server")
-                    .waitingFor(Wait.forListeningPort())
+                    .waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1))
                     .withStartupTimeout(Duration.ofMinutes(2));
 
     @TempDir Path tempDir;
@@ -55,12 +54,7 @@ public class CacheHelperTest {
 
     @BeforeAll
     static void initializeGarage() throws Exception {
-        String nodeId =
-                runGarage("node", "id")
-                        .lines()
-                        .findFirst()
-                        .orElseThrow()
-                        .split("@", 2)[0];
+        String nodeId = runGarage("node", "id").lines().findFirst().orElseThrow().split("@", 2)[0];
         runGarage("layout", "assign", "-z", "test-zone", "-c", "1G", nodeId);
         runGarage("layout", "apply", "--version", "1");
         runGarage("key", "import", "--yes", "-n", "cache-test", ACCESS_KEY, SECRET_KEY);
@@ -121,8 +115,7 @@ public class CacheHelperTest {
 
         assertTrue(Files.isDirectory(destination));
         assertEquals("root file\n", Files.readString(destination.resolve("root.txt")));
-        assertEquals(
-                "nested file\n", Files.readString(destination.resolve("nested/child.txt")));
+        assertEquals("nested file\n", Files.readString(destination.resolve("nested/child.txt")));
     }
 
     private static String runGarage(String... arguments) throws IOException, InterruptedException {
