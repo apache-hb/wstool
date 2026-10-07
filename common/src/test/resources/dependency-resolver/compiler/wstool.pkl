@@ -1,0 +1,22 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
+package {
+  name = "compiler"
+  version = "1.0"
+}
+
+buildOptions {
+  tool = "fixture"
+}
+
+buildDependencies {
+  ["compiler-build-only"] = "1.0"
+}
+
+dependencies {
+  ["compiler-common"] = "1.0"
+}
+
+runtimeDependencies {
+  ["compiler-runtime"] = "1.0"
+}

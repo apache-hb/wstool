@@ -1,0 +1,27 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
+package {
+  name = "app"
+  version = "1.0"
+}
+
+buildOptions {
+  tool = "fixture"
+}
+
+buildDependencies {
+  ["compiler"] = "1.0"
+  ["builder-script"] = "1.0"
+}
+
+dependencies {
+  ["public-api"] = "1.0"
+}
+
+runtimeDependencies {
+  ["runtime-lib"] = "1.0"
+}
+
+testDependencies {
+  ["test-framework"] = "1.0"
+}

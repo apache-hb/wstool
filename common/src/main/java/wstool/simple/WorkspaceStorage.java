@@ -76,6 +76,14 @@ public class WorkspaceStorage implements AutoCloseable {
             ORDER BY dependency_name, dependency_version, dependency_type
             """;
 
+    private static final String GET_PACKAGES =
+            """
+            SELECT name, version, source, prefix
+            FROM packages
+            WHERE cloned = ?
+            ORDER BY name, version
+            """;
+
     private static final String GET_ALL_DEPENDENCIES =
             """
             WITH RECURSIVE
@@ -140,6 +148,25 @@ public class WorkspaceStorage implements AutoCloseable {
         }
     }
 
+    public List<LocalPackage> getPackages(boolean cloned) throws Exception {
+        try (var statement = connection.prepareStatement(GET_PACKAGES)) {
+            statement.setString(1, cloned ? "1" : "0");
+            try (var result = statement.executeQuery()) {
+                List<LocalPackage> packages = new ArrayList<>();
+                while (result.next()) {
+                    packages.add(
+                            new LocalPackage(
+                                    new PackageMajorVersion(
+                                            result.getString("name"),
+                                            result.getString("version")),
+                                    Path.of(result.getString("source")),
+                                    Path.of(result.getString("prefix"))));
+                }
+                return packages;
+            }
+        }
+    }
+
     public void addDependency(AddDependencyInput input) throws Exception {
         try (var statement = connection.prepareStatement(ADD_DEPENDENCY)) {
             statement.setString(1, input.name().name());
@@ -151,8 +178,8 @@ public class WorkspaceStorage implements AutoCloseable {
         }
     }
 
-    public List<AddDependencyInput> getDirectDependencies(
-            PackageMajorVersion name) throws Exception {
+    public List<AddDependencyInput> getDirectDependencies(PackageMajorVersion name)
+            throws Exception {
         try (var statement = connection.prepareStatement(GET_DIRECT_DEPENDENCIES)) {
             statement.setString(1, name.name());
             statement.setString(2, name.version());
@@ -185,13 +212,13 @@ public class WorkspaceStorage implements AutoCloseable {
     }
 
     /** Returns all packages reachable through non-build dependencies, excluding {@code name}. */
-    public List<PackageMajorVersion> getAllDependencies(PackageMajorVersion name)
-            throws Exception {
+    public List<PackageMajorVersion> getAllDependencies(PackageMajorVersion name) throws Exception {
         Map<String, String> overrides = new HashMap<>();
         for (AddDependencyInput override :
                 getDirectDependenciesByType(name, DependencyType.OVERRIDE)) {
-            String previous = overrides.putIfAbsent(
-                    override.dependency().name(), override.dependency().version());
+            String previous =
+                    overrides.putIfAbsent(
+                            override.dependency().name(), override.dependency().version());
             if (previous != null && !previous.equals(override.dependency().version())) {
                 throw new IllegalStateException(
                         "Package "

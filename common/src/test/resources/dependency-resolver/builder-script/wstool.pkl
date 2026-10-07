@@ -1,0 +1,14 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
+package {
+  name = "builder-script"
+  version = "1.0"
+}
+
+buildOptions {
+  tool = "fixture"
+}
+
+dependencies {
+  ["builder-helper"] = "1.0"
+}

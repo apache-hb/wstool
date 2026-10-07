@@ -1,8 +1,8 @@
 package wstool.simple;
 
 import software.amazon.awssdk.services.s3.S3Client;
-import wstool.simple.model.PackageMajorVersion;
 import wstool.Package;
+import wstool.simple.model.PackageMajorVersion;
 
 public class ObjectStorage {
     private final S3Client s3Client;

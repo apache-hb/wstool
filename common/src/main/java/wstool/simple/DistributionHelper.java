@@ -14,7 +14,7 @@ public class DistributionHelper {
     }
 
     public Distribution getDistributionConfig(Path distribution) {
-        return pkl.evaluate(distribution).get("distribution").as(Distribution.class);
+        return pkl.evaluate(distribution).as(Distribution.class);
     }
 
     public List<PackageSource> findPackageVersions(Distribution distribution, String name) {

@@ -41,7 +41,7 @@ public class LocalWorkspace {
         this.git = git;
         this.pkl = pkl;
         this.root = Objects.requireNonNull(root);
-        this.distribution = config.get("distribution").as(Distribution.class);
+        this.distribution = config.as(Distribution.class);
         this.storage = new WorkspaceSchema(root.resolve("workspace.db"));
         this.packages = new HashMap<>();
     }

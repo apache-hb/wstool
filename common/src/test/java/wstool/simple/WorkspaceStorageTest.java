@@ -112,9 +112,9 @@ class WorkspaceStorageTest {
             assertEquals(
                     List.of(dependency(app, "zeta", "2.x", DependencyType.PUBLIC)),
                     storage.getDirectDependenciesByType(app, DependencyType.PUBLIC));
-            assertTrue(storage.getDirectDependencies(
-                            new PackageMajorVersion("missing", "1.x"))
-                    .isEmpty());
+            assertTrue(
+                    storage.getDirectDependencies(new PackageMajorVersion("missing", "1.x"))
+                            .isEmpty());
         }
     }
 
@@ -138,18 +138,15 @@ class WorkspaceStorageTest {
                     testLibrary);
             storage.addDependency(dependency(app, "build-tool", "1.x", DependencyType.BUILD));
             storage.addDependency(dependency(app, "library", "2.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(library, "compile-tool", "1.x", DependencyType.BUILD));
+            storage.addDependency(dependency(library, "compile-tool", "1.x", DependencyType.BUILD));
             storage.addDependency(
                     dependency(library, "runtime-library", "3.x", DependencyType.RUNTIME));
-            storage.addDependency(
-                    dependency(runtimeLibrary, "app", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(runtimeLibrary, "app", "1.x", DependencyType.PUBLIC));
             storage.addDependency(
                     dependency(runtimeLibrary, "test-library", "4.x", DependencyType.TEST));
 
             assertEquals(
-                    List.of(library, runtimeLibrary, testLibrary),
-                    storage.getAllDependencies(app));
+                    List.of(library, runtimeLibrary, testLibrary), storage.getAllDependencies(app));
         }
     }
 
@@ -165,14 +162,10 @@ class WorkspaceStorageTest {
         try (var storage = new WorkspaceStorage(database)) {
             storage.setup();
             addPackages(storage, app, libraryOne, libraryTwo, leafOne, leafTwo);
-            storage.addDependency(
-                    dependency(app, "library", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(app, "library", "2.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(libraryOne, "leaf", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(libraryTwo, "leaf", "2.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "library", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "library", "2.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(libraryOne, "leaf", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(libraryTwo, "leaf", "2.x", DependencyType.PUBLIC));
 
             assertThrows(IllegalStateException.class, () -> storage.getAllDependencies(app));
         }
@@ -190,14 +183,10 @@ class WorkspaceStorageTest {
         try (var storage = new WorkspaceStorage(database)) {
             storage.setup();
             addPackages(storage, app, firstBranch, secondBranch, sharedOne, sharedTwo);
-            storage.addDependency(
-                    dependency(app, "first-branch", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(app, "second-branch", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(firstBranch, "shared", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(secondBranch, "shared", "2.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "first-branch", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "second-branch", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(firstBranch, "shared", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(secondBranch, "shared", "2.x", DependencyType.PUBLIC));
 
             assertThrows(IllegalStateException.class, () -> storage.getAllDependencies(app));
         }
@@ -225,20 +214,13 @@ class WorkspaceStorageTest {
                     sharedTwo,
                     leafOne,
                     leafTwo);
-            storage.addDependency(
-                    dependency(app, "first-branch", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(app, "second-branch", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(app, "shared", "2.x", DependencyType.OVERRIDE));
-            storage.addDependency(
-                    dependency(firstBranch, "shared", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(secondBranch, "shared", "2.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(sharedOne, "leaf", "1.x", DependencyType.PUBLIC));
-            storage.addDependency(
-                    dependency(sharedTwo, "leaf", "2.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "first-branch", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "second-branch", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(app, "shared", "2.x", DependencyType.OVERRIDE));
+            storage.addDependency(dependency(firstBranch, "shared", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(secondBranch, "shared", "2.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(sharedOne, "leaf", "1.x", DependencyType.PUBLIC));
+            storage.addDependency(dependency(sharedTwo, "leaf", "2.x", DependencyType.PUBLIC));
 
             assertEquals(
                     List.of(firstBranch, leafTwo, secondBranch, sharedTwo),
@@ -256,10 +238,8 @@ class WorkspaceStorageTest {
         try (var storage = new WorkspaceStorage(database)) {
             storage.setup();
             addPackages(storage, app, libraryOne, libraryTwo);
-            storage.addDependency(
-                    dependency(app, "library", "1.x", DependencyType.OVERRIDE));
-            storage.addDependency(
-                    dependency(app, "library", "2.x", DependencyType.OVERRIDE));
+            storage.addDependency(dependency(app, "library", "1.x", DependencyType.OVERRIDE));
+            storage.addDependency(dependency(app, "library", "2.x", DependencyType.OVERRIDE));
 
             assertThrows(IllegalStateException.class, () -> storage.getAllDependencies(app));
         }
@@ -284,12 +264,13 @@ class WorkspaceStorageTest {
             addPackages(storage, library);
             assertThrows(
                     SQLException.class,
-                    () -> storage.addDependency(
-                            dependency(
-                                    new PackageMajorVersion("missing", "1.x"),
-                                    "library",
-                                    "2.x",
-                                    DependencyType.PUBLIC)));
+                    () ->
+                            storage.addDependency(
+                                    dependency(
+                                            new PackageMajorVersion("missing", "1.x"),
+                                            "library",
+                                            "2.x",
+                                            DependencyType.PUBLIC)));
         }
     }
 

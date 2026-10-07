@@ -3,6 +3,7 @@ package wstool.simple;
 import com.google.common.annotations.VisibleForTesting;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import wstool.Distribution;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
@@ -117,6 +118,24 @@ public class WorkspaceHelper {
                 workspacePrefixFolder(input.workspace(), input.name()).toString(),
                 workspaceBuildFolder(input.workspace(), input.name()).toString(),
                 true);
+    }
+
+    public List<LocalPackage> sourcePackages(Path workspace) {
+        return packages(workspace, true);
+    }
+
+    public List<LocalPackage> artifactPackages(Path workspace) {
+        return packages(workspace, false);
+    }
+
+    private List<LocalPackage> packages(Path workspace, boolean cloned) {
+        try (WorkspaceStorage workspaceStorage =
+                new WorkspaceStorage(workspaceConfig(workspace))) {
+            return workspaceStorage.getPackages(cloned);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Unable to read workspace packages from " + workspace, e);
+        }
     }
 
     public Path findWorkspaceUp(Path path) {
