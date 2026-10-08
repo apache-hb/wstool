@@ -24,6 +24,15 @@ public class DependencyResolver {
 
     public Path createClosure(
             WorkspaceHelper workspace, Path workspaceRoot, String packageName, String closure) {
+        return createClosure(workspace, workspaceRoot, packageName, closure, null);
+    }
+
+    public Path createClosure(
+            WorkspaceHelper workspace,
+            Path workspaceRoot,
+            String packageName,
+            String closure,
+            Path output) {
         Objects.requireNonNull(workspace, "workspace");
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
@@ -37,18 +46,15 @@ public class DependencyResolver {
             configs.put(root.version(), rootConfig);
 
             LinkedHashMap<PackageMajorVersion, LocalPackage> selected =
-                    resolveDependencies(
-                            selector,
-                            rootConfig,
-                            packages,
-                            configs,
-                            pkl);
+                    resolveDependencies(selector, rootConfig, packages, configs, pkl);
 
             Path sysroot =
-                    workspaceRoot
-                            .resolve(SYSROOT_DIRECTORY)
-                            .resolve(root.version().name() + "@" + root.version().version())
-                            .resolve(selector.closure());
+                    output == null
+                            ? workspaceRoot
+                                    .resolve(SYSROOT_DIRECTORY)
+                                    .resolve(root.version().name() + "@" + root.version().version())
+                                    .resolve(selector.closure())
+                            : output.toAbsolutePath().normalize();
             rebuildSysroot(sysroot, selected.values());
             return sysroot;
         } catch (Exception e) {
@@ -96,11 +102,11 @@ public class DependencyResolver {
         if ("build".equals(closure) || "development".equals(closure)) {
             addDependencies(result, config.getBuildDependencies());
         }
-        if ("development".equals(closure) || "runtime".equals(closure)) {
+        if ("development".equals(closure) || "runtime".equals(closure) || "test".equals(closure)) {
             addDependencies(result, config.getDependencies());
             addDependencies(result, config.getRuntimeDependencies());
         }
-        if ("development".equals(closure)) {
+        if ("development".equals(closure) || "test".equals(closure)) {
             addDependencies(result, config.getTestDependencies());
         }
         return result;
@@ -112,13 +118,14 @@ public class DependencyResolver {
         // them. Test libraries are part of development closures, including their transitive graph.
         addDependencies(result, config.getDependencies());
         addDependencies(result, config.getRuntimeDependencies());
-        if ("development".equals(closure)) {
+        if ("development".equals(closure) || "test".equals(closure)) {
             addDependencies(result, config.getTestDependencies());
         }
         return result;
     }
 
-    private void addDependencies(List<PackageMajorVersion> destination, Map<String, String> source) {
+    private void addDependencies(
+            List<PackageMajorVersion> destination, Map<String, String> source) {
         if (source == null) {
             return;
         }
@@ -194,7 +201,7 @@ public class DependencyResolver {
             }
             rootName = qualifiedRoot;
         }
-        if (!List.of("build", "development", "runtime").contains(selectedClosure)) {
+        if (!List.of("build", "development", "runtime", "test").contains(selectedClosure)) {
             throw new IllegalArgumentException(
                     "Unknown sysroot selector '"
                             + selectedClosure

@@ -157,8 +157,7 @@ public class WorkspaceStorage implements AutoCloseable {
                     packages.add(
                             new LocalPackage(
                                     new PackageMajorVersion(
-                                            result.getString("name"),
-                                            result.getString("version")),
+                                            result.getString("name"), result.getString("version")),
                                     Path.of(result.getString("source")),
                                     Path.of(result.getString("prefix"))));
                 }

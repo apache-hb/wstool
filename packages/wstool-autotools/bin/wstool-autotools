@@ -8,7 +8,8 @@ set -euo pipefail
 sysroot="$WST_PRIVATE/sysroot"
 build="$WST_PRIVATE/build"
 source="$WST_SRCDIR"
-mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+"${WSTOOL:-wstool}" sysroot build --output "$sysroot"
+mkdir -p "$build" "$WST_PREFIX"
 
 if [ "${WST_COPY_SOURCE:-}" = "true" ]; then
   source="$WST_PRIVATE/source"

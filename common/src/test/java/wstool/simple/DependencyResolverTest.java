@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,7 +66,13 @@ class DependencyResolverTest {
                     "alternate",
                     "alternate-runtime");
     private static final List<String> CLONED_PACKAGE_NAMES =
-            List.of("app", "compiler-runtime", "builder-script", "public-api", "test-framework", "alternate");
+            List.of(
+                    "app",
+                    "compiler-runtime",
+                    "builder-script",
+                    "public-api",
+                    "test-framework",
+                    "alternate");
 
     @Container
     private static final GiteaContainer gitServer =
@@ -88,8 +94,10 @@ class DependencyResolverTest {
     @TempDir Path tempDir;
 
     private RepositoryApi giteaApi;
-    private S3Client s3;
-    private PklHelper pkl;
+
+    @AutoClose private S3Client s3;
+
+    @AutoClose private PklHelper pkl;
     private WorkspaceHelper workspaceHelper;
     private CacheHelper cache;
     private StorageHelper storage;
@@ -100,17 +108,10 @@ class DependencyResolverTest {
         String nodeId = runGarage("node", "id").lines().findFirst().orElseThrow().split("@", 2)[0];
         runGarage("layout", "assign", "-z", "test-zone", "-c", "1G", nodeId);
         runGarage("layout", "apply", "--version", "1");
-        runGarage("key", "import", "--yes", "-n", "dependency-resolver-test", ACCESS_KEY, SECRET_KEY);
-        runGarage("bucket", "create", BUCKET);
         runGarage(
-                "bucket",
-                "allow",
-                "--read",
-                "--write",
-                "--owner",
-                "--key",
-                ACCESS_KEY,
-                BUCKET);
+                "key", "import", "--yes", "-n", "dependency-resolver-test", ACCESS_KEY, SECRET_KEY);
+        runGarage("bucket", "create", BUCKET);
+        runGarage("bucket", "allow", "--read", "--write", "--owner", "--key", ACCESS_KEY, BUCKET);
     }
 
     @BeforeEach
@@ -158,16 +159,6 @@ class DependencyResolverTest {
                                         .build())
                         .build();
         cache = new CacheHelper(s3, new ArchiveHelper());
-    }
-
-    @AfterEach
-    void tearDown() throws Exception {
-        if (s3 != null) {
-            s3.close();
-        }
-        if (pkl != null) {
-            pkl.close();
-        }
     }
 
     @Test
@@ -263,8 +254,7 @@ class DependencyResolverTest {
                 uploadRepository("dependency-resolver/distribution", distributionRepositoryName);
         for (String packageName : CLONED_PACKAGE_NAMES) {
             uploadRepository(
-                    "dependency-resolver/" + packageName,
-                    packageName + "-" + repositorySuffix);
+                    "dependency-resolver/" + packageName, packageName + "-" + repositorySuffix);
         }
 
         Path parent = tempDir.resolve("workspaces");
@@ -329,7 +319,8 @@ class DependencyResolverTest {
                 StandardCopyOption.REPLACE_EXISTING);
         Files.createDirectories(prefix.resolve("include"));
         Files.writeString(
-                prefix.resolve("include").resolve(packageName + ".h"), "header from " + packageName);
+                prefix.resolve("include").resolve(packageName + ".h"),
+                "header from " + packageName);
         if (packageName.equals("compiler")) {
             Files.createDirectories(prefix.resolve("bin"));
             Files.writeString(prefix.resolve("bin/compiler"), "compiler executable");

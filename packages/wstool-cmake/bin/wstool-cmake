@@ -9,7 +9,7 @@ source=$WST_SRCDIR
 build=$WST_PRIVATE
 install=$WST_PREFIX
 sysroot=$build/sysroot
-mkdir -p "$sysroot"
+"${WSTOOL:-wstool}" sysroot build --output "$sysroot"
 export PATH="$sysroot/bin:$PATH"
 if [ -x "$sysroot/bin/gcc" ]; then
   export CC="${CC:-$sysroot/bin/gcc}"

@@ -129,8 +129,7 @@ public class WorkspaceHelper {
     }
 
     private List<LocalPackage> packages(Path workspace, boolean cloned) {
-        try (WorkspaceStorage workspaceStorage =
-                new WorkspaceStorage(workspaceConfig(workspace))) {
+        try (WorkspaceStorage workspaceStorage = new WorkspaceStorage(workspaceConfig(workspace))) {
             return workspaceStorage.getPackages(cloned);
         } catch (Exception e) {
             throw new IllegalStateException(

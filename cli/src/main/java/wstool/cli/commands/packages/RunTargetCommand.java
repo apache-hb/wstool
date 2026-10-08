@@ -10,11 +10,15 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 import wstool.Package;
-import wstool.common.model.PackageMajorVersion;
-import wstool.workspace.GitHelper;
-import wstool.workspace.LocalWorkspace;
-import wstool.workspace.PklHelper;
-import wstool.workspace.SysrootManager;
+import wstool.simple.DistributionHelper;
+import wstool.simple.GitHelper;
+import wstool.simple.LocalPackage;
+import wstool.simple.PackageHelper;
+import wstool.simple.PklHelper;
+import wstool.simple.StorageHelper;
+import wstool.simple.SysrootManager;
+import wstool.simple.WorkspaceHelper;
+import wstool.simple.model.PackageMajorVersion;
 
 @Command(name = "run", description = "Run a package build target.")
 public class RunTargetCommand implements Callable<Integer> {
@@ -25,21 +29,33 @@ public class RunTargetCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(Map.of())) {
-            GitHelper git = new GitHelper(null, null);
-            LocalWorkspace workspace = LocalWorkspace.findUp(git, pkl, source);
-            Package config = pkl.evaluatePackage(source.resolve("wstool.pkl"));
+            WorkspaceHelper workspace =
+                    new WorkspaceHelper(
+                            new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));
+            Path workspaceRoot = workspace.findWorkspaceUp(source);
+            Package config = new PackageHelper(pkl).getPackageConfig(source.resolve("wstool.pkl"));
             String name = config.getPackage().getName();
-            String version = config.getPackage().getVersion();
+            PackageMajorVersion version =
+                    new PackageMajorVersion(name, config.getPackage().getVersion());
 
-            var localPackage = workspace.getPackage(name);
+            LocalPackage localPackage =
+                    workspace.sourcePackages(workspaceRoot).stream()
+                            .filter(pkg -> pkg.version().equals(version))
+                            .findFirst()
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "Package is not in the workspace: " + version));
             Path prefix = localPackage.prefix();
-            Path privateDirectory = prefix.resolve("private");
+            Path privateDirectory = workspace.workspaceBuildFolder(workspaceRoot, name);
             Path sysroot = privateDirectory.resolve("sysroot");
-            RunCodePackage codePackage =
-                    new RunCodePackage(new PackageMajorVersion(name, version), source, prefix);
             new SysrootManager()
                     .createSysroot(
-                            sysroot, workspace, codePackage, SysrootManager.SysrootTarget.BUILD);
+                            sysroot,
+                            workspace,
+                            workspaceRoot,
+                            name,
+                            SysrootManager.SysrootTarget.BUILD);
 
             String tool = config.getBuildOptions().getTool();
             Path executable = sysroot.resolve("bin").resolve(tool);
