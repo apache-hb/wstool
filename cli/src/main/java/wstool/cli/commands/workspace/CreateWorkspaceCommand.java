@@ -12,7 +12,6 @@ import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
-import wstool.simple.workspace.CreateWorkspaceInput;
 import wstool.simple.workspace.ImmutableCreateWorkspaceInput;
 
 @Command(name = "create", description = "Create a workspace.")
@@ -22,9 +21,7 @@ public class CreateWorkspaceCommand implements Callable<Integer> {
             required = true)
     String name;
 
-    @Option(
-            names = {"--distribution", "-d"},
-            required = true)
+    @Option(names = {"--distribution", "-d"})
     URI distribution;
 
     @Option(names = {"--branch"})
@@ -37,27 +34,34 @@ public class CreateWorkspaceCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        try {
+        try (PklHelper pkl = new PklHelper(null)) {
             GitHelper git = new GitHelper(interactive);
-            PklHelper pkl = new PklHelper(null);
             StorageHelper storage = new StorageHelper();
             DistributionHelper dist = new DistributionHelper(pkl);
             WorkspaceHelper workspace = new WorkspaceHelper(git, storage, dist);
 
-            GitRepositoryLocation location =
-                    ImmutableGitRepositoryLocation.builder()
-                            .branch(branch)
-                            .repository(distribution)
-                            .build();
-
-            CreateWorkspaceInput input =
+            var input =
                     ImmutableCreateWorkspaceInput.builder()
                             .parent(Path.of("").toAbsolutePath())
-                            .name(name)
-                            .distribution(location)
-                            .build();
-
-            workspace.createWorkspace(input);
+                            .name(name);
+            if (distribution != null) {
+                URI source =
+                        distribution.getScheme() == null
+                                ? Path.of(distribution.getPath())
+                                        .toAbsolutePath()
+                                        .normalize()
+                                        .toUri()
+                                : distribution;
+                GitRepositoryLocation location =
+                        ImmutableGitRepositoryLocation.builder()
+                                .branch(branch)
+                                .repository(source)
+                                .build();
+                input.distribution(location);
+            } else if (branch != null) {
+                throw new IllegalArgumentException("--branch requires --distribution.");
+            }
+            workspace.createWorkspace(input.build());
 
             return 0;
         } catch (Exception e) {

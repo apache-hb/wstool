@@ -12,7 +12,6 @@ import wstool.cli.commands.workspace.WorkspaceCommand;
         subcommands = {WorkspaceCommand.class, PackageCommand.class, SysrootCommand.class})
 public class Main {
     public static void main(String[] args) {
-        int exitCode = new CommandLine(Main.class).execute(args);
-        System.exit(exitCode);
+        System.exit(new CommandLine(Main.class).execute(args));
     }
 }

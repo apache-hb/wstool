@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Unmatched;
 import wstool.Package;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
@@ -22,13 +22,18 @@ import wstool.simple.model.PackageMajorVersion;
 
 @Command(name = "run", description = "Run a package build target.")
 public class RunTargetCommand implements Callable<Integer> {
-    @Parameters(arity = "0..*", description = "Target and arguments forwarded to the build tool.")
-    List<String> args = new ArrayList<>();
+    @Unmatched List<String> args = new ArrayList<>();
+
+    public RunTargetCommand() {}
+
+    RunTargetCommand(List<String> args) {
+        this.args = new ArrayList<>(args);
+    }
 
     @Override
     public Integer call() throws Exception {
         Path source = Path.of("").toAbsolutePath().normalize();
-        try (PklHelper pkl = new PklHelper(Map.of())) {
+        try (PklHelper pkl = new PklHelper(null)) {
             WorkspaceHelper workspace =
                     new WorkspaceHelper(
                             new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));

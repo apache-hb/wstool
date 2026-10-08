@@ -1,0 +1,100 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
+
+local cmake = read("env:CMAKE_REPO")
+local ninja = read("env:NINJA_REPO")
+local zlib = read("env:ZLIB_REPO")
+local expat = read("env:EXPAT_REPO")
+local m4 = read("env:M4_REPO")
+local bison = read("env:BISON_REPO")
+local flex = read("env:FLEX_REPO")
+local binutils = read("env:BINUTILS_REPO")
+local gmp = read("env:GMP_REPO")
+local mpfr = read("env:MPFR_REPO")
+local mpc = read("env:MPC_REPO")
+local isl = read("env:ISL_REPO")
+local gcc = read("env:GCC_REPO")
+
+name = "bootstrap-test"
+
+storage { bucket = "cli-toolchain" }
+
+packages {
+  new GitRepository {
+    name = "cmake"
+    version = "3.30.5"
+    repo = cmake
+    branch = "main"
+  }
+  new GitRepository {
+    name = "ninja"
+    version = "1.12.1"
+    repo = ninja
+    branch = "main"
+  }
+  new GitRepository {
+    name = "zlib"
+    version = "1.3.1"
+    repo = zlib
+    branch = "main"
+  }
+  new GitRepository {
+    name = "expat"
+    version = "2.6.4"
+    repo = expat
+    branch = "main"
+  }
+  new GitRepository {
+    name = "m4"
+    version = "1.4.19"
+    repo = m4
+    branch = "main"
+  }
+  new GitRepository {
+    name = "bison"
+    version = "3.8.2"
+    repo = bison
+    branch = "main"
+  }
+  new GitRepository {
+    name = "flex"
+    version = "2.6.4"
+    repo = flex
+    branch = "main"
+  }
+  new GitRepository {
+    name = "binutils"
+    version = "2.43.1"
+    repo = binutils
+    branch = "main"
+  }
+  new GitRepository {
+    name = "gmp"
+    version = "6.3.0"
+    repo = gmp
+    branch = "main"
+  }
+  new GitRepository {
+    name = "mpfr"
+    version = "4.2.1"
+    repo = mpfr
+    branch = "main"
+  }
+  new GitRepository {
+    name = "mpc"
+    version = "1.3.1"
+    repo = mpc
+    branch = "main"
+  }
+  new GitRepository {
+    name = "isl"
+    version = "0.26"
+    repo = isl
+    branch = "main"
+  }
+  new GitRepository {
+    name = "gcc"
+    version = "14.2.0"
+    repo = gcc
+    branch = "main"
+  }
+}

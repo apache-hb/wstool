@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_dir="$WST_SRCDIR/source"
+cd "$source_dir"
+python3 configure.py --bootstrap
+install -D -m 0755 ninja "$WST_PREFIX/bin/ninja"

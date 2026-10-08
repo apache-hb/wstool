@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source_dir="$WST_SRCDIR/source"
+cd "$source_dir"
+./configure --prefix="$WST_PREFIX" --static
+make -j32
+make install

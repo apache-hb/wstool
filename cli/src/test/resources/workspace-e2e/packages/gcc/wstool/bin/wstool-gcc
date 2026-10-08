@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source_dir="$WST_SRCDIR/source"
+build_dir="$WST_PRIVATE/build"
+mkdir -p "$build_dir"
+cd "$build_dir"
+if [[ ! -f Makefile ]]; then
+  "$source_dir/configure" --prefix="$WST_PREFIX" --target=x86_64-linux-gnu --with-sysroot="$WST_SYSROOT" --with-gmp="$WST_SYSROOT" --with-mpfr="$WST_SYSROOT" --with-mpc="$WST_SYSROOT" --with-isl="$WST_SYSROOT" --with-newlib --without-headers --disable-threads --disable-shared --disable-nls --disable-multilib --disable-bootstrap --disable-libssp --disable-libquadmath --disable-libgomp --enable-languages=c,c++
+fi
+if [[ "${1:-release}" == release ]]; then
+  make -j32 all-gcc all-target-libgcc
+  make install-gcc install-target-libgcc
+else
+  make -j32 "$@"
+fi

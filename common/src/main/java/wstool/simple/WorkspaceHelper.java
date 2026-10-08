@@ -57,7 +57,12 @@ public class WorkspaceHelper {
     }
 
     public Path workspaceDistributionConfig(Path workspace) {
-        return workspaceDistributionFolder(workspace).resolve("distribution.pkl");
+        Path distributionConfig =
+                workspaceDistributionFolder(workspace).resolve("distribution.pkl");
+        if (Files.exists(distributionConfig)) {
+            return distributionConfig;
+        }
+        return workspaceDistributionFolder(workspace).resolve("world.pkl");
     }
 
     public boolean hasDistributionConfig(Path workspace) {
@@ -83,17 +88,26 @@ public class WorkspaceHelper {
         // Intermediate build directories
         Files.createDirectories(workspace.resolve("private/build"));
 
-        // The distribution config
+        storage.createWorkspaceStorage(workspaceConfig(workspace));
+
+        if (input.distribution() != null) {
+            setupDistribution(workspace, input.distribution());
+        }
+    }
+
+    public void setupDistribution(Path workspace, GitRepositoryLocation repository)
+            throws Exception {
+        if (!Files.exists(workspaceConfig(workspace))) {
+            throw new IllegalArgumentException("Not a workspace: " + workspace);
+        }
+
         GitCloneInput clone =
                 ImmutableGitCloneInput.builder()
                         .parent(workspace)
                         .name(DISTRIBUTION)
-                        .repository(input.distribution())
+                        .repository(repository)
                         .build();
-
         git.clone(clone);
-
-        storage.createWorkspaceStorage(workspaceConfig(workspace));
     }
 
     public void addPackageToWorkspace(AddPackageToWorkspaceInput input) throws Exception {
