@@ -2,6 +2,10 @@
 set -euo pipefail
 source_dir="$WST_SRCDIR/source"
 build_dir="$WST_PRIVATE/build"
+sysroot="$WST_PRIVATE/sysroot"
+wstool sysroot build --output "$sysroot"
+test -x "$sysroot/bin/m4"
+export PATH="$sysroot/bin:$PATH"
 mkdir -p "$build_dir"
 cd "$build_dir"
 "$source_dir/configure" --prefix="$WST_PREFIX" --disable-nls

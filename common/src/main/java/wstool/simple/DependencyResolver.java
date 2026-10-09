@@ -14,7 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import wstool.Distribution;
+import wstool.Distribution.Archive;
+import wstool.Distribution.GitRepository;
+import wstool.Distribution.PackageSource;
 import wstool.Package;
+import wstool.simple.git.GitRepositoryLocation;
+import wstool.simple.git.ImmutableGitCloneInput;
+import wstool.simple.git.ImmutableGitRepositoryLocation;
 import wstool.simple.model.PackageMajorVersion;
 
 /** Resolves package dependency selectors and assembles their installation prefixes as a sysroot. */
@@ -36,25 +43,17 @@ public class DependencyResolver {
         Objects.requireNonNull(workspace, "workspace");
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
-        Map<PackageMajorVersion, LocalPackage> packages = indexPackages(workspace, workspaceRoot);
-        LocalPackage root = findRoot(packages, selector.root());
-        Path rootPath = root.source().resolve(CONFIG_FILE);
-
-        try (PklHelper pkl = new PklHelper(null)) {
-            Map<PackageMajorVersion, Package> configs = new LinkedHashMap<>();
-            Package rootConfig = readConfig(pkl, rootPath);
-            configs.put(root.version(), rootConfig);
-
-            LinkedHashMap<PackageMajorVersion, LocalPackage> selected =
-                    resolveDependencies(selector, rootConfig, packages, configs, pkl);
-
-            Path sysroot =
-                    output == null
-                            ? workspaceRoot
-                                    .resolve(SYSROOT_DIRECTORY)
-                                    .resolve(root.version().name() + "@" + root.version().version())
-                                    .resolve(selector.closure())
-                            : output.toAbsolutePath().normalize();
+        LocalPackage root = findRoot(indexPackages(workspace, workspaceRoot), selector.root());
+        LinkedHashMap<PackageMajorVersion, LocalPackage> selected =
+                resolvePackages(workspace, workspaceRoot, packageName, closure);
+        Path sysroot =
+                output == null
+                        ? workspaceRoot
+                                .resolve(SYSROOT_DIRECTORY)
+                                .resolve(root.version().name() + "@" + root.version().version())
+                                .resolve(selector.closure())
+                        : output.toAbsolutePath().normalize();
+        try {
             rebuildSysroot(sysroot, selected.values());
             return sysroot;
         } catch (Exception e) {
@@ -66,16 +65,99 @@ public class DependencyResolver {
         }
     }
 
+    /** Returns the package prefixes required by a closure, in dependency order. */
+    public LinkedHashMap<PackageMajorVersion, LocalPackage> resolvePackages(
+            WorkspaceHelper workspace, Path workspaceRoot, String packageName, String closure) {
+        return resolvePackages(workspace, workspaceRoot, packageName, closure, null, null);
+    }
+
+    /**
+     * Resolves missing dependency manifests from the distribution and caches them in the workspace.
+     */
+    public LinkedHashMap<PackageMajorVersion, LocalPackage> resolvePackages(
+            WorkspaceHelper workspace,
+            Path workspaceRoot,
+            String packageName,
+            String closure,
+            Distribution distribution,
+            GitHelper git) {
+        Objects.requireNonNull(workspace, "workspace");
+        Objects.requireNonNull(workspaceRoot, "workspaceRoot");
+        Selector selector = parseSelector(packageName, closure);
+        Map<PackageMajorVersion, LocalPackage> packages = indexPackages(workspace, workspaceRoot);
+        LocalPackage root = findRoot(packages, selector.root());
+        try (PklHelper pkl = new PklHelper(null)) {
+            Package rootConfig = readConfig(pkl, root.source().resolve(CONFIG_FILE));
+            Map<PackageMajorVersion, Package> configs = new LinkedHashMap<>();
+            configs.put(root.version(), rootConfig);
+            return resolveDependencies(
+                    selector, rootConfig, packages, configs, pkl, workspaceRoot, distribution, git);
+        } catch (Exception e) {
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException(
+                    "Unable to resolve dependencies for " + root.version(), e);
+        }
+    }
+
+    /** Copies a closure into a mountable directory, resolving host sysroot symlinks. */
+    public void materializeClosure(Path destination, Iterable<LocalPackage> packages)
+            throws IOException {
+        deleteTree(destination);
+        Files.createDirectories(destination);
+        for (LocalPackage pkg : packages) {
+            if (!Files.isDirectory(pkg.prefix())) {
+                throw new IOException(
+                        "Package artifacts are missing for "
+                                + pkg.version()
+                                + " at "
+                                + pkg.prefix());
+            }
+            copyTree(pkg.prefix(), destination);
+        }
+    }
+
+    private void copyTree(Path source, Path destination) throws IOException {
+        Files.walkFileTree(
+                source,
+                new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(
+                            Path directory, BasicFileAttributes attrs) throws IOException {
+                        Files.createDirectories(destination.resolve(source.relativize(directory)));
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                            throws IOException {
+                        Path target = destination.resolve(source.relativize(file));
+                        Files.createDirectories(target.getParent());
+                        Files.copy(
+                                file,
+                                target,
+                                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                                java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+    }
+
     private LinkedHashMap<PackageMajorVersion, LocalPackage> resolveDependencies(
             Selector selector,
             Package rootConfig,
             Map<PackageMajorVersion, LocalPackage> packages,
             Map<PackageMajorVersion, Package> configs,
-            PklHelper pkl) {
+            PklHelper pkl,
+            Path workspaceRoot,
+            Distribution distribution,
+            GitHelper git)
+            throws Exception {
         LinkedHashMap<PackageMajorVersion, LocalPackage> selected = new LinkedHashMap<>();
         ArrayDeque<LocalPackage> pending = new ArrayDeque<>();
         for (PackageMajorVersion dependency : roots(rootConfig, selector.closure())) {
-            pending.addLast(requirePackage(dependency, packages));
+            pending.addLast(requirePackage(dependency, packages, workspaceRoot, distribution, git));
         }
 
         Set<PackageMajorVersion> visited = new LinkedHashSet<>();
@@ -91,7 +173,8 @@ public class DependencyResolver {
                             ignored -> readConfig(pkl, dependency.source().resolve(CONFIG_FILE)));
             for (PackageMajorVersion transitive :
                     transitiveDependencies(config, selector.closure())) {
-                pending.addLast(requirePackage(transitive, packages));
+                pending.addLast(
+                        requirePackage(transitive, packages, workspaceRoot, distribution, git));
             }
         }
         return selected;
@@ -175,6 +258,90 @@ public class DependencyResolver {
                     "Dependency " + requested + " is not available in the workspace or cache.");
         }
         return pkg;
+    }
+
+    private LocalPackage requirePackage(
+            PackageMajorVersion requested,
+            Map<PackageMajorVersion, LocalPackage> packages,
+            Path workspaceRoot,
+            Distribution distribution,
+            GitHelper git)
+            throws Exception {
+        LocalPackage existing = packages.get(requested);
+        if (existing != null) {
+            return existing;
+        }
+        if (distribution == null || git == null) {
+            return requirePackage(requested, packages);
+        }
+
+        PackageSource source =
+                distribution.getPackages().stream()
+                        .filter(pkg -> pkg.getName().equals(requested.name()))
+                        .filter(pkg -> pkg.getVersion().equals(requested.version()))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "No package with name '"
+                                                        + requested.name()
+                                                        + "' and version '"
+                                                        + requested.version()
+                                                        + "' found in distribution."));
+        if (source instanceof Archive archive) {
+            Path metadataSource =
+                    workspaceRoot
+                            .resolve("private/cache/package-sources")
+                            .resolve(requested.name())
+                            .resolve(requested.version());
+            new DistributionArchiveHelper().extract(archive, workspaceRoot, metadataSource);
+            if (!Files.isRegularFile(metadataSource.resolve(CONFIG_FILE))) {
+                throw new IOException(
+                        "Package configuration not found in archive for " + requested);
+            }
+            LocalPackage resolved = new LocalPackage(requested, metadataSource, metadataSource);
+            packages.put(requested, resolved);
+            return resolved;
+        }
+        if (!(source instanceof GitRepository repository)) {
+            throw new IllegalArgumentException(
+                    "Dependency metadata for "
+                            + requested
+                            + " must be available from a Git repository.");
+        }
+
+        Path metadataSource =
+                workspaceRoot
+                        .resolve("private/cache/package-sources")
+                        .resolve(requested.name())
+                        .resolve(requested.version());
+        Path config = metadataSource.resolve(CONFIG_FILE);
+        if (!Files.isRegularFile(config)) {
+            deleteTree(metadataSource);
+            GitRepositoryLocation location =
+                    ImmutableGitRepositoryLocation.builder()
+                            .repository(repository.getRepo())
+                            .branch(repository.getBranch())
+                            .build();
+            git.clone(
+                    ImmutableGitCloneInput.builder()
+                            .parent(metadataSource.getParent())
+                            .name(metadataSource.getFileName().toString())
+                            .repository(location)
+                            .build());
+            if (!Files.isRegularFile(config)) {
+                throw new IOException(
+                        "Package configuration not found in repository for " + requested);
+            }
+        }
+
+        LocalPackage resolved =
+                new LocalPackage(
+                        requested,
+                        metadataSource,
+                        workspaceRoot.resolve("private/prefix").resolve(requested.name()));
+        packages.put(requested, resolved);
+        return resolved;
     }
 
     private Package readConfig(PklHelper pkl, Path path) {

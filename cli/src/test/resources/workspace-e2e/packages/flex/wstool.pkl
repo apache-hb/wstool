@@ -1,9 +1,11 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
 package { name = "flex"; version = "2.6.4" }
-buildOptions { tool = "wstool-flex" }
+buildOptions { tool = "wstool-flex"; dockerImage = read("env:WST_BUILD_IMAGE") }
 buildDependencies {
   ["m4"] = "1.4.19"
   ["bison"] = "3.8.2"
+  ["wstool-cli"] = "0.1.0"
 }
 dependencies {
   ["m4"] = "1.4.19"

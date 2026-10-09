@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -48,10 +49,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import wstool.simple.ArchiveHelper;
-import wstool.simple.CacheHelper;
 import wstool.simple.GitHelper;
-import wstool.simple.StorageHelper;
 import wstool.simple.git.ImmutableGitRunInput;
 
 /** Exercises real source builds, workspace package resolution, S3 artifacts, and target runs. */
@@ -75,7 +73,8 @@ class WorkspaceCommandsEndToEndTest {
                     "mpfr",
                     "mpc",
                     "isl",
-                    "gcc");
+                    "gcc",
+                    "c-smoke");
     private static final List<String> BUILD_ORDER =
             List.of(
                     "zlib",
@@ -89,10 +88,7 @@ class WorkspaceCommandsEndToEndTest {
                     "gmp",
                     "mpfr",
                     "mpc",
-                    "isl",
-                    "gcc");
-    private static final Set<String> CACHED_PACKAGES =
-            Set.of("zlib", "expat", "gmp", "mpfr", "mpc", "isl");
+                    "isl");
     private static final Map<String, String> PACKAGE_VERSIONS =
             Map.ofEntries(
                     Map.entry("cmake", "3.30.5"),
@@ -107,7 +103,8 @@ class WorkspaceCommandsEndToEndTest {
                     Map.entry("mpfr", "4.2.1"),
                     Map.entry("mpc", "1.3.1"),
                     Map.entry("isl", "0.26"),
-                    Map.entry("gcc", "14.2.0"));
+                    Map.entry("gcc", "14.2.0"),
+                    Map.entry("c-smoke", "1.0.0"));
 
     @Container
     private static final GiteaContainer gitServer =
@@ -129,9 +126,9 @@ class WorkspaceCommandsEndToEndTest {
 
     private RepositoryApi giteaApi;
     @AutoClose private S3Client s3;
-    private CacheHelper cache;
     private String suffix;
     private Map<String, String> repositoryEnvironment = Map.of();
+    private String buildImage;
 
     @BeforeAll
     static void initializeGarage() throws Exception {
@@ -175,11 +172,14 @@ class WorkspaceCommandsEndToEndTest {
                                         .chunkedEncodingEnabled(false)
                                         .build())
                         .build();
-        cache = new CacheHelper(s3, new ArchiveHelper());
     }
 
     @Test
     void buildsRealBootstrapDependenciesAndGccThroughWorkspaceCommands() throws Exception {
+        buildImage =
+                new ImageFromDockerfile("wstool-build-e2e:latest", false)
+                        .withFileFromClasspath("Dockerfile", "workspace-e2e/Dockerfile")
+                        .get();
         Map<String, URI> repositories = uploadPackageRepositories();
         URI distribution = uploadDistribution(repositories);
 
@@ -198,70 +198,80 @@ class WorkspaceCommandsEndToEndTest {
                 "--branch",
                 "main");
         List<String> addArguments = new ArrayList<>(List.of("workspace", "add"));
-        for (String name : PACKAGE_NAMES) {
+        for (String name : BUILD_ORDER) {
             addArguments.add("--package");
             addArguments.add(name);
         }
         runCli(workspace, addArguments.toArray(String[]::new));
 
         Properties sources = sourceProperties();
-        for (String name : PACKAGE_NAMES) {
-            downloadAndExtractSource(workspace.resolve("src").resolve(name), name, sources);
+        for (String name : BUILD_ORDER) {
+            Path packageDirectory = workspace.resolve("src").resolve(name);
+            downloadAndExtractSource(packageDirectory, name, sources);
         }
 
         for (String name : BUILD_ORDER) {
-            Path packageDirectory = workspace.resolve("src").resolve(name);
-            runCli(packageDirectory, "package", "release");
-            if (CACHED_PACKAGES.contains(name)) {
-                cacheBuiltPackage(workspace, name);
-            }
+            runCli(workspace, "build", name + "@" + PACKAGE_VERSIONS.get(name));
+            assertArtifactInS3(name);
         }
 
         assertTrue(Files.isExecutable(workspace.resolve("private/prefix/cmake/bin/cmake")));
         assertTrue(Files.isExecutable(workspace.resolve("private/prefix/ninja/bin/ninja")));
-        Path cmakeSysroot = workspace.resolve("private/build/cmake/sysroot");
-        assertTrue(Files.isSymbolicLink(cmakeSysroot.resolve("include/zlib.h")));
-        assertTrue(Files.isSymbolicLink(cmakeSysroot.resolve("include/expat.h")));
+        assertTrue(!Files.exists(workspace.resolve("private/build/cmake/sysroot")));
 
-        Path gccPrefix = workspace.resolve("private/prefix/gcc");
+        Path consumerParent = tempDir.resolve("workspaces");
+        runCli(consumerParent, "workspace", "create", "--name", "consumer");
+        Path consumer = consumerParent.resolve("consumer");
+        runCli(
+                consumer,
+                "workspace",
+                "setup",
+                "--distro",
+                "bootstrap-test",
+                "--from",
+                distribution.toString(),
+                "--branch",
+                "main");
+        runCli(consumer, "workspace", "add", "--package", "gcc", "--package", "c-smoke");
+        downloadAndExtractSource(consumer.resolve("src/gcc"), "gcc", sources);
+
+        for (String dependency : List.of("binutils", "gmp", "mpfr", "mpc", "isl")) {
+            assertTrue(
+                    !Files.exists(consumer.resolve("src").resolve(dependency)),
+                    "Consumer workspace unexpectedly contains source checkout for " + dependency);
+        }
+
+        runCli(consumer, "build", "gcc@" + PACKAGE_VERSIONS.get("gcc"));
+        assertArtifactInS3("gcc");
+        runCli(consumer, "build", "c-smoke@" + PACKAGE_VERSIONS.get("c-smoke"));
+        assertArtifactInS3("c-smoke");
+
+        Path gccPrefix = consumer.resolve("private/prefix/gcc");
         Path compiler = gccPrefix.resolve("bin/x86_64-linux-gnu-gcc");
         assertTrue(Files.isExecutable(compiler), "GCC source build did not install its compiler");
-        Process version =
-                new ProcessBuilder(compiler.toString(), "--version")
-                        .redirectErrorStream(true)
-                        .start();
-        String versionOutput =
-                new String(version.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(0, version.waitFor(), versionOutput);
-        assertTrue(versionOutput.contains("14.2.0"), versionOutput);
+        Path smokeObject = consumer.resolve("private/prefix/c-smoke/program.o");
+        assertTrue(Files.isRegularFile(smokeObject), "C smoke package did not install program.o");
+        assertTrue(Files.size(smokeObject) > 0, "GCC produced an empty object file");
 
-        Path source = resourcePath("workspace-e2e/program.c");
-        Path object = tempDir.resolve("program.o");
-        Process compile =
-                new ProcessBuilder(
-                                compiler.toString(),
-                                "-c",
-                                source.toString(),
-                                "-o",
-                                object.toString())
-                        .redirectErrorStream(true)
-                        .start();
-        String compileOutput =
-                new String(compile.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(0, compile.waitFor(), compileOutput);
-        assertTrue(Files.size(object) > 0, "GCC produced an empty object file");
+        assertTrue(Files.isRegularFile(consumer.resolve("private/prefix/gmp/include/gmp.h")));
+        assertTrue(Files.isRegularFile(consumer.resolve("private/prefix/mpfr/include/mpfr.h")));
 
-        Path gccSysroot = workspace.resolve("private/build/gcc/sysroot");
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("include/gmp.h")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("include/mpfr.h")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("include/mpc.h")));
-        assertTrue(Files.isDirectory(gccSysroot.resolve("include/isl")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("include/isl/ctx.h")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("lib/libisl.a")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("bin/x86_64-linux-gnu-ld")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("bin/m4")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("bin/bison")));
-        assertTrue(Files.isSymbolicLink(gccSysroot.resolve("bin/flex")));
+        assertTrue(!Files.exists(consumer.resolve("private/build/gcc/sysroot")));
+    }
+
+    private void assertArtifactInS3(String name) {
+        assertTrue(
+                s3.headObject(
+                                builder ->
+                                        builder.bucket(BUCKET)
+                                                .key(
+                                                        "bootstrap-test/"
+                                                                + name
+                                                                + "/"
+                                                                + PACKAGE_VERSIONS.get(name)
+                                                                + "/prefix.zip"))
+                        != null,
+                "Build artifact was not uploaded for " + name);
     }
 
     private Map<String, URI> uploadPackageRepositories() throws Exception {
@@ -275,8 +285,19 @@ class WorkspaceCommandsEndToEndTest {
     private URI uploadDistribution(Map<String, URI> packages) throws Exception {
         Map<String, String> environment = new LinkedHashMap<>();
         for (String name : PACKAGE_NAMES) {
-            environment.put(name.toUpperCase(Locale.ROOT) + "_REPO", packages.get(name).toString());
+            environment.put(
+                    name.toUpperCase(Locale.ROOT).replace('-', '_') + "_REPO",
+                    packages.get(name).toString());
         }
+        environment.put(
+                "AWS_S3_ENDPOINT", "http://" + garage.getHost() + ":" + garage.getMappedPort(3900));
+        environment.put("WST_BUILD_IMAGE", buildImage);
+        URI cliArchive = URI.create(System.getenv("WSTOOL_CLI_ARCHIVE"));
+        environment.put("WSTOOL_CLI_ARCHIVE", cliArchive.toString());
+        environment.put("WSTOOL_CLI_CHECKSUM", sha256(Path.of(cliArchive)));
+        environment.put("AWS_ACCESS_KEY_ID", ACCESS_KEY);
+        environment.put("AWS_SECRET_ACCESS_KEY", SECRET_KEY);
+        environment.put("AWS_REGION", "us-east-1");
         repositoryEnvironment = Map.copyOf(environment);
         return uploadRepositoryFromResources(
                 "distribution-" + suffix, resourcePath("workspace-e2e/distribution"));
@@ -306,31 +327,6 @@ class WorkspaceCommandsEndToEndTest {
         runGit(repository, "commit", "--message", "Add " + name);
         runGit(repository, "remote", "add", "origin", uri.toString());
         runGit(repository, "push", "--set-upstream", "origin", "main");
-    }
-
-    private void cacheBuiltPackage(Path workspace, String name) throws Exception {
-        String version = PACKAGE_VERSIONS.get(name);
-        Path packageDirectory = workspace.resolve("src").resolve(name);
-        Path artifact = tempDir.resolve("artifacts").resolve(suffix).resolve(name);
-        Path artifactSource = artifact.resolve("source");
-        Files.createDirectories(artifactSource);
-        Files.copy(packageDirectory.resolve("wstool.pkl"), artifactSource.resolve("wstool.pkl"));
-        copyTree(workspace.resolve("private/prefix").resolve(name), artifact.resolve("prefix"));
-
-        String key = "cli-e2e/" + suffix + "/" + name + "/" + version;
-        cache.uploadFolder(BUCKET, key, artifact);
-        Path cached = workspace.resolve("private/cache").resolve(name).resolve(version);
-        Files.createDirectories(cached.getParent());
-        cache.downloadFolder(BUCKET, key, cached);
-        new StorageHelper()
-                .addPackageToWorkspaceStorage(
-                        workspace.resolve("wstool.db"),
-                        name,
-                        version,
-                        cached.resolve("source").toString(),
-                        cached.resolve("prefix").toString(),
-                        workspace.resolve("private/build").resolve(name).toString(),
-                        false);
     }
 
     private void downloadAndExtractSource(Path packageDirectory, String name, Properties sources)

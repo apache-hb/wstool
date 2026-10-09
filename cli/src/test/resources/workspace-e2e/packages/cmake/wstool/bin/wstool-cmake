@@ -2,6 +2,10 @@
 set -euo pipefail
 
 source_dir="$WST_SRCDIR/source"
+sysroot="$WST_PRIVATE/sysroot"
+wstool sysroot build --output "$sysroot"
+test -f "$sysroot/include/zlib.h"
+test -f "$sysroot/include/expat.h"
 "$source_dir/bootstrap" \
   --prefix="$WST_PREFIX" \
   --parallel=32 \
@@ -12,11 +16,11 @@ source_dir="$WST_SRCDIR/source"
   -DBUILD_TESTING=OFF \
   -DBUILD_CursesDialog=OFF \
   -DCMAKE_USE_OPENSSL=OFF \
-  -DCMAKE_PREFIX_PATH="$WST_SYSROOT" \
+  -DCMAKE_PREFIX_PATH="$sysroot" \
   -DZLIB_USE_STATIC_LIBS=ON \
-  -DZLIB_INCLUDE_DIR="$WST_SYSROOT/include" \
-  -DZLIB_LIBRARY_RELEASE="$WST_SYSROOT/lib/libz.a" \
-  -DEXPAT_INCLUDE_DIR="$WST_SYSROOT/include" \
-  -DEXPAT_LIBRARY_RELEASE="$WST_SYSROOT/lib/libexpat.a"
+  -DZLIB_INCLUDE_DIR="$sysroot/include" \
+  -DZLIB_LIBRARY_RELEASE="$sysroot/lib/libz.a" \
+  -DEXPAT_INCLUDE_DIR="$sysroot/include" \
+  -DEXPAT_LIBRARY_RELEASE="$sysroot/lib/libexpat.a"
 make -C "$WST_SRCDIR" -j32
 make -C "$WST_SRCDIR" install

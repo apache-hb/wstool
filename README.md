@@ -109,3 +109,11 @@ Workspace - The root of the workspace
     FirstPackage - Package source
   .wstool/ - wstool internal folder, all internal config is stored here
 ```
+
+### CLI package for container builds
+
+`./gradlew :cli:packageCli` creates a ZIP package containing the `wstool` launcher and its
+runtime dependencies at `cli/build/distributions/wstool-cli-<version>.zip`. Add that archive to a
+distribution as an `Archive` package, including its SHA-256 checksum. Packages whose build tools
+call `wstool` inside a build container should declare `wstool-cli` in `buildDependencies`. The
+container build adds every build dependency's `bin` directory to `PATH`.

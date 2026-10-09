@@ -1,3 +1,8 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
 package { name = "gmp"; version = "6.3.0" }
-buildOptions { tool = "wstool-gmp" }
+buildOptions { tool = "wstool-gmp"; dockerImage = read("env:WST_BUILD_IMAGE") }
+buildDependencies {
+  ["m4"] = "1.4.19"
+  ["wstool-cli"] = "0.1.0"
+}

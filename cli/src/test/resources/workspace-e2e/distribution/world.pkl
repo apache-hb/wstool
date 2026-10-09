@@ -13,10 +13,16 @@ local mpfr = read("env:MPFR_REPO")
 local mpc = read("env:MPC_REPO")
 local isl = read("env:ISL_REPO")
 local gcc = read("env:GCC_REPO")
+local cSmoke = read("env:C_SMOKE_REPO")
+local wstoolCliArchive = read("env:WSTOOL_CLI_ARCHIVE")
+local wstoolCliChecksum = read("env:WSTOOL_CLI_CHECKSUM")
 
 name = "bootstrap-test"
 
-storage { bucket = "cli-toolchain" }
+storage {
+  bucket = "cli-toolchain"
+  endpoint = read("env:AWS_S3_ENDPOINT")
+}
 
 packages {
   new GitRepository {
@@ -96,5 +102,17 @@ packages {
     version = "14.2.0"
     repo = gcc
     branch = "main"
+  }
+  new GitRepository {
+    name = "c-smoke"
+    version = "1.0.0"
+    repo = cSmoke
+    branch = "main"
+  }
+  new Archive {
+    name = "wstool-cli"
+    version = "0.1.0"
+    uri = wstoolCliArchive
+    checksum = wstoolCliChecksum
   }
 }

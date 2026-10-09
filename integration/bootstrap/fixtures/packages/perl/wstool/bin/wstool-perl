@@ -8,7 +8,8 @@ set -euo pipefail
 sysroot="$WST_PRIVATE/sysroot"
 source="$WST_PRIVATE/source"
 build="$source"
-mkdir -p "$sysroot" "$build" "$WST_PREFIX"
+wstool sysroot build --output "$sysroot"
+mkdir -p "$build" "$WST_PREFIX"
 export PATH="$sysroot/bin:$PATH"
 
 if [ ! -f "$source/Configure" ]; then

@@ -2,6 +2,12 @@
 set -euo pipefail
 source_dir="$WST_SRCDIR/source"
 build_dir="$WST_PRIVATE/build"
+sysroot="$WST_PRIVATE/sysroot"
+wstool sysroot build --output "$sysroot"
+test -x "$sysroot/bin/m4"
+test -x "$sysroot/bin/bison"
+test -x "$sysroot/bin/flex"
+export PATH="$sysroot/bin:$PATH"
 mkdir -p "$build_dir"
 cd "$build_dir"
 if [[ ! -f Makefile ]]; then

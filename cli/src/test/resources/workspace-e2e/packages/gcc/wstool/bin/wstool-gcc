@@ -2,10 +2,19 @@
 set -euo pipefail
 source_dir="$WST_SRCDIR/source"
 build_dir="$WST_PRIVATE/build"
+sysroot="$WST_PRIVATE/sysroot"
+mkdir -p "$WST_PRIVATE"
+wstool sysroot build --output "$sysroot"
+test -f "$sysroot/include/gmp.h"
+test -f "$sysroot/include/mpfr.h"
+test -f "$sysroot/include/mpc.h"
+test -f "$sysroot/include/isl/ctx.h"
+test -f "$sysroot/bin/x86_64-linux-gnu-ld"
+export PATH="$sysroot/bin:$PATH"
 mkdir -p "$build_dir"
 cd "$build_dir"
 if [[ ! -f Makefile ]]; then
-  "$source_dir/configure" --prefix="$WST_PREFIX" --target=x86_64-linux-gnu --with-sysroot="$WST_SYSROOT" --with-gmp="$WST_SYSROOT" --with-mpfr="$WST_SYSROOT" --with-mpc="$WST_SYSROOT" --with-isl="$WST_SYSROOT" --with-newlib --without-headers --disable-threads --disable-shared --disable-nls --disable-multilib --disable-bootstrap --disable-libssp --disable-libquadmath --disable-libgomp --enable-languages=c,c++
+  "$source_dir/configure" --prefix="$WST_PREFIX" --target=x86_64-linux-gnu --with-sysroot="$sysroot" --with-gmp="$sysroot" --with-mpfr="$sysroot" --with-mpc="$sysroot" --with-isl="$sysroot" --with-newlib --without-headers --disable-threads --disable-shared --disable-nls --disable-multilib --disable-bootstrap --disable-libssp --disable-libquadmath --disable-libgomp --enable-languages=c,c++
 fi
 if [[ "${1:-release}" == release ]]; then
   make -j32 all-gcc all-target-libgcc

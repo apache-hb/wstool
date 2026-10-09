@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -ne 1 || "$1" != "release" ]]; then
+  echo "expected the release build target" >&2
+  exit 2
+fi
+
+sysroot="$WST_PRIVATE/sysroot"
+wstool sysroot build --output "$sysroot"
+compiler="$sysroot/bin/x86_64-linux-gnu-gcc"
+"$compiler" --version | grep -F "14.2.0"
+mkdir -p "$WST_PREFIX"
+"$compiler" -c "$WST_SRCDIR/source/program.c" -o "$WST_PREFIX/program.o"
+test -s "$WST_PREFIX/program.o"

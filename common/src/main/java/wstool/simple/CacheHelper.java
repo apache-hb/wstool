@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.simple.archive.CreateArchiveInput;
@@ -25,26 +27,42 @@ public class CacheHelper {
 
     public void uploadFolder(String bucket, String key, Path folder) throws Exception {
         Path archiveFile = folder.resolveSibling(folder.getFileName() + ".zip");
-
-        CreateArchiveInput input =
-                ImmutableCreateArchiveInput.builder()
-                        .source(folder)
-                        .destination(archiveFile)
-                        .build();
-
-        archive.create(input);
-        upload(bucket, key, archiveFile);
+        try {
+            CreateArchiveInput input =
+                    ImmutableCreateArchiveInput.builder()
+                            .source(folder)
+                            .destination(archiveFile)
+                            .build();
+            archive.create(input);
+            upload(bucket, key, archiveFile);
+        } finally {
+            Files.deleteIfExists(archiveFile);
+        }
     }
 
     public void downloadFolder(String bucket, String key, Path folder) throws Exception {
         Path archiveFile = folder.resolveSibling(folder.getFileName() + ".zip");
+        try {
+            download(bucket, key, archiveFile);
+            deleteTree(folder);
+            archive.extract(
+                    ImmutableExtractArchiveInput.builder()
+                            .archive(archiveFile)
+                            .destination(folder)
+                            .build());
+        } finally {
+            Files.deleteIfExists(archiveFile);
+        }
+    }
 
-        download(bucket, key, archiveFile);
-
-        archive.extract(
-                ImmutableExtractArchiveInput.builder()
-                        .archive(archiveFile)
-                        .destination(folder)
-                        .build());
+    private void deleteTree(Path folder) throws IOException {
+        if (!Files.exists(folder)) {
+            return;
+        }
+        try (var paths = Files.walk(folder)) {
+            for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(path);
+            }
+        }
     }
 }
