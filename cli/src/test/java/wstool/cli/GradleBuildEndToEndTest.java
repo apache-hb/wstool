@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import javax.tools.ToolProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -130,10 +128,6 @@ class GradleBuildEndToEndTest {
         Path projectPackage = projectRepository;
         copyTree(resourcePath("gradle-e2e/packages/local-artifact"), artifactPackage);
         copyTree(resourcePath("gradle-e2e/packages/gradle-smoke"), projectPackage);
-        Files.createDirectories(artifactPackage.resolve("wstool/bin"));
-
-        copyMavenBuildTool(artifactPackage.resolve("wstool/bin/maven-wstool"));
-        artifactPackage.resolve("wstool/bin/maven-wstool").toFile().setExecutable(true, false);
         writeMavenArtifact(artifactPackage);
 
         initializeGitRepository(artifactPackage);
@@ -145,20 +139,6 @@ class GradleBuildEndToEndTest {
                 localRepository.resolve("world.pkl"));
         initializeGitRepository(localRepository);
         return localRepository;
-    }
-
-    private void copyMavenBuildTool(Path destination) throws Exception {
-        Path packageArchive = Path.of(requiredEnv("WSTOOL_MAVEN_TOOL_PACKAGE"));
-        try (ZipFile archive = new ZipFile(packageArchive.toFile())) {
-            ZipEntry tool = archive.getEntry("bin/maven-wstool");
-            assertTrue(tool != null, "maven-wstool package is missing its executable");
-            try (InputStream input = archive.getInputStream(tool)) {
-                Files.copy(input, destination);
-            }
-            if (!destination.toFile().setExecutable(true, false)) {
-                throw new IOException("Could not make the Maven build tool executable");
-            }
-        }
     }
 
     private void writeMavenArtifact(Path artifactPackage) throws Exception {

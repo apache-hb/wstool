@@ -1,5 +1,6 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
 
+
 name = "gradle-e2e"
 
 storage {
@@ -36,7 +37,7 @@ packages {
     checksum = gradleRunnerChecksum
   }
   new Archive {
-    name = "maven-wstool"
+    name = "maven-wstool-import"
     version = "1.0.0"
     uri = mavenToolArchive
     checksum = mavenToolChecksum

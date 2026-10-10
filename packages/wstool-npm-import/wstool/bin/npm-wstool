@@ -34,7 +34,7 @@ function installImportedPackage(metadata) {
     'wstool-npm',
     'packages',
     metadata.wstoolName,
-    metadata.version,
+    metadata.wstoolVersion || metadata.version,
   );
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.cpSync(source, destination, { recursive: true, dereference: true });
@@ -63,7 +63,7 @@ function buildProject() {
     const dependency = selectPackage(packages, name, range);
     if (!dependency) {
       throw new Error(
-        `npm package ${name}@${range} is missing from the wstool sysroot; import it with wstool-import npm and declare it in wstool.pkl`,
+        `npm package ${name}@${range} is missing from the wstool sysroot; imported packages found: ${packages.map((pkg) => `${pkg.name}@${pkg.version}`).join(', ') || '(none)'}`,
       );
     }
     installPackage(dependency, path.join(work, 'node_modules'), packages, new Set());
@@ -99,22 +99,25 @@ function loadPackages(prefixRoot) {
   for (const packagePrefix of fs.readdirSync(prefixRoot)) {
     const root = path.join(prefixRoot, packagePrefix, 'share', 'wstool-npm', 'packages');
     if (!fs.existsSync(root)) continue;
-    for (const encodedName of fs.readdirSync(root)) {
-      const nameDirectory = path.join(root, encodedName);
-      if (!fs.statSync(nameDirectory).isDirectory()) continue;
-      for (const version of fs.readdirSync(nameDirectory)) {
-        const directory = path.join(nameDirectory, version);
-        const metadataPath = path.join(directory, 'wstool-npm.json');
-        if (!fs.existsSync(metadataPath)) continue;
-        packages.push({ ...readJson(metadataPath), directory });
-      }
-    }
+    collectPackageMetadata(root, packages);
   }
   return packages;
 }
 
+function collectPackageMetadata(directory, packages) {
+  const metadataPath = path.join(directory, 'wstool-npm.json');
+  if (fs.existsSync(metadataPath)) {
+    packages.push({ ...readJson(metadataPath), directory });
+    return;
+  }
+  for (const child of fs.readdirSync(directory)) {
+    const childPath = path.join(directory, child);
+    if (fs.statSync(childPath).isDirectory()) collectPackageMetadata(childPath, packages);
+  }
+}
+
 function installPackage(metadata, nodeModules, packages, active) {
-  const key = `${metadata.name}@${metadata.version}`;
+  const key = `${metadata.name}${String.fromCharCode(0)}${metadata.version}`;
   const destination = path.join(nodeModules, ...metadata.name.split('/'));
   if (!fs.existsSync(destination)) {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -136,13 +139,18 @@ function installPackage(metadata, nodeModules, packages, active) {
 
 function selectPackage(packages, name, range) {
   const candidates = packages
-    .filter((candidate) => candidate.name === name && satisfies(candidate.version, range))
+    .filter(
+      (candidate) =>
+        candidate.name === name &&
+        satisfies(/^\d+\.x$/.test(range) ? candidate.wstoolVersion || candidate.version : candidate.version, range),
+    )
     .sort((left, right) => compareVersions(right.version, left.version));
   return candidates[0];
 }
 
 function satisfies(version, range) {
   if (!range || range === '*' || range === 'latest') return true;
+  if (/^\d+\.x$/.test(range)) return numericVersion(version)[0] === Number(range.slice(0, -2));
   if (range.startsWith('^')) {
     const lower = range.slice(1);
     const [major] = numericVersion(lower);

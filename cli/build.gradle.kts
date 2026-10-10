@@ -62,7 +62,7 @@ tasks.test {
   val cliPackage = tasks.named<Zip>("packageCli")
   val gradlePackage = project(":wstool-gradle-plugin").tasks.named<Zip>("packageGradle")
   val gradleRunnerPackage = project(":wstool-gradle-plugin").tasks.named<Zip>("packageWstoolGradle")
-  val mavenToolPackage = project(":wstool-import").tasks.named<Zip>("packageMavenWstool")
+  val mavenToolPackage = project(":wstool-import").tasks.named<Zip>("packageMavenWstoolImport")
   dependsOn(cliPackage)
   dependsOn(gradlePackage, gradleRunnerPackage, mavenToolPackage)
   environment("WSTOOL_CLI_ARCHIVE", cliPackage.get().archiveFile.get().asFile.toURI().toString())
@@ -102,6 +102,7 @@ val importerLauncherProperties = layout.buildDirectory.file("jpackage/wstool-imp
 val writeImporterLauncherProperties =
   tasks.register("writeImporterLauncherProperties") {
     val propertiesFile = importerLauncherProperties
+    inputs.property("releaseVersion", project.version.toString())
     outputs.file(propertiesFile)
     doLast {
       propertiesFile.get().asFile.apply {

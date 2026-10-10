@@ -7,8 +7,15 @@ set -eu
 source_repository="$WST_SRCDIR/repository"
 output_repository="$WST_PREFIX/share/maven-repo"
 if [ ! -d "$source_repository" ]; then
-  echo "Maven repository files are missing from imported package: $source_repository" >&2
-  exit 1
+  source_tool="$WST_SRCDIR/wstool/bin/maven-wstool-import"
+  if [ ! -f "$source_tool" ]; then
+    echo "Shared Maven build tool is missing from package source: $source_tool" >&2
+    exit 1
+  fi
+  mkdir -p "$WST_PREFIX/bin"
+  cp "$source_tool" "$WST_PREFIX/bin/maven-wstool-import"
+  chmod +x "$WST_PREFIX/bin/maven-wstool-import"
+  exit 0
 fi
 
 mkdir -p "$output_repository" "$WST_PREFIX/share/javadoc"

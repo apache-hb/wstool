@@ -234,21 +234,21 @@ class HelidonWstoolEndToEndTest {
                 "main");
         List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
         List<ImportedPackage> npmPackages =
-                importedPackages(imported.resolve("package-tree/packages"));
+                importedNpmPackages(imported.resolve("package-tree/packages"));
         for (ImportedPackage dependency : npmPackages) {
             addArguments.add("--package");
             addArguments.add(dependency.name());
         }
         addArguments.add("--package");
-        addArguments.add("npm-wstool");
+        addArguments.add("wstool-npm-import");
         addArguments.add("--package");
         addArguments.add("npm-demo");
         runCli(workspace, addArguments.toArray(String[]::new));
 
+        runCli(workspace, "build", "wstool-npm-import@1.0.0");
         for (ImportedPackage dependency : npmPackages) {
             runCli(workspace, "build", dependency.name() + "@" + dependency.version());
         }
-        runCli(workspace, "build", "npm-wstool@1.0.0");
         runCli(workspace, "build", "npm-demo@1.0.0");
 
         Path builtProject =
@@ -347,12 +347,12 @@ class HelidonWstoolEndToEndTest {
                 .put("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toUri().toString());
         builder.environment()
                 .put(
-                        "WSTOOL_NPM_TOOL_PACKAGE_URI",
-                        archivePath("WSTOOL_NPM_TOOL_PACKAGE").toUri().toString());
+                        "WSTOOL_NPM_IMPORT_PACKAGE_URI",
+                        archivePath("WSTOOL_NPM_IMPORT_PACKAGE").toUri().toString());
         builder.environment()
                 .put(
-                        "WSTOOL_NPM_TOOL_PACKAGE_CHECKSUM",
-                        sha256(archivePath("WSTOOL_NPM_TOOL_PACKAGE")));
+                        "WSTOOL_NPM_IMPORT_PACKAGE_CHECKSUM",
+                        sha256(archivePath("WSTOOL_NPM_IMPORT_PACKAGE")));
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertEquals(
@@ -457,6 +457,28 @@ class HelidonWstoolEndToEndTest {
                                 } catch (IOException e) {
                                     throw new java.io.UncheckedIOException(e);
                                 }
+                            })
+                    .toList();
+        }
+    }
+
+    private List<ImportedPackage> importedNpmPackages(Path packagesRoot) throws IOException {
+        try (var paths = Files.walk(packagesRoot)) {
+            return paths.filter(Files::isDirectory)
+                    .filter(directory -> Files.isRegularFile(directory.resolve("wstool.pkl")))
+                    .map(
+                            directory -> {
+                                Path relative = packagesRoot.relativize(directory);
+                                Path npmName = relative.getParent();
+                                String name =
+                                        "npm_"
+                                                + npmName.toString()
+                                                        .replace(
+                                                                directory
+                                                                        .getFileSystem()
+                                                                        .getSeparator(),
+                                                                "/");
+                                return new ImportedPackage(name, relative.getFileName().toString());
                             })
                     .toList();
         }

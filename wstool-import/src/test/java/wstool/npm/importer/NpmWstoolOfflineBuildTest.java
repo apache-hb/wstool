@@ -16,12 +16,12 @@ class NpmWstoolOfflineBuildTest {
     void installsImportedPackagesAndBuildsProjectFromLocalSysrootOnly() throws Exception {
         Path importedPackage =
                 resourceDirectory(
-                        "npm-wstool-build/sysroot/share/wstool-npm/packages/npm_is-number/7.0.0");
+                        "npm-wstool-build/sysroot/share/wstool-npm/packages/npm_@scope/is-number/7.x");
         Path importedPrefix = tempDir.resolve("imported-prefix");
         runTool(importedPackage, importedPrefix, tempDir.resolve("imported-private"));
         Path installedPackage =
                 importedPrefix.resolve(
-                        "share/wstool-npm/packages/npm_is-number/7.0.0/package/index.js");
+                        "share/wstool-npm/packages/npm_@scope/is-number/7.x/package/index.js");
         assertTrue(Files.isRegularFile(installedPackage));
 
         Path project = tempDir.resolve("project");
@@ -32,7 +32,9 @@ class NpmWstoolOfflineBuildTest {
 
         Path builtProject = prefix.resolve("lib/node_modules/offline-npm-fixture");
         assertEquals("true", Files.readString(builtProject.resolve("dist/result.txt")));
-        assertTrue(Files.isRegularFile(builtProject.resolve("node_modules/is-number/index.js")));
+        assertTrue(
+                Files.isRegularFile(
+                        builtProject.resolve("node_modules/@scope/is-number/index.js")));
     }
 
     private void runTool(Path source, Path prefix, Path privateDirectory) throws Exception {

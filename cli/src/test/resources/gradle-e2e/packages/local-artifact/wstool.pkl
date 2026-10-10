@@ -3,8 +3,8 @@ amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
 package { name = "local-artifact"; version = "1.0.0" }
 
 buildOptions {
-  tool = "maven-wstool"
+  tool = "maven-wstool-import"
   dockerImage = read("env:WST_BUILD_IMAGE")
 }
 
-buildDependencies { ["maven-wstool"] = "1.0.0" }
+buildDependencies { ["maven-wstool-import"] = "1.0.0" }

@@ -51,15 +51,20 @@ tasks.named<Jar>("jar") {
 
 tasks.named<JavaExec>("run") { systemProperty("wstool.version", project.version.toString()) }
 
-tasks.named<ProcessResources>("processResources") {
-  from(rootProject.file("packages/npm-wstool/wstool/bin/npm-wstool"))
+tasks.named<ProcessResources>("processTestResources") {
+  from(rootProject.file("packages/wstool-npm-import/wstool/bin/npm-wstool"))
 }
 
-tasks.register<Zip>("packageMavenWstool") {
+tasks.register<Zip>("packageMavenWstoolImport") {
   group = "distribution"
-  description = "Packages the reusable maven-wstool build tool."
-  from(rootProject.file("packages/maven-wstool")) { include("wstool.pkl", "bin/maven-wstool") }
-  archiveBaseName.set("maven-wstool")
+  description = "Packages the shared maven-wstool-import build tool."
+  from(rootProject.file("packages/maven-wstool-import")) {
+    include("wstool.pkl")
+  }
+  from(rootProject.file("packages/maven-wstool-import/wstool/bin/maven-wstool-import")) {
+    into("bin")
+  }
+  archiveBaseName.set("maven-wstool-import")
   archiveVersion.set("1.0.0")
   destinationDirectory.set(layout.buildDirectory.dir("distributions"))
   doLast {
@@ -72,7 +77,7 @@ tasks.register<Zip>("packageMavenWstool") {
       .writeText(
         """
       new Archive {
-        name = "maven-wstool"
+        name = "maven-wstool-import"
         version = "1.0.0"
         uri = "${archive.toURI()}"
         checksum = "$checksum"
@@ -83,13 +88,13 @@ tasks.register<Zip>("packageMavenWstool") {
   }
 }
 
-tasks.register<Zip>("packageNpmWstool") {
+tasks.register<Zip>("packageWstoolNpmImport") {
   group = "distribution"
-  description = "Packages the npm-wstool offline build tool."
-  from(rootProject.file("packages/npm-wstool")) {
+  description = "Packages the shared wstool-npm-import build tool."
+  from(rootProject.file("packages/wstool-npm-import")) {
     include("wstool.pkl", "wstool-npm.json", "wstool/bin/**")
   }
-  archiveBaseName.set("npm-wstool")
+  archiveBaseName.set("wstool-npm-import")
   archiveVersion.set("1.0.0")
   destinationDirectory.set(layout.buildDirectory.dir("distributions"))
   doLast {
@@ -102,7 +107,7 @@ tasks.register<Zip>("packageNpmWstool") {
       .writeText(
         """
       new Archive {
-        name = "npm-wstool"
+        name = "wstool-npm-import"
         version = "1.0.0"
         uri = "${archive.toURI()}"
         checksum = "$checksum"

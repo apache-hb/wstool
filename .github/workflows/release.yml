@@ -38,8 +38,8 @@ jobs:
           echo "RELEASE_VERSION=$RELEASE_VERSION" >> "$GITHUB_ENV"
           ./gradlew --no-daemon "-PreleaseVersion=$RELEASE_VERSION" \
             :cli:packageCli \
-            :wstool-import:packageMavenWstool \
-            :wstool-import:packageNpmWstool \
+            :wstool-import:packageMavenWstoolImport \
+            :wstool-import:packageWstoolNpmImport \
             :wstool-gradle-plugin:packageGradle \
             :wstool-gradle-plugin:packageWstoolGradle \
             :cli:packageDeb \
@@ -51,8 +51,8 @@ jobs:
             "cli/build/distributions/wstool-cli-${RELEASE_VERSION}.zip" \
             "cli/build/distributions/wstool_${RELEASE_VERSION}-1_amd64.deb" \
             "cli/build/distributions/wstool-${RELEASE_VERSION}-1.x86_64.rpm" \
-            wstool-import/build/distributions/maven-wstool-1.0.0.zip \
-            wstool-import/build/distributions/npm-wstool-1.0.0.zip \
+            wstool-import/build/distributions/maven-wstool-import-1.0.0.zip \
+            wstool-import/build/distributions/wstool-npm-import-1.0.0.zip \
             wstool-gradle-plugin/build/distributions/gradle-*.zip \
             wstool-gradle-plugin/build/distributions/wstool-gradle-1.0.0.zip \
             > SHA256SUMS
@@ -67,10 +67,10 @@ jobs:
             cli/build/distributions/wstool-cli-${{ env.RELEASE_VERSION }}.zip
             cli/build/distributions/wstool_${{ env.RELEASE_VERSION }}-1_amd64.deb
             cli/build/distributions/wstool-${{ env.RELEASE_VERSION }}-1.x86_64.rpm
-            wstool-import/build/distributions/maven-wstool-1.0.0.zip
-            wstool-import/build/distributions/maven-wstool-1.0.0.zip.sha256
-            wstool-import/build/distributions/npm-wstool-1.0.0.zip
-            wstool-import/build/distributions/npm-wstool-1.0.0.zip.sha256
+            wstool-import/build/distributions/maven-wstool-import-1.0.0.zip
+            wstool-import/build/distributions/maven-wstool-import-1.0.0.zip.sha256
+            wstool-import/build/distributions/wstool-npm-import-1.0.0.zip
+            wstool-import/build/distributions/wstool-npm-import-1.0.0.zip.sha256
             wstool-gradle-plugin/build/distributions/gradle-*.zip
             wstool-gradle-plugin/build/distributions/gradle-*.zip.sha256
             wstool-gradle-plugin/build/distributions/wstool-gradle-1.0.0.zip

@@ -203,3 +203,9 @@ Build `npm-wstool` with `./gradlew :wstool-import:packageNpmWstool` and add its 
 ### Creating a release
 
 Push a version tag such as `v1.2.3` to create a GitHub release. The release workflow builds the `wstool-cli`, `maven-wstool`, `npm-wstool`, `gradle`, and `wstool-gradle` archives, plus Debian and RPM installers for wstool. The archive files and their SHA-256 checksums are attached to the release. The `wstool-cli` archive is the wstool runtime for use in build environments; install the Debian or RPM package to add the `wstool` and `wstool-import` commands locally.
+
+Maven imports use the shared `maven-wstool-import` build-tool package. Each generated Maven artifact package depends on it and does not bundle its executable. Build and package it with `./gradlew :wstool-import:packageMavenWstoolImport`; its release archive is `maven-wstool-import-1.0.0.zip`.
+
+npm imports use the shared `wstool-npm-import` build-tool package. Each generated npm package depends on it and does not bundle its own copy of `npm-wstool`. Build and package it with `./gradlew :wstool-import:packageWstoolNpmImport`; its release archive is `wstool-npm-import-1.0.0.zip`.
+
+For npm packages, `buildOptions.tool` remains `npm-wstool`; the shared package that provides it is `wstool-npm-import`, which generated packages list under `buildDependencies`.

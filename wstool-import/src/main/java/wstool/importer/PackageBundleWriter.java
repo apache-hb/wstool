@@ -22,6 +22,7 @@ public class PackageBundleWriter {
             throws Exception {
         Path tree = outputDirectory.resolve("package-tree");
         Path bundle = outputDirectory.resolve("wstool-maven-import.zip");
+        ImportRoots.resetGeneratedTree(outputDirectory, "package-tree");
         Files.createDirectories(tree);
         for (ResolvedArtifact artifact : artifacts.values()) {
             writeArtifact(artifact, tree, buildImage);
@@ -40,11 +41,12 @@ public class PackageBundleWriter {
         Path directory =
                 root.resolve("packages")
                         .resolve(coordinate.packageName())
-                        .resolve(coordinate.version());
+                        .resolve(MajorVersion.line(coordinate.version()));
         Path repositoryDirectory =
                 directory.resolve("repository").resolve(coordinate.repositoryPath());
         Files.createDirectories(repositoryDirectory);
-        copy(artifact.binary(), repositoryDirectory.resolve(coordinate.fileStem() + ".jar"));
+        copyOptional(
+                artifact.binary(), repositoryDirectory.resolve(coordinate.fileStem() + ".jar"));
         copyOptional(artifact.pom(), repositoryDirectory.resolve(coordinate.fileStem() + ".pom"));
         for (var parent : artifact.supportPoms()) {
             Path parentPom =
@@ -62,16 +64,6 @@ public class PackageBundleWriter {
                 artifact.sources(),
                 repositoryDirectory.resolve(coordinate.fileStem() + "-sources.jar"));
         Files.writeString(directory.resolve("wstool.pkl"), packageConfig(artifact, buildImage));
-        Files.createDirectories(directory.resolve("wstool/bin"));
-        try (var tool = PackageBundleWriter.class.getResourceAsStream("/maven-wstool")) {
-            if (tool == null) {
-                throw new IOException("Bundled maven-wstool build tool is missing.");
-            }
-            Files.copy(
-                    tool,
-                    directory.resolve("wstool/bin/maven-wstool"),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 
     private String packageConfig(ResolvedArtifact artifact, String buildImage) {
@@ -81,22 +73,22 @@ public class PackageBundleWriter {
                                         + "package { name = \"")
                         .append(artifact.coordinate().packageName())
                         .append("\"; version = \"")
-                        .append(artifact.coordinate().version())
+                        .append(MajorVersion.line(artifact.coordinate().version()))
                         .append("\" }\n\n")
                         .append("buildOptions {\n")
-                        .append("  tool = \"maven-wstool\"\n")
+                        .append("  tool = \"maven-wstool-import\"\n")
                         .append("  dockerImage = \"")
                         .append(escape(buildImage))
                         .append("\"\n")
                         .append("}\n\n")
-                        .append("buildDependencies { [\"maven-wstool\"] = \"1.0.0\" }\n");
+                        .append("buildDependencies { [\"maven-wstool-import\"] = \"1.0.0\" }\n");
         if (!artifact.dependencies().isEmpty()) {
             pkl.append("\ndependencies {\n");
             for (MavenCoordinate dependency : artifact.dependencies()) {
                 pkl.append("  [\"")
                         .append(dependency.packageName())
                         .append("\"] = \"")
-                        .append(dependency.version())
+                        .append(MajorVersion.line(dependency.version()))
                         .append("\"\n");
             }
             pkl.append("}\n");
@@ -111,13 +103,19 @@ public class PackageBundleWriter {
                         "module wstool.importedMavenPackages\n\n"
                                 + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages {\n");
+        java.util.TreeMap<String, MavenCoordinate> packages = new java.util.TreeMap<>();
         for (MavenCoordinate coordinate : artifacts.keySet()) {
+            packages.put(
+                    coordinate.packageName() + "\u0000" + MajorVersion.line(coordinate.version()),
+                    coordinate);
+        }
+        for (MavenCoordinate coordinate : packages.values()) {
             pkl.append("\nnew wstoolDistribution.SourceCode {\n")
                     .append("  name = \"")
                     .append(coordinate.packageName())
                     .append("\"\n")
                     .append("  version = \"")
-                    .append(coordinate.version())
+                    .append(MajorVersion.line(coordinate.version()))
                     .append("\"\n")
                     .append("  from = new wstoolDistribution.Archive {\n")
                     .append("    name = \"wstool-maven-import\"\n")
@@ -132,7 +130,7 @@ public class PackageBundleWriter {
                     .append("  path = \"packages/")
                     .append(coordinate.packageName())
                     .append("/")
-                    .append(coordinate.version())
+                    .append(MajorVersion.line(coordinate.version()))
                     .append("\"\n")
                     .append("}")
                     .append("\n");
@@ -183,9 +181,8 @@ public class PackageBundleWriter {
     }
 
     private void copy(Path source, Path destination) throws IOException {
-        if (source == null || !Files.isRegularFile(source)) {
+        if (source == null || !Files.isRegularFile(source))
             throw new IOException("Resolved Maven artifact is missing: " + source);
-        }
         Files.copy(source, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 

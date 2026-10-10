@@ -8,6 +8,7 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import wstool.importer.ImportRoots;
 
 @Command(
         name = "npm",
@@ -48,6 +49,8 @@ public class NpmImportCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        List<String> allPackages =
+                ImportRoots.merge(ImportRoots.read(output, "npm-import-roots.json"), packages);
         Files.createDirectories(output.toAbsolutePath().getParent());
         Path resolvedCache =
                 cache == null ? Path.of(System.getProperty("user.home"), ".npm") : cache;
@@ -56,8 +59,9 @@ public class NpmImportCommand implements Callable<Integer> {
         try {
             var resolved =
                     new NpmDependencyResolver(npm)
-                            .resolve(packages, registry, resolvedCache, temporary);
+                            .resolve(allPackages, registry, resolvedCache, temporary);
             Path bundle = new NpmPackageBundleWriter().write(resolved, output, baseUrl, buildImage);
+            ImportRoots.write(output, "npm-import-roots.json", allPackages);
             System.out.println("Imported " + resolved.packages().size() + " npm packages.");
             System.out.println("Source bundle: " + bundle.toAbsolutePath());
             System.out.println(

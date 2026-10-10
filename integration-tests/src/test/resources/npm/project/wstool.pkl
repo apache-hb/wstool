@@ -15,7 +15,7 @@ buildOptions {
 }
 
 buildDependencies {
-  ["npm-wstool"] = "1.0.0"
+  ["wstool-npm-import"] = "1.0.0"
   ...importedNpmDependencies.buildDependencies
 }
 

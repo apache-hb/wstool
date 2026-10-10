@@ -1,5 +1,5 @@
 {
-  "name": "is-number",
+  "name": "@scope/is-number",
   "version": "7.0.0",
   "main": "index.js"
 }

@@ -122,7 +122,7 @@ public class NpmDependencyResolver {
     }
 
     private String key(String name, String version) {
-        return name + "@" + version;
+        return name + Character.toString(0) + version;
     }
 
     public record ResolvedPackage(

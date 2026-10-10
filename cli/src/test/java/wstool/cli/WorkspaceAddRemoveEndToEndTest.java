@@ -10,10 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.List;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -105,9 +105,9 @@ class WorkspaceAddRemoveEndToEndTest {
             statement.setString(1, name);
             statement.setString(2, version);
             try (var result = statement.executeQuery()) {
-            assertTrue(result.next(), "Package missing from workspace database: " + name);
-            assertEquals(cloned, result.getString("cloned"));
-            assertFalse(result.next(), "Duplicate package rows for " + name);
+                assertTrue(result.next(), "Package missing from workspace database: " + name);
+                assertEquals(cloned, result.getString("cloned"));
+                assertFalse(result.next(), "Duplicate package rows for " + name);
             }
         }
     }

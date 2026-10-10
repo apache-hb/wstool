@@ -13,13 +13,13 @@ storage {
 
 packages {
   new wstoolDistribution.SourceCode {
-    name = "npm-wstool"
+    name = "wstool-npm-import"
     version = "1.0.0"
     from = new wstoolDistribution.Archive {
-      name = "npm-wstool"
+      name = "wstool-npm-import"
       version = "1.0.0"
-      uri = read("env:WSTOOL_NPM_TOOL_PACKAGE_URI")
-      checksum = read("env:WSTOOL_NPM_TOOL_PACKAGE_CHECKSUM")
+      uri = read("env:WSTOOL_NPM_IMPORT_PACKAGE_URI")
+      checksum = read("env:WSTOOL_NPM_IMPORT_PACKAGE_CHECKSUM")
     }
     path = "."
   }

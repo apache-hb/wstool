@@ -13,6 +13,8 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import wstool.importer.ImportRoots;
+import wstool.importer.MajorVersion;
 import wstool.npm.importer.NpmDependencyResolver.ResolvedPackage;
 
 /** Creates a source archive and Pkl distribution entries for resolved npm packages. */
@@ -27,8 +29,9 @@ public class NpmPackageBundleWriter {
             throws Exception {
         Path tree = outputDirectory.resolve("package-tree");
         Path bundle = outputDirectory.resolve("wstool-npm-import.zip");
+        ImportRoots.resetGeneratedTree(outputDirectory, "package-tree");
         Files.createDirectories(tree);
-        for (ResolvedPackage pkg : resolved.packages().values()) {
+        for (ResolvedPackage pkg : groupedPackages(resolved).values()) {
             writePackage(pkg, tree, buildImage);
         }
         zip(tree, bundle);
@@ -43,8 +46,9 @@ public class NpmPackageBundleWriter {
 
     private void writePackage(ResolvedPackage pkg, Path root, String buildImage)
             throws IOException {
-        String wstoolName = NpmPackageName.encode(pkg.name());
-        Path directory = root.resolve("packages").resolve(wstoolName).resolve(pkg.version());
+        String wstoolName = NpmPackageName.wstoolName(pkg.name());
+        String versionLine = MajorVersion.line(pkg.version());
+        Path directory = root.resolve("packages").resolve(pkg.name()).resolve(versionLine);
         copyTree(pkg.directory(), directory.resolve("package"));
         json.writeValue(
                 directory.resolve("wstool-npm.json").toFile(),
@@ -52,17 +56,9 @@ public class NpmPackageBundleWriter {
                         "name", pkg.name(),
                         "wstoolName", wstoolName,
                         "version", pkg.version(),
+                        "wstoolVersion", versionLine,
                         "dependencies", pkg.dependencies()));
         Files.writeString(directory.resolve("wstool.pkl"), packageConfig(pkg, buildImage));
-        Path tool = directory.resolve("wstool/bin/npm-wstool");
-        Files.createDirectories(tool.getParent());
-        try (var resource = NpmPackageBundleWriter.class.getResourceAsStream("/npm-wstool")) {
-            if (resource == null) {
-                throw new IOException("Bundled npm-wstool build tool is missing.");
-            }
-            Files.copy(resource, tool);
-        }
-        tool.toFile().setExecutable(true);
     }
 
     private String packageConfig(ResolvedPackage pkg, String buildImage) {
@@ -70,9 +66,9 @@ public class NpmPackageBundleWriter {
                 new StringBuilder(
                                 "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl\"\n\n"
                                         + "package { name = \"")
-                        .append(NpmPackageName.encode(pkg.name()))
+                        .append(NpmPackageName.wstoolName(pkg.name()))
                         .append("\"; version = \"")
-                        .append(escape(pkg.version()))
+                        .append(escape(MajorVersion.line(pkg.version())))
                         .append("\" }\n\n")
                         .append("buildOptions {\n")
                         .append("  tool = \"npm-wstool\"\n")
@@ -88,12 +84,16 @@ public class NpmPackageBundleWriter {
                     .forEach(
                             dependency ->
                                     pkl.append("  [\"")
-                                            .append(NpmPackageName.encode(dependency.getKey()))
+                                            .append(NpmPackageName.wstoolName(dependency.getKey()))
                                             .append("\"] = \"")
-                                            .append(escape(dependency.getValue()))
+                                            .append(
+                                                    escape(
+                                                            MajorVersion.line(
+                                                                    dependency.getValue())))
                                             .append("\"\n"));
             pkl.append("}\n");
         }
+        pkl.append("\nbuildDependencies { [\"wstool-npm-import\"] = \"1.0.0\" }\n");
         return pkl.toString();
     }
 
@@ -104,7 +104,7 @@ public class NpmPackageBundleWriter {
                         "module wstool.importedNpmPackages\n\n"
                                 + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages {\n");
-        resolved.packages().values().stream()
+        groupedPackages(resolved).values().stream()
                 .sorted(
                         java.util.Comparator.comparing(ResolvedPackage::name)
                                 .thenComparing(ResolvedPackage::version))
@@ -112,13 +112,13 @@ public class NpmPackageBundleWriter {
                         pkg ->
                                 pkl.append("\nnew wstoolDistribution.SourceCode {\n")
                                         .append("  name = \"")
-                                        .append(NpmPackageName.encode(pkg.name()))
+                                        .append(NpmPackageName.wstoolName(pkg.name()))
                                         .append("\"\n")
                                         .append("  version = \"")
-                                        .append(escape(pkg.version()))
+                                        .append(escape(MajorVersion.line(pkg.version())))
                                         .append("\"\n")
                                         .append("  from = new wstoolDistribution.Archive {\n")
-                                        .append("    name = \"wstool-npm-import\"\n")
+                                        .append("    name = \"wstool-npm-package-sources\"\n")
                                         .append("    version = \"1.0.0\"\n")
                                         .append("    uri = \"")
                                         .append(escape(uri))
@@ -128,9 +128,9 @@ public class NpmPackageBundleWriter {
                                         .append("\"\n")
                                         .append("  }\n")
                                         .append("  path = \"packages/")
-                                        .append(NpmPackageName.encode(pkg.name()))
+                                        .append(pkg.name())
                                         .append("/")
-                                        .append(escape(pkg.version()))
+                                        .append(escape(MajorVersion.line(pkg.version())))
                                         .append("\"\n")
                                         .append("}\n"));
         pkl.append("}\n");
@@ -152,11 +152,23 @@ public class NpmPackageBundleWriter {
                 .forEach(
                         dependency ->
                                 pkl.append("  [\"")
-                                        .append(NpmPackageName.encode(dependency.getKey()))
+                                        .append(NpmPackageName.wstoolName(dependency.getKey()))
                                         .append("\"] = \"")
-                                        .append(escape(dependency.getValue()))
+                                        .append(escape(MajorVersion.line(dependency.getValue())))
                                         .append("\"\n"));
         pkl.append("}\n");
+    }
+
+    private Map<String, ResolvedPackage> groupedPackages(NpmDependencyResolver.Result resolved) {
+        java.util.TreeMap<String, ResolvedPackage> grouped = new java.util.TreeMap<>();
+        resolved.packages().values().stream()
+                .sorted(java.util.Comparator.comparing(ResolvedPackage::version))
+                .forEach(
+                        pkg ->
+                                grouped.put(
+                                        pkg.name() + "\u0000" + MajorVersion.line(pkg.version()),
+                                        pkg));
+        return grouped;
     }
 
     private String artifactUri(String baseUrl, Path bundle) {

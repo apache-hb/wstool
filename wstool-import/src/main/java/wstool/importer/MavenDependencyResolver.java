@@ -59,6 +59,10 @@ public class MavenDependencyResolver {
     }
 
     public Map<MavenCoordinate, ResolvedArtifact> resolve(MavenCoordinate root) throws Exception {
+        Path rootPom = resolveOptional(root, "", "pom");
+        if (rootPom != null && resolveOptional(root, "", "jar") == null) {
+            return resolveBom(root, rootPom);
+        }
         Artifact rootArtifact =
                 new DefaultArtifact(root.group(), root.artifact(), "", "jar", root.version());
         DependencyRequest request =
@@ -87,6 +91,52 @@ public class MavenDependencyResolver {
                             javadoc,
                             sources,
                             entry.getValue().dependencies()));
+        }
+        return resolved;
+    }
+
+    private Map<MavenCoordinate, ResolvedArtifact> resolveBom(MavenCoordinate bom, Path pom)
+            throws Exception {
+        LinkedHashMap<MavenCoordinate, ResolvedArtifact> resolved = new LinkedHashMap<>();
+        resolved.put(
+                bom,
+                new ResolvedArtifact(bom, null, pom, List.of(), null, null, new ArrayList<>()));
+        var factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        var project = factory.newDocumentBuilder().parse(pom.toFile()).getDocumentElement();
+        Map<String, String> properties = new HashMap<>();
+        var propertyElement = directChild(project, "properties");
+        if (propertyElement != null) {
+            var propertyNodes = propertyElement.getChildNodes();
+            for (int index = 0; index < propertyNodes.getLength(); index++) {
+                var property = propertyNodes.item(index);
+                if (property instanceof org.w3c.dom.Element element) {
+                    properties.put(element.getLocalName(), element.getTextContent().trim());
+                }
+            }
+        }
+        var management = directChild(project, "dependencyManagement");
+        var dependencies = management == null ? null : directChild(management, "dependencies");
+        if (dependencies == null) return resolved;
+        var nodes = dependencies.getChildNodes();
+        for (int index = 0; index < nodes.getLength(); index++) {
+            if (!(nodes.item(index) instanceof org.w3c.dom.Element dependency)
+                    || !"dependency".equals(dependency.getLocalName())) continue;
+            String version = expand(optionalChildText(dependency, "version"), properties);
+            String type = optionalChildText(dependency, "type");
+            if (version.isBlank()
+                    || "pom".equals(type)
+                    || "import".equals(optionalChildText(dependency, "scope"))) continue;
+            String group = expand(childText(dependency, "groupId"), properties);
+            String artifact = expand(childText(dependency, "artifactId"), properties);
+            if (group.contains("${") || artifact.contains("${") || version.contains("${")) continue;
+            MavenCoordinate coordinate = new MavenCoordinate(group, artifact, version);
+            Map<MavenCoordinate, ResolvedArtifact> artifacts = resolve(coordinate);
+            resolved.putAll(artifacts);
+            resolved.get(bom).dependencies().add(coordinate);
         }
         return resolved;
     }

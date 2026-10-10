@@ -47,11 +47,13 @@ public class MavenImportCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        List<String> allCoordinates =
+                ImportRoots.merge(ImportRoots.read(output, "maven-import-roots.json"), coordinates);
         Path cache =
                 localRepository == null
                         ? Path.of(System.getProperty("user.home"), ".m2", "repository")
                         : localRepository;
-        List<MavenCoordinate> roots = coordinates.stream().map(MavenCoordinate::parse).toList();
+        List<MavenCoordinate> roots = allCoordinates.stream().map(MavenCoordinate::parse).toList();
         var resolver = new MavenDependencyResolver(repository, cache);
         var allArtifacts =
                 new LinkedHashMap<MavenCoordinate, MavenDependencyResolver.ResolvedArtifact>();
@@ -59,6 +61,7 @@ public class MavenImportCommand implements Callable<Integer> {
             allArtifacts.putAll(resolver.resolve(root));
         }
         Path bundle = new PackageBundleWriter().write(allArtifacts, output, baseUrl, buildImage);
+        ImportRoots.write(output, "maven-import-roots.json", allCoordinates);
         System.out.println("Imported " + allArtifacts.size() + " Maven artifacts.");
         System.out.println("Source bundle: " + bundle.toAbsolutePath());
         System.out.println(
