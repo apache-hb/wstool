@@ -31,6 +31,7 @@ import org.testcontainers.utility.MountableFile;
 import picocli.CommandLine;
 import wstool.importer.CachedMavenProxy;
 import wstool.importer.Main;
+import wstool.npm.importer.CachedNpmProxy;
 
 /** Verifies imported Helidon artifacts and a REST application build offline through wstool. */
 @Testcontainers(disabledWithoutDocker = true)
@@ -40,6 +41,7 @@ class HelidonWstoolEndToEndTest {
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     private static final String BUCKET = "wstool-helidon-integration";
     private static final String BUILD_IMAGE = "wstool-helidon-integration:latest";
+    private static final String NPM_BUILD_IMAGE = "wstool-npm-integration:latest";
     private static final String HELIDON_COORDINATE = "io.helidon.webserver:helidon-webserver:4.5.4";
 
     @Container
@@ -64,6 +66,16 @@ class HelidonWstoolEndToEndTest {
         garageCommand("bucket", "create", BUCKET);
         garageCommand(
                 "bucket", "allow", "--read", "--write", "--owner", "--key", ACCESS_KEY, BUCKET);
+        garageCommand("bucket", "create", "wstool-npm-integration");
+        garageCommand(
+                "bucket",
+                "allow",
+                "--read",
+                "--write",
+                "--owner",
+                "--key",
+                ACCESS_KEY,
+                "wstool-npm-integration");
     }
 
     @Test
@@ -79,6 +91,7 @@ class HelidonWstoolEndToEndTest {
             int status =
                     new CommandLine(Main.class)
                             .execute(
+                                    "maven",
                                     "--output",
                                     imported.toString(),
                                     "--repository",
@@ -162,6 +175,86 @@ class HelidonWstoolEndToEndTest {
         assertTrue(
                 Files.isExecutable(application), "Gradle did not install the Helidon application");
         verifyRestApi(application);
+    }
+
+    @Test
+    void importsNpmPackagesAndBuildsProjectWithoutNpmRegistryAccess() throws Exception {
+        new ImageFromDockerfile(NPM_BUILD_IMAGE, false)
+                .withFileFromPath("Dockerfile", resourcePath("npm/Dockerfile"))
+                .get();
+
+        Path imported = tempDir.resolve("npm-import");
+        Path proxyCache = Path.of("build/integration-npm-registry-cache").toAbsolutePath();
+        try (var proxy = new CachedNpmProxy(proxyCache)) {
+            int status =
+                    new CommandLine(Main.class)
+                            .execute(
+                                    "npm",
+                                    "--output",
+                                    imported.toString(),
+                                    "--registry",
+                                    proxy.url(),
+                                    "--cache",
+                                    Path.of("build/integration-npm-local-cache")
+                                            .toAbsolutePath()
+                                            .toString(),
+                                    "--build-image",
+                                    NPM_BUILD_IMAGE,
+                                    "is-number@7.0.0");
+            assertEquals(0, status, "wstool-import npm failed to resolve package dependencies");
+        }
+
+        Path appRepository = tempDir.resolve("npm-project");
+        copyTree(resourcePath("npm/project"), appRepository);
+        Files.copy(
+                imported.resolve("npm-dependencies.pkl"),
+                appRepository.resolve("npm-dependencies.pkl"));
+        currentProjectRepository = appRepository;
+        initializeGitRepository(appRepository);
+
+        Path distribution = tempDir.resolve("npm-distribution");
+        Files.createDirectories(distribution);
+        Files.copy(imported.resolve("packages.pkl"), distribution.resolve("packages.pkl"));
+        Files.copy(resourcePath("npm/distribution/world.pkl"), distribution.resolve("world.pkl"));
+        initializeGitRepository(distribution);
+
+        Path workspaces = tempDir.resolve("npm-workspaces");
+        Files.createDirectories(workspaces);
+        runCli(workspaces, "workspace", "create", "--name", "npm-offline");
+        Path workspace = workspaces.resolve("npm-offline");
+        runCli(
+                workspace,
+                "workspace",
+                "setup",
+                "--distro",
+                "npm-offline-integration",
+                "--from",
+                distribution.toString(),
+                "--branch",
+                "main");
+        List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
+        List<ImportedPackage> npmPackages =
+                importedPackages(imported.resolve("package-tree/packages"));
+        for (ImportedPackage dependency : npmPackages) {
+            addArguments.add("--package");
+            addArguments.add(dependency.name());
+        }
+        addArguments.add("--package");
+        addArguments.add("npm-wstool");
+        addArguments.add("--package");
+        addArguments.add("npm-demo");
+        runCli(workspace, addArguments.toArray(String[]::new));
+
+        for (ImportedPackage dependency : npmPackages) {
+            runCli(workspace, "build", dependency.name() + "@" + dependency.version());
+        }
+        runCli(workspace, "build", "npm-wstool@1.0.0");
+        runCli(workspace, "build", "npm-demo@1.0.0");
+
+        Path builtProject =
+                workspace.resolve(
+                        "private/prefix/npm-demo/lib/node_modules/npm-demo/dist/result.txt");
+        assertEquals("true", Files.readString(builtProject));
     }
 
     private void verifyRestApi(Path application) throws Exception {
@@ -250,6 +343,16 @@ class HelidonWstoolEndToEndTest {
                         sha256(archivePath("WSTOOL_MAVEN_TOOL_PACKAGE")));
         builder.environment()
                 .put("WSTOOL_HELIDON_PROJECT_REPO", currentProjectRepository.toUri().toString());
+        builder.environment()
+                .put("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toUri().toString());
+        builder.environment()
+                .put(
+                        "WSTOOL_NPM_TOOL_PACKAGE_URI",
+                        archivePath("WSTOOL_NPM_TOOL_PACKAGE").toUri().toString());
+        builder.environment()
+                .put(
+                        "WSTOOL_NPM_TOOL_PACKAGE_CHECKSUM",
+                        sha256(archivePath("WSTOOL_NPM_TOOL_PACKAGE")));
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertEquals(

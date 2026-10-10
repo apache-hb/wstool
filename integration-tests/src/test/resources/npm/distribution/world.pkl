@@ -1,0 +1,31 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
+
+import "packages.pkl" as importedNpmPackages
+
+name = "npm-offline-integration"
+
+storage {
+  bucket = "wstool-npm-integration"
+  endpoint = read("env:AWS_S3_ENDPOINT")
+}
+
+packages {
+  new SourceCode {
+    name = "npm-wstool"
+    version = "1.0.0"
+    from = new Archive {
+      name = "npm-wstool"
+      version = "1.0.0"
+      uri = read("env:WSTOOL_NPM_TOOL_PACKAGE_URI")
+      checksum = read("env:WSTOOL_NPM_TOOL_PACKAGE_CHECKSUM")
+    }
+    path = "."
+  }
+  new GitRepository {
+    name = "npm-demo"
+    version = "1.0.0"
+    repo = read("env:WSTOOL_NPM_PROJECT_REPO")
+    branch = "main"
+  }
+  ...importedNpmPackages.packages
+}

@@ -27,8 +27,9 @@ tasks.test {
   val gradlePackage = project(":wstool-gradle-plugin").tasks.named<Zip>("packageGradle")
   val gradleRunnerPackage = project(":wstool-gradle-plugin").tasks.named<Zip>("packageWstoolGradle")
   val mavenToolPackage = project(":wstool-import").tasks.named<Zip>("packageMavenWstool")
+  val npmToolPackage = project(":wstool-import").tasks.named<Zip>("packageNpmWstool")
   dependsOn(cli.tasks.named("installDist"), cliPackage)
-  dependsOn(gradlePackage, gradleRunnerPackage, mavenToolPackage)
+  dependsOn(gradlePackage, gradleRunnerPackage, mavenToolPackage, npmToolPackage)
   environment("WSTOOL_CLI_ARCHIVE", cliPackage.get().archiveFile.get().asFile.toURI().toString())
   environment(
     "WSTOOL_CLI_LAUNCHER",
@@ -43,4 +44,5 @@ tasks.test {
     "WSTOOL_MAVEN_TOOL_PACKAGE",
     mavenToolPackage.get().archiveFile.get().asFile.absolutePath,
   )
+  environment("WSTOOL_NPM_TOOL_PACKAGE", npmToolPackage.get().archiveFile.get().asFile.absolutePath)
 }

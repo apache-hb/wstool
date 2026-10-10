@@ -67,6 +67,7 @@ class MavenDependencyResolverTest {
             int status =
                     new CommandLine(Main.class)
                             .execute(
+                                    "maven",
                                     "--output",
                                     cliOutput.toString(),
                                     "--repository",

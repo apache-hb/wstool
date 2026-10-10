@@ -1,0 +1,24 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
+import "npm-dependencies.pkl" as importedNpmDependencies
+
+package {
+  name = "npm-demo"
+  version = "1.0.0"
+}
+
+buildOptions {
+  tool = "npm-wstool"
+  dockerImage = "wstool-npm-integration:latest"
+  networkIsolation = "isolated"
+  sourceMount = "readonly"
+}
+
+buildDependencies {
+  ["npm-wstool"] = "1.0.0"
+  ...importedNpmDependencies.buildDependencies
+}
+
+dependencies {
+  ...importedNpmDependencies.dependencies
+}

@@ -1,0 +1,11 @@
+{
+  "name": "offline-npm-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "is-number": "7.0.0"
+  }
+}

@@ -23,6 +23,9 @@ case "$1" in
       if [ "$(readlink /usr/local/bin/wstool 2>/dev/null || true)" = /opt/wstool/bin/wstool ]; then
         rm -f /usr/local/bin/wstool
       fi
+      if [ "$(readlink /usr/local/bin/wstool-import 2>/dev/null || true)" = /opt/wstool/bin/wstool-import ]; then
+        rm -f /usr/local/bin/wstool-import
+      fi
     ;;
 
     *)

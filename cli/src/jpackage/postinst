@@ -25,6 +25,9 @@ case "$1" in
 if [ ! -e /usr/local/bin/wstool ] && [ ! -L /usr/local/bin/wstool ]; then
   ln -s /opt/wstool/bin/wstool /usr/local/bin/wstool
 fi
+if [ ! -e /usr/local/bin/wstool-import ] && [ ! -L /usr/local/bin/wstool-import ]; then
+  ln -s /opt/wstool/bin/wstool-import /usr/local/bin/wstool-import
+fi
 DESKTOP_COMMANDS_INSTALL
 LAUNCHER_AS_SERVICE_COMMANDS_INSTALL
     ;;

@@ -54,6 +54,7 @@ install -d -m 755 %{buildroot}APPLICATION_DIRECTORY
 cp -r %{_sourcedir}APPLICATION_DIRECTORY/* %{buildroot}APPLICATION_DIRECTORY
 install -d -m 755 %{buildroot}/usr/local/bin
 ln -s /opt/wstool/bin/wstool %{buildroot}/usr/local/bin/wstool
+ln -s /opt/wstool/bin/wstool-import %{buildroot}/usr/local/bin/wstool-import
 if [ "$(echo %{_sourcedir}/lib/systemd/system/*.service)" != '%{_sourcedir}/lib/systemd/system/*.service' ]; then
   install -d -m 755 %{buildroot}/lib/systemd/system
   cp %{_sourcedir}/lib/systemd/system/*.service %{buildroot}/lib/systemd/system

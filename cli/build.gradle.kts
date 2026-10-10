@@ -85,11 +85,38 @@ tasks.register<Zip>("packageCli") {
   destinationDirectory.set(layout.buildDirectory.dir("distributions"))
 }
 
+val packageInput = layout.buildDirectory.dir("jpackage-input")
+val stagePackageInput =
+  tasks.register<Sync>("stagePackageInput") {
+    dependsOn(tasks.named("installDist"), project(":wstool-import").tasks.named("installDist"))
+    from(layout.buildDirectory.dir("install/wstool/lib"))
+    from(project(":wstool-import").layout.buildDirectory.dir("install/wstool-import")) {
+      into("wstool-import")
+    }
+    into(packageInput)
+  }
+val importerLauncherProperties = layout.buildDirectory.file("jpackage/wstool-import.properties")
+val writeImporterLauncherProperties =
+  tasks.register("writeImporterLauncherProperties") {
+    val propertiesFile = importerLauncherProperties
+    outputs.file(propertiesFile)
+    doLast {
+      propertiesFile.get().asFile.apply {
+        parentFile.mkdirs()
+        writeText(
+          "main-jar=wstool-import/lib/wstool-import-${project.version}.jar\n" +
+            "main-class=wstool.importer.Main\n" +
+            "java-options=-Dwstool.version=${project.version}\n"
+        )
+      }
+    }
+  }
+
 fun registerJpackageTask(taskName: String, packageType: String) =
   tasks.register<Exec>(taskName) {
     group = "distribution"
     description = "Builds the Linux $packageType package using jpackage."
-    dependsOn(tasks.named("installDist"))
+    dependsOn(stagePackageInput, writeImporterLauncherProperties)
     val packageDirectory = layout.buildDirectory.dir("distributions")
     doFirst { packageDirectory.get().asFile.mkdirs() }
     commandLine(
@@ -101,13 +128,15 @@ fun registerJpackageTask(taskName: String, packageType: String) =
       "--app-version",
       project.version.toString(),
       "--input",
-      layout.buildDirectory.dir("install/wstool/lib").get().asFile.absolutePath,
+      packageInput.get().asFile.absolutePath,
       "--main-jar",
       tasks.jar.get().archiveFileName.get(),
       "--main-class",
       application.mainClass.get(),
       "--java-options",
       "-Dwstool.version=${project.version}",
+      "--add-launcher",
+      "wstool-import=${importerLauncherProperties.get().asFile.absolutePath}",
       "--dest",
       packageDirectory.get().asFile.absolutePath,
       "--resource-dir",

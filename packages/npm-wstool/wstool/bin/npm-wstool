@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+
+const source = required('WST_SRCDIR');
+const prefix = required('WST_PREFIX');
+const metadataFile = path.join(source, 'wstool-npm.json');
+
+if (fs.existsSync(metadataFile)) {
+  const metadata = readJson(metadataFile);
+  if (metadata.toolPackage) {
+    installBuildTool();
+  } else {
+    installImportedPackage(metadata);
+  }
+} else {
+  buildProject();
+}
+
+function installBuildTool() {
+  const destination = path.join(prefix, 'bin', 'npm-wstool');
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.copyFileSync(path.join(source, 'wstool', 'bin', 'npm-wstool'), destination);
+  fs.chmodSync(destination, 0o755);
+}
+
+function installImportedPackage(metadata) {
+  const destination = path.join(
+    prefix,
+    'share',
+    'wstool-npm',
+    'packages',
+    metadata.wstoolName,
+    metadata.version,
+  );
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.cpSync(source, destination, { recursive: true, dereference: true });
+}
+
+function buildProject() {
+  const work = path.join(required('WST_PRIVATE'), 'npm-project');
+  fs.rmSync(work, { recursive: true, force: true });
+  fs.mkdirSync(work, { recursive: true });
+  fs.cpSync(source, work, {
+    recursive: true,
+    dereference: true,
+    filter: (entry) => path.basename(entry) !== 'node_modules' && path.basename(entry) !== '.git',
+  });
+
+  const packagePrefixRoot = path.resolve(prefix, '..');
+  const packages = loadPackages(packagePrefixRoot);
+  const manifestPath = path.join(work, 'package.json');
+  const manifest = readJson(manifestPath);
+  const requested = {
+    ...(manifest.dependencies || {}),
+    ...(manifest.optionalDependencies || {}),
+    ...(manifest.devDependencies || {}),
+  };
+  for (const [name, range] of Object.entries(requested)) {
+    const dependency = selectPackage(packages, name, range);
+    if (!dependency) {
+      throw new Error(
+        `npm package ${name}@${range} is missing from the wstool sysroot; import it with wstool-import npm and declare it in wstool.pkl`,
+      );
+    }
+    installPackage(dependency, path.join(work, 'node_modules'), packages, new Set());
+  }
+
+  const npmEnvironment = {
+    ...process.env,
+    npm_config_offline: 'true',
+    npm_config_audit: 'false',
+    npm_config_fund: 'false',
+    npm_config_registry: 'http://127.0.0.1:9/',
+  };
+  const build = process.argv.slice(2).filter((argument) => argument !== 'release');
+  const task = build.length === 0 ? 'build' : build[0];
+  const taskArguments = build.length === 0 ? [] : build.slice(1);
+  const result = spawnSync(
+    'npm',
+    ['run', task, '--if-present', '--offline', '--no-audit', '--no-fund', '--', ...taskArguments],
+    { cwd: work, env: npmEnvironment, stdio: 'inherit' },
+  );
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status || 1);
+
+  const appName = manifest.name || path.basename(source);
+  const destination = path.join(prefix, 'lib', 'node_modules', appName);
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.cpSync(work, destination, { recursive: true, dereference: true });
+}
+
+function loadPackages(prefixRoot) {
+  const packages = [];
+  if (!fs.existsSync(prefixRoot)) return packages;
+  for (const packagePrefix of fs.readdirSync(prefixRoot)) {
+    const root = path.join(prefixRoot, packagePrefix, 'share', 'wstool-npm', 'packages');
+    if (!fs.existsSync(root)) continue;
+    for (const encodedName of fs.readdirSync(root)) {
+      const nameDirectory = path.join(root, encodedName);
+      if (!fs.statSync(nameDirectory).isDirectory()) continue;
+      for (const version of fs.readdirSync(nameDirectory)) {
+        const directory = path.join(nameDirectory, version);
+        const metadataPath = path.join(directory, 'wstool-npm.json');
+        if (!fs.existsSync(metadataPath)) continue;
+        packages.push({ ...readJson(metadataPath), directory });
+      }
+    }
+  }
+  return packages;
+}
+
+function installPackage(metadata, nodeModules, packages, active) {
+  const key = `${metadata.name}@${metadata.version}`;
+  const destination = path.join(nodeModules, ...metadata.name.split('/'));
+  if (!fs.existsSync(destination)) {
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.cpSync(path.join(metadata.directory, 'package'), destination, {
+      recursive: true,
+      dereference: true,
+    });
+  }
+  if (active.has(key)) return;
+  const next = new Set(active).add(key);
+  for (const [name, version] of Object.entries(metadata.dependencies || {})) {
+    const dependency = selectPackage(packages, name, version);
+    if (!dependency) {
+      throw new Error(`Imported package ${key} is missing dependency ${name}@${version}`);
+    }
+    installPackage(dependency, path.join(destination, 'node_modules'), packages, next);
+  }
+}
+
+function selectPackage(packages, name, range) {
+  const candidates = packages
+    .filter((candidate) => candidate.name === name && satisfies(candidate.version, range))
+    .sort((left, right) => compareVersions(right.version, left.version));
+  return candidates[0];
+}
+
+function satisfies(version, range) {
+  if (!range || range === '*' || range === 'latest') return true;
+  if (range.startsWith('^')) {
+    const lower = range.slice(1);
+    const [major] = numericVersion(lower);
+    const [candidateMajor] = numericVersion(version);
+    return candidateMajor === major && compareVersions(version, lower) >= 0;
+  }
+  if (range.startsWith('~')) {
+    const lower = range.slice(1);
+    const [major, minor] = numericVersion(lower);
+    const [candidateMajor, candidateMinor] = numericVersion(version);
+    return candidateMajor === major && candidateMinor === minor && compareVersions(version, lower) >= 0;
+  }
+  if (range.startsWith('>=')) return compareVersions(version, range.slice(2)) >= 0;
+  return version === range;
+}
+
+function compareVersions(left, right) {
+  const a = numericVersion(left);
+  const b = numericVersion(right);
+  for (let index = 0; index < 3; index++) {
+    if ((a[index] || 0) !== (b[index] || 0)) return (a[index] || 0) - (b[index] || 0);
+  }
+  return left.localeCompare(right);
+}
+
+function numericVersion(version) {
+  return version.replace(/^[^0-9]*/, '').split(/[.+-]/).slice(0, 3).map(Number);
+}
+
+function readJson(file) {
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+function required(name) {
+  if (!process.env[name]) throw new Error(`${name} is required`);
+  return process.env[name];
+}
+
