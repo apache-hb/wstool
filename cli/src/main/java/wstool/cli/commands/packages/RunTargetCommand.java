@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
+import wstool.cli.VersionProvider;
 import wstool.Package;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
@@ -18,7 +19,11 @@ import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
 import wstool.simple.model.PackageMajorVersion;
 
-@Command(name = "run", description = "Run a package build target.")
+@Command(
+        name = "run",
+        description = "Run a package build target.",
+        mixinStandardHelpOptions = true,
+        versionProvider = VersionProvider.class)
 public class RunTargetCommand implements Callable<Integer> {
     @Unmatched List<String> args = new ArrayList<>();
 

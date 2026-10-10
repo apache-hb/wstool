@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import wstool.cli.VersionProvider;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
@@ -14,8 +15,18 @@ import wstool.simple.WorkspaceHelper;
 import wstool.simple.workspace.AddPackageToWorkspaceInput;
 import wstool.simple.workspace.ImmutableAddPackageToWorkspaceInput;
 
-@Command(name = "add", aliases = "clone", description = "Add a package to the workspace.")
+@Command(
+        name = "add",
+        aliases = "clone",
+        description = "Add a package to the workspace.",
+        versionProvider = VersionProvider.class)
 public class AddPackageCommand implements Callable<Integer> {
+    @Option(names = {"-h", "--help"}, usageHelp = true)
+    boolean helpRequested;
+
+    @Option(names = "-V", versionHelp = true)
+    boolean versionRequested;
+
     @Option(
             names = {"--package", "-p"},
             required = true)

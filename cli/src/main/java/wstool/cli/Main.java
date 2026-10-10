@@ -10,6 +10,8 @@ import wstool.cli.commands.workspace.WorkspaceCommand;
 @Command(
         name = "wstool",
         description = "Manage workspaces and packages.",
+        mixinStandardHelpOptions = true,
+        versionProvider = VersionProvider.class,
         subcommands = {
             WorkspaceCommand.class,
             PackageCommand.class,

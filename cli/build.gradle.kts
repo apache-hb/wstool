@@ -36,6 +36,23 @@ application {
   mainClass = "wstool.cli.Main"
 }
 
+tasks.jar {
+  manifest {
+    attributes(
+      mapOf(
+        "Class-Path" to configurations.runtimeClasspath.get().files
+          .filterNot { it.name == archiveFileName.get() }
+          .joinToString(" ") { it.name },
+        "Implementation-Version" to project.version.toString()
+      )
+    )
+  }
+}
+
+tasks.named<JavaExec>("run") {
+  systemProperty("wstool.version", project.version.toString())
+}
+
 tasks.test {
   useJUnitPlatform()
   val cliPackage = tasks.named<Zip>("packageCli")
@@ -52,6 +69,39 @@ tasks.register<Zip>("packageCli") {
   archiveBaseName.set("wstool-cli")
   archiveVersion.set(project.version.toString())
   destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+}
+
+fun registerJpackageTask(taskName: String, packageType: String) =
+  tasks.register<Exec>(taskName) {
+    group = "distribution"
+    description = "Builds the Linux $packageType package using jpackage."
+    dependsOn(tasks.named("installDist"))
+    val packageDirectory = layout.buildDirectory.dir("distributions")
+    doFirst { packageDirectory.get().asFile.mkdirs() }
+    commandLine(
+      file("${System.getProperty("java.home")}/bin/jpackage"),
+      "--type", packageType,
+      "--name", "wstool",
+      "--app-version", project.version.toString(),
+      "--input", layout.buildDirectory.dir("install/wstool/lib").get().asFile.absolutePath,
+      "--main-jar", tasks.jar.get().archiveFileName.get(),
+      "--main-class", application.mainClass.get(),
+      "--java-options", "-Dwstool.version=${project.version}",
+      "--dest", packageDirectory.get().asFile.absolutePath,
+      "--resource-dir", layout.projectDirectory.dir("src/jpackage").asFile.absolutePath,
+      "--linux-package-name", "wstool",
+      "--linux-app-release", "1",
+      "--linux-menu-group", "Development"
+    )
+  }
+
+registerJpackageTask("packageDeb", "deb")
+registerJpackageTask("packageRpm", "rpm")
+
+tasks.register("packageLinux") {
+  group = "distribution"
+  description = "Builds both Debian and RPM packages using jpackage."
+  dependsOn("packageDeb", "packageRpm")
 }
 
 tasks.named("assemble") { dependsOn(tasks.named("packageCli")) }

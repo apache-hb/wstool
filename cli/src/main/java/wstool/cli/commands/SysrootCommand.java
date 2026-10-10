@@ -5,6 +5,7 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import wstool.cli.VersionProvider;
 import wstool.Package;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
@@ -15,7 +16,11 @@ import wstool.simple.SysrootManager;
 import wstool.simple.SysrootManager.SysrootTarget;
 import wstool.simple.WorkspaceHelper;
 
-@Command(name = "sysroot", description = "Create a sysroot from workspace package artifacts.")
+@Command(
+        name = "sysroot",
+        description = "Create a sysroot from workspace package artifacts.",
+        mixinStandardHelpOptions = true,
+        versionProvider = VersionProvider.class)
 public class SysrootCommand implements Callable<Integer> {
     @Parameters(index = "0", description = "Selector, optionally prefixed by package@version/")
     private String selector;

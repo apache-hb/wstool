@@ -117,3 +117,21 @@ runtime dependencies at `cli/build/distributions/wstool-cli-<version>.zip`. Add 
 distribution as an `Archive` package, including its SHA-256 checksum. Packages whose build tools
 call `wstool` inside a build container should declare `wstool-cli` in `buildDependencies`. The
 container build adds every build dependency's `bin` directory to `PATH`.
+### Installing wstool globally
+
+Build native Linux packages with JDK 25's `jpackage`:
+
+```sh
+./gradlew :cli:packageLinux
+```
+
+This creates a Debian package (`wstool_<version>-1_amd64.deb`) and an RPM package (`wstool-<version>-1.x86_64.rpm`) under `cli/build/distributions`. The packages install a `wstool` command globally and bundle the Java runtime. Building requires `jpackage`, `dpkg-deb`, and `rpmbuild`; to build one format, use `:cli:packageDeb` or `:cli:packageRpm`.
+
+Install the package for your distribution:
+
+```sh
+sudo apt install ./cli/build/distributions/wstool_0.1.0-1_amd64.deb
+sudo dnf install ./cli/build/distributions/wstool-0.1.0-1.x86_64.rpm
+```
+
+The installed command is available from any project directory, for example `wstool workspace create --name MyWorkspace`.

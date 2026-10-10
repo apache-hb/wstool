@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
+import wstool.cli.VersionProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -23,7 +24,11 @@ import wstool.simple.WorkspaceHelper;
 import wstool.simple.container.ImmutableRunContainerBuildInput;
 import wstool.simple.model.PackageMajorVersion;
 
-@Command(name = "build", description = "Build a workspace package in a container.")
+@Command(
+        name = "build",
+        description = "Build a workspace package in a container.",
+        mixinStandardHelpOptions = true,
+        versionProvider = VersionProvider.class)
 public class BuildCommand implements Callable<Integer> {
     @Parameters(index = "0", paramLabel = "target", description = "Package name or name@version.")
     private String target;

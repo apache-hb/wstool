@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import wstool.cli.VersionProvider;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
@@ -12,7 +13,11 @@ import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
 
-@Command(name = "setup", description = "Set the distribution for this workspace.")
+@Command(
+        name = "setup",
+        description = "Set the distribution for this workspace.",
+        mixinStandardHelpOptions = true,
+        versionProvider = VersionProvider.class)
 public class SetupWorkspaceCommand implements Callable<Integer> {
     @Option(names = "--distro", required = true, description = "Distribution name.")
     private String distroName;

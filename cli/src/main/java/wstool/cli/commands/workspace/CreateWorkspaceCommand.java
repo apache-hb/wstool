@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import wstool.cli.VersionProvider;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
@@ -14,7 +15,11 @@ import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
 import wstool.simple.workspace.ImmutableCreateWorkspaceInput;
 
-@Command(name = "create", description = "Create a workspace.")
+@Command(
+        name = "create",
+        description = "Create a workspace.",
+        mixinStandardHelpOptions = true,
+        versionProvider = VersionProvider.class)
 public class CreateWorkspaceCommand implements Callable<Integer> {
     @Option(
             names = {"--name"},
