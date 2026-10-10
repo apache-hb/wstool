@@ -117,6 +117,16 @@ runtime dependencies at `cli/build/distributions/wstool-cli-<version>.zip`. Add 
 distribution as an `Archive` package, including its SHA-256 checksum. Packages whose build tools
 call `wstool` inside a build container should declare `wstool-cli` in `buildDependencies`. The
 container build adds every build dependency's `bin` directory to `PATH`.
+
+## TODO
+
+* Build and distribution revisions for checking out specific versions of builds
+* Getting java build tools integrated, i.e. gradle and maven using dependencies from inside the distribution rather than downloaded from mavencentral
+    * also pkl
+    * also npm
+* get ides working with the semi-sandboxed packages
+* maven auto-import tool to add maven packages as jars
+
 ### Installing wstool globally
 
 Build native Linux packages with JDK 25's `jpackage`:
@@ -159,3 +169,35 @@ Both tasks produce a ZIP, SHA-256 file, and Pkl package entry under their module
 For a Gradle project, set `buildOptions.tool = "wstool-gradle"`, add `wstool-gradle` and the required imported Maven packages to `buildDependencies`, and use a JDK-enabled build image. The bundled Gradle plugin rewrites project and plugin dependency repositories to the wstool-provided Maven repository.
 
 Gradle is distributed separately from `wstool-gradle`. Build its package with `./gradlew :wstool-gradle-plugin:packageGradle` and add the generated `gradle` package entry to the distribution. The `wstool-gradle` package depends on that package and contains only the runner, init script, and repository plugin.
+
+### Importing npm packages
+
+The `wstool-import` command provides Maven and npm subcommands. Import npm dependencies and their transitive packages with:
+
+```sh
+wstool-import npm --output imported-npm --base-url https://packages.example.com/npm \
+  is-number@7.0.0
+```
+
+The importer uses npm's registry and local cache while resolving packages. It writes a source bundle, `packages.pkl`, and `npm-dependencies.pkl`. Publish the bundle at the supplied base URL and add the generated package entries to the distribution. Import Maven artifacts with `wstool-import maven --output imported-maven GROUP:ARTIFACT:VERSION`.
+
+Add the generated dependency mappings and the `npm-wstool` package to a project. The generated `dependencies` mapping records runtime packages; `buildDependencies` makes those packages available while the build runs:
+
+```pkl
+import "npm-dependencies.pkl" as importedNpmDependencies
+
+buildDependencies {
+  ["npm-wstool"] = "1.0.0"
+  ...importedNpmDependencies.buildDependencies
+}
+
+dependencies {
+  ...importedNpmDependencies.dependencies
+}
+```
+
+Build `npm-wstool` with `./gradlew :wstool-import:packageNpmWstool` and add its generated package entry to the distribution. It assembles `node_modules` from wstool package prefixes and runs the project build with network isolation, so project builds do not contact npm.
+
+### Creating a release
+
+Push a version tag such as `v1.2.3` to create a GitHub release. The release workflow builds the `wstool-cli`, `maven-wstool`, `npm-wstool`, `gradle`, and `wstool-gradle` archives, plus Debian and RPM installers for wstool. The archive files and their SHA-256 checksums are attached to the release. The `wstool-cli` archive is the wstool runtime for use in build environments; install the Debian or RPM package to add the `wstool` and `wstool-import` commands locally.
