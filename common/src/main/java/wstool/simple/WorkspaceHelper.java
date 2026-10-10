@@ -116,12 +116,20 @@ public class WorkspaceHelper {
         git.clone(clone);
     }
 
-    public Distribution refreshDistribution(Path workspace) {
+    public Distribution refreshDistribution(Path workspace) throws Exception {
         if (!Files.exists(workspaceConfig(workspace))) {
             throw new IllegalArgumentException("Not a workspace: " + workspace);
         }
 
-        return distribution.getDistributionConfig(workspaceDistributionConfig(workspace));
+        Distribution config =
+                distribution.getDistributionConfig(workspaceDistributionConfig(workspace));
+        storage.refreshDistributionPackages(
+                workspaceConfig(workspace),
+                workspace,
+                config.getPackages().stream()
+                        .map(pkg -> new PackageMajorVersion(pkg.getName(), pkg.getVersion()))
+                        .toList());
+        return config;
     }
 
     public void addPackageToWorkspace(AddPackageToWorkspaceInput input) throws Exception {
@@ -180,7 +188,16 @@ public class WorkspaceHelper {
     }
 
     public List<LocalPackage> artifactPackages(Path workspace) {
-        return packages(workspace, false);
+        Path packageCatalog =
+                workspace.resolve("private/cache/package-catalog").toAbsolutePath().normalize();
+        return packages(workspace, false).stream()
+                .filter(
+                        pkg ->
+                                !pkg.source()
+                                        .toAbsolutePath()
+                                        .normalize()
+                                        .startsWith(packageCatalog))
+                .toList();
     }
 
     private List<LocalPackage> packages(Path workspace, boolean cloned) {

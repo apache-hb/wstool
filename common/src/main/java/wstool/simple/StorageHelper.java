@@ -43,4 +43,12 @@ public class StorageHelper {
             return connection.removeClonedPackages(name);
         }
     }
+
+    public void refreshDistributionPackages(
+            Path path, Path workspace, List<PackageMajorVersion> distributionPackages)
+            throws Exception {
+        try (var connection = new WorkspaceStorage(path)) {
+            connection.replaceDistributionPackages(workspace, distributionPackages);
+        }
+    }
 }

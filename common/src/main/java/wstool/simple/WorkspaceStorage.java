@@ -1,5 +1,6 @@
 package wstool.simple;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -84,6 +85,19 @@ public class WorkspaceStorage implements AutoCloseable {
             ORDER BY name, version
             """;
 
+    private static final String REMOVE_DISTRIBUTION_PACKAGES =
+            """
+            DELETE FROM packages
+            WHERE cloned = '0' AND substr(source, 1, length(?)) = ?
+            """;
+
+    private static final String INSERT_DISTRIBUTION_PACKAGE =
+            """
+            INSERT INTO packages (name, version, source, prefix, build, cloned)
+            VALUES (?, ?, ?, ?, ?, '0')
+            ON CONFLICT (name, version) DO NOTHING
+            """;
+
     private static final String GET_CLONED_PACKAGE_VERSIONS =
             """
             SELECT version
@@ -154,6 +168,46 @@ public class WorkspaceStorage implements AutoCloseable {
             statement.execute(CREATE_WORKSPACE_TABLE);
             statement.execute(CREATE_PACKAGES_TABLE);
             statement.execute(CREATE_DEPENDENCIES_TABLE);
+        }
+    }
+
+    public void replaceDistributionPackages(Path workspace, List<PackageMajorVersion> packages)
+            throws Exception {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            Path packageSourceCache =
+                    workspace.resolve("private/cache/package-catalog").toAbsolutePath().normalize();
+            String sourcePrefix = packageSourceCache + File.separator;
+            try (var delete = connection.prepareStatement(REMOVE_DISTRIBUTION_PACKAGES)) {
+                delete.setString(1, sourcePrefix);
+                delete.setString(2, sourcePrefix);
+                delete.executeUpdate();
+            }
+            try (var insert = connection.prepareStatement(INSERT_DISTRIBUTION_PACKAGE)) {
+                for (PackageMajorVersion pkg : packages) {
+                    insert.setString(1, pkg.name());
+                    insert.setString(2, pkg.version());
+                    insert.setString(
+                            3,
+                            packageSourceCache
+                                    .resolve(pkg.name())
+                                    .resolve(pkg.version())
+                                    .toString());
+                    insert.setString(
+                            4, workspace.resolve("private/prefix").resolve(pkg.name()).toString());
+                    insert.setString(
+                            5, workspace.resolve("private/build").resolve(pkg.name()).toString());
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+            }
+            connection.commit();
+        } catch (Exception e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
         }
     }
 

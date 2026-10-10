@@ -1,0 +1,22 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
+
+name = "workspace-add-remove-test"
+
+storage {
+  bucket = "unused-test-bucket"
+}
+
+packages {
+  new GitRepository {
+    name = "sample"
+    version = "1.0.0"
+    repo = read("env:PACKAGE_REPOSITORY")
+    branch = "main"
+  }
+  new GitRepository {
+    name = "catalog-only"
+    version = "2.0.0"
+    repo = read("env:PACKAGE_REPOSITORY")
+    branch = "main"
+  }
+}
