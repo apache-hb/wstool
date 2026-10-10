@@ -2,6 +2,8 @@
 
 A polyrepo workspace management tool.
 
+This is still quite experimental, and a fair bit is quite sloppy ai code. This is more of a proof of concept than something you should or that I am proud of.
+
 ## prerequesites
 
 * An s3 compatible storage service
