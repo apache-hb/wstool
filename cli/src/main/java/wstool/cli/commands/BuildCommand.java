@@ -5,12 +5,12 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
-import wstool.cli.VersionProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import wstool.Distribution;
+import wstool.cli.VersionProvider;
 import wstool.simple.ArchiveHelper;
 import wstool.simple.CacheHelper;
 import wstool.simple.ContainerBuildHelper;
@@ -50,7 +50,7 @@ public class BuildCommand implements Callable<Integer> {
             var builder =
                     S3Client.builder()
                             .region(region)
-                            .credentialsProvider(DefaultCredentialsProvider.create());
+                            .credentialsProvider(DefaultCredentialsProvider.builder().build());
             if (endpoint != null) {
                 builder.endpointOverride(endpoint)
                         .serviceConfiguration(

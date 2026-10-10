@@ -1,0 +1,4 @@
+plugins { id 'java' }
+repositories { mavenCentral() }
+dependencies { implementation 'test:local-artifact:1.0.0' }
+buildDir = file("${System.getenv('WST_PREFIX')}/gradle-build")

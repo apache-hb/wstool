@@ -135,3 +135,27 @@ sudo dnf install ./cli/build/distributions/wstool-0.1.0-1.x86_64.rpm
 ```
 
 The installed command is available from any project directory, for example `wstool workspace create --name MyWorkspace`.
+
+### Building Gradle projects with wstool packages
+
+The `wstool-import` CLI imports Maven artifacts and their transitive compile/runtime dependencies into a wstool package bundle. Build the importer with `./gradlew :wstool-import:installDist`, then run:
+
+```sh
+wstool-import --output imported-maven --base-url https://packages.example.com/maven \
+  org.example:library:1.2.3
+```
+
+This writes a source bundle ZIP and `packages.pkl` entries. Publish the ZIP at the supplied base URL and add the generated entries to the distribution's package configuration. Each imported artifact is represented as a source package that builds from the bundled Maven repository.
+
+Build the shared Maven support package and Gradle runner with:
+
+```sh
+./gradlew :wstool-import:packageMavenWstool
+./gradlew :wstool-gradle-plugin:packageWstoolGradle
+```
+
+Both tasks produce a ZIP, SHA-256 file, and Pkl package entry under their module's `build/distributions` directory. Add the packages to the distribution using those generated entries. `maven-wstool` stages imported JARs and Javadocs in build outputs. `wstool-gradle` bundles Gradle and its repository plugin, and runs Gradle offline against the Maven repository provided by wstool.
+
+For a Gradle project, set `buildOptions.tool = "wstool-gradle"`, add `wstool-gradle` and the required imported Maven packages to `buildDependencies`, and use a JDK-enabled build image. The bundled Gradle plugin rewrites project and plugin dependency repositories to the wstool-provided Maven repository.
+
+Gradle is distributed separately from `wstool-gradle`. Build its package with `./gradlew :wstool-gradle-plugin:packageGradle` and add the generated `gradle` package entry to the distribution. The `wstool-gradle` package depends on that package and contains only the runner, init script, and repository plugin.

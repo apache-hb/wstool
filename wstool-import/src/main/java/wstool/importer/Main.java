@@ -1,0 +1,75 @@
+package wstool.importer;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
+
+@Command(
+        name = "wstool-import",
+        description =
+                "Import Maven artifacts and their compile/runtime dependencies into wstool packages.",
+        mixinStandardHelpOptions = true,
+        versionProvider = ImporterVersionProvider.class)
+public class Main implements Callable<Integer> {
+    @Option(
+            names = {"--output", "-o"},
+            required = true,
+            description = "Output directory for the source bundle and generated Pkl entries.")
+    private Path output;
+
+    @Option(
+            names = "--repository",
+            defaultValue = "https://repo.maven.apache.org/maven2",
+            description = "Maven repository URL.")
+    private String repository;
+
+    @Option(
+            names = "--local-repository",
+            description = "Resolver cache directory (defaults to ~/.m2/repository).")
+    private Path localRepository;
+
+    @Option(
+            names = "--base-url",
+            description = "Public URL prefix where the generated ZIP will be hosted.")
+    private String baseUrl;
+
+    @Option(
+            names = "--build-image",
+            defaultValue = "ubuntu:24.04",
+            description = "Container image used to build imported packages.")
+    private String buildImage;
+
+    @Parameters(arity = "1..*", paramLabel = "GROUP:ARTIFACT:VERSION")
+    private List<String> coordinates = new ArrayList<>();
+
+    public static void main(String[] args) {
+        System.exit(new CommandLine(Main.class).execute(args));
+    }
+
+    @Override
+    public Integer call() throws Exception {
+        Path cache =
+                localRepository == null
+                        ? Path.of(System.getProperty("user.home"), ".m2", "repository")
+                        : localRepository;
+        List<MavenCoordinate> roots = coordinates.stream().map(MavenCoordinate::parse).toList();
+        var resolver = new MavenDependencyResolver(repository, cache);
+        var allArtifacts =
+                new java.util.LinkedHashMap<
+                        MavenCoordinate, MavenDependencyResolver.ResolvedArtifact>();
+        for (MavenCoordinate root : roots) {
+            allArtifacts.putAll(resolver.resolve(root));
+        }
+        Path bundle = new PackageBundleWriter().write(allArtifacts, output, baseUrl, buildImage);
+        System.out.println("Imported " + allArtifacts.size() + " Maven artifacts.");
+        System.out.println("Source bundle: " + bundle.toAbsolutePath());
+        System.out.println(
+                "Distribution entries: " + output.resolve("packages.pkl").toAbsolutePath());
+        return 0;
+    }
+}

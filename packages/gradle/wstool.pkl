@@ -1,0 +1,10 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
+package {
+  name = "gradle"
+  version = "9.7.1"
+}
+
+buildOptions {
+  tool = "system"
+}

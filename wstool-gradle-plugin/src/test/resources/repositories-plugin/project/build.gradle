@@ -1,0 +1,13 @@
+repositories { mavenCentral() }
+configurations { smoke }
+dependencies { smoke 'test:local-artifact:1.0' }
+tasks.register('verifyLocalArtifact') {
+    doLast {
+        if (repositories.size() != 1 || repositories.first().name != 'wstool') {
+            throw new GradleException('Remote repositories were not replaced')
+        }
+        def artifact = configurations.smoke.singleFile
+        if (!artifact.name.endsWith('.jar')) throw new GradleException('Missing local jar')
+        println "WSTOOL_LOCAL_ARTIFACT=${artifact.name}"
+    }
+}

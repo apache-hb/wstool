@@ -1,0 +1,22 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"
+
+package {
+  name = "helidon-rest"
+  version = "1.0.0"
+}
+
+buildOptions {
+  tool = "wstool-gradle"
+  dockerImage = read("env:WST_BUILD_IMAGE")
+  networkIsolation = "isolated"
+  sourceMount = "readonly"
+}
+
+buildDependencies {
+  ["wstool-gradle"] = "1.0.0"
+  ["io_helidon_webserver_helidon-webserver"] = "4.5.4"
+}
+
+dependencies {
+  ["io_helidon_webserver_helidon-webserver"] = "4.5.4"
+}

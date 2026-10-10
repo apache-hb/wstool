@@ -1,0 +1,56 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
+
+name = "gradle-e2e"
+
+storage {
+  bucket = "wstool-gradle-e2e"
+  endpoint = read("env:AWS_S3_ENDPOINT")
+}
+
+local cliArchive = read("env:WSTOOL_CLI_ARCHIVE")
+local cliChecksum = read("env:WSTOOL_CLI_CHECKSUM")
+local gradleArchive = read("env:WSTOOL_GRADLE_PACKAGE_URI")
+local gradleChecksum = read("env:WSTOOL_GRADLE_PACKAGE_CHECKSUM")
+local gradleRunnerArchive = read("env:WSTOOL_GRADLE_RUNNER_PACKAGE_URI")
+local gradleRunnerChecksum = read("env:WSTOOL_GRADLE_RUNNER_PACKAGE_CHECKSUM")
+local mavenToolArchive = read("env:WSTOOL_MAVEN_TOOL_PACKAGE_URI")
+local mavenToolChecksum = read("env:WSTOOL_MAVEN_TOOL_PACKAGE_CHECKSUM")
+
+packages {
+  new Archive {
+    name = "wstool-cli"
+    version = "0.1.0"
+    uri = cliArchive
+    checksum = cliChecksum
+  }
+  new Archive {
+    name = "gradle"
+    version = "9.7.1"
+    uri = gradleArchive
+    checksum = gradleChecksum
+  }
+  new Archive {
+    name = "wstool-gradle"
+    version = "1.0.0"
+    uri = gradleRunnerArchive
+    checksum = gradleRunnerChecksum
+  }
+  new Archive {
+    name = "maven-wstool"
+    version = "1.0.0"
+    uri = mavenToolArchive
+    checksum = mavenToolChecksum
+  }
+  new GitRepository {
+    name = "local-artifact"
+    version = "1.0.0"
+    repo = read("env:WSTOOL_GRADLE_E2E_ARTIFACT_REPO")
+    branch = "main"
+  }
+  new GitRepository {
+    name = "gradle-smoke"
+    version = "1.0.0"
+    repo = read("env:WSTOOL_GRADLE_E2E_PROJECT_REPO")
+    branch = "main"
+  }
+}

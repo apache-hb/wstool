@@ -18,6 +18,7 @@ import wstool.Distribution;
 import wstool.Distribution.Archive;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
+import wstool.Distribution.SourceCode;
 import wstool.Package;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitCloneInput;
@@ -300,6 +301,20 @@ public class DependencyResolver {
                         "Package configuration not found in archive for " + requested);
             }
             LocalPackage resolved = new LocalPackage(requested, metadataSource, metadataSource);
+            packages.put(requested, resolved);
+            return resolved;
+        }
+        if (source instanceof SourceCode nested) {
+            Path metadataSource = new PackageSourceHelper().materialize(nested, workspaceRoot, git);
+            if (!Files.isRegularFile(metadataSource.resolve(CONFIG_FILE))) {
+                throw new IOException(
+                        "Package configuration not found in source bundle for " + requested);
+            }
+            LocalPackage resolved =
+                    new LocalPackage(
+                            requested,
+                            metadataSource,
+                            workspaceRoot.resolve("private/prefix").resolve(requested.name()));
             packages.put(requested, resolved);
             return resolved;
         }

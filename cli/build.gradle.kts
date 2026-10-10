@@ -40,24 +40,38 @@ tasks.jar {
   manifest {
     attributes(
       mapOf(
-        "Class-Path" to configurations.runtimeClasspath.get().files
-          .filterNot { it.name == archiveFileName.get() }
-          .joinToString(" ") { it.name },
-        "Implementation-Version" to project.version.toString()
+        "Class-Path" to
+          configurations.runtimeClasspath
+            .get()
+            .files
+            .filterNot { it.name == archiveFileName.get() }
+            .joinToString(" ") { it.name },
+        "Implementation-Version" to project.version.toString(),
       )
     )
   }
 }
 
-tasks.named<JavaExec>("run") {
-  systemProperty("wstool.version", project.version.toString())
-}
+tasks.named<JavaExec>("run") { systemProperty("wstool.version", project.version.toString()) }
 
 tasks.test {
   useJUnitPlatform()
   val cliPackage = tasks.named<Zip>("packageCli")
+  val gradlePackage = project(":wstool-gradle-plugin").tasks.named<Zip>("packageGradle")
+  val gradleRunnerPackage = project(":wstool-gradle-plugin").tasks.named<Zip>("packageWstoolGradle")
+  val mavenToolPackage = project(":wstool-import").tasks.named<Zip>("packageMavenWstool")
   dependsOn(cliPackage)
+  dependsOn(gradlePackage, gradleRunnerPackage, mavenToolPackage)
   environment("WSTOOL_CLI_ARCHIVE", cliPackage.get().archiveFile.get().asFile.toURI().toString())
+  environment("WSTOOL_GRADLE_PACKAGE", gradlePackage.get().archiveFile.get().asFile.absolutePath)
+  environment(
+    "WSTOOL_GRADLE_RUNNER_PACKAGE",
+    gradleRunnerPackage.get().archiveFile.get().asFile.absolutePath,
+  )
+  environment(
+    "WSTOOL_MAVEN_TOOL_PACKAGE",
+    mavenToolPackage.get().archiveFile.get().asFile.absolutePath,
+  )
 }
 
 tasks.register<Zip>("packageCli") {
@@ -80,22 +94,35 @@ fun registerJpackageTask(taskName: String, packageType: String) =
     doFirst { packageDirectory.get().asFile.mkdirs() }
     commandLine(
       file("${System.getProperty("java.home")}/bin/jpackage"),
-      "--type", packageType,
-      "--name", "wstool",
-      "--app-version", project.version.toString(),
-      "--input", layout.buildDirectory.dir("install/wstool/lib").get().asFile.absolutePath,
-      "--main-jar", tasks.jar.get().archiveFileName.get(),
-      "--main-class", application.mainClass.get(),
-      "--java-options", "-Dwstool.version=${project.version}",
-      "--dest", packageDirectory.get().asFile.absolutePath,
-      "--resource-dir", layout.projectDirectory.dir("src/jpackage").asFile.absolutePath,
-      "--linux-package-name", "wstool",
-      "--linux-app-release", "1",
-      "--linux-menu-group", "Development"
+      "--type",
+      packageType,
+      "--name",
+      "wstool",
+      "--app-version",
+      project.version.toString(),
+      "--input",
+      layout.buildDirectory.dir("install/wstool/lib").get().asFile.absolutePath,
+      "--main-jar",
+      tasks.jar.get().archiveFileName.get(),
+      "--main-class",
+      application.mainClass.get(),
+      "--java-options",
+      "-Dwstool.version=${project.version}",
+      "--dest",
+      packageDirectory.get().asFile.absolutePath,
+      "--resource-dir",
+      layout.projectDirectory.dir("src/jpackage").asFile.absolutePath,
+      "--linux-package-name",
+      "wstool",
+      "--linux-app-release",
+      "1",
+      "--linux-menu-group",
+      "Development",
     )
   }
 
 registerJpackageTask("packageDeb", "deb")
+
 registerJpackageTask("packageRpm", "rpm")
 
 tasks.register("packageLinux") {

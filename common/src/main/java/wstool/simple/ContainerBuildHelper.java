@@ -84,8 +84,17 @@ public class ContainerBuildHelper {
             String tool = config.getBuildOptions().getTool();
             Path localTool = packageRoot.resolve("wstool/bin").resolve(tool);
             if (!Files.isExecutable(localTool)) {
+                localTool =
+                        buildPackages.stream()
+                                .map(dependency -> dependency.prefix().resolve("bin").resolve(tool))
+                                .filter(Files::isExecutable)
+                                .findFirst()
+                                .orElse(localTool);
+            }
+            if (!Files.isExecutable(localTool)) {
                 throw new IllegalStateException(
-                        "Build tool is missing or not executable: " + localTool);
+                        "Build tool is missing from the package source and build dependencies: "
+                                + tool);
             }
 
             List<String> command = new ArrayList<>(List.of("docker", "run", "--rm"));

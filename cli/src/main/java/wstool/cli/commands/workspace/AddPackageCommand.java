@@ -21,7 +21,9 @@ import wstool.simple.workspace.ImmutableAddPackageToWorkspaceInput;
         description = "Add a package to the workspace.",
         versionProvider = VersionProvider.class)
 public class AddPackageCommand implements Callable<Integer> {
-    @Option(names = {"-h", "--help"}, usageHelp = true)
+    @Option(
+            names = {"-h", "--help"},
+            usageHelp = true)
     boolean helpRequested;
 
     @Option(names = "-V", versionHelp = true)

@@ -1,0 +1,49 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
+
+import "packages.pkl" as importedMavenPackages
+
+name = "helidon-offline-integration"
+
+storage {
+  bucket = "wstool-helidon-integration"
+  endpoint = read("env:AWS_S3_ENDPOINT")
+}
+
+local cliArchive = read("env:WSTOOL_CLI_ARCHIVE")
+local gradleArchive = read("env:WSTOOL_GRADLE_PACKAGE_URI")
+local gradleRunnerArchive = read("env:WSTOOL_GRADLE_RUNNER_PACKAGE_URI")
+local mavenToolArchive = read("env:WSTOOL_MAVEN_TOOL_PACKAGE_URI")
+
+packages {
+  new Archive {
+    name = "wstool-cli"
+    version = "0.1.0"
+    uri = cliArchive
+    checksum = read("env:WSTOOL_CLI_CHECKSUM")
+  }
+  new Archive {
+    name = "gradle"
+    version = "9.7.1"
+    uri = gradleArchive
+    checksum = read("env:WSTOOL_GRADLE_PACKAGE_CHECKSUM")
+  }
+  new Archive {
+    name = "wstool-gradle"
+    version = "1.0.0"
+    uri = gradleRunnerArchive
+    checksum = read("env:WSTOOL_GRADLE_RUNNER_PACKAGE_CHECKSUM")
+  }
+  new Archive {
+    name = "maven-wstool"
+    version = "1.0.0"
+    uri = mavenToolArchive
+    checksum = read("env:WSTOOL_MAVEN_TOOL_PACKAGE_CHECKSUM")
+  }
+  new GitRepository {
+    name = "helidon-rest"
+    version = "1.0.0"
+    repo = read("env:WSTOOL_HELIDON_PROJECT_REPO")
+    branch = "main"
+  }
+  ...importedMavenPackages.packages
+}

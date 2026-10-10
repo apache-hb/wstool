@@ -1,0 +1,25 @@
+initscript {
+    dependencies {
+        classpath files(System.getenv("WST_GRADLE_PLUGIN_JAR"))
+    }
+}
+
+import wstool.gradle.RepositoriesPlugin
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+def wstoolRepository = System.getenv("WST_MAVEN_REPOSITORY")
+if (wstoolRepository == null || wstoolRepository.isBlank()) {
+    throw new GradleException("WST_MAVEN_REPOSITORY is required.")
+}
+
+gradle.beforeSettings { settings ->
+    settings.pluginManagement.repositories.clear()
+    settings.pluginManagement.repositories.maven { url = settings.uri(wstoolRepository) }
+    settings.dependencyResolutionManagement.repositories.clear()
+    settings.dependencyResolutionManagement.repositories.maven { url = settings.uri(wstoolRepository) }
+    settings.dependencyResolutionManagement.repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+}
+
+gradle.beforeProject { project ->
+    project.pluginManager.apply(RepositoriesPlugin)
+}
