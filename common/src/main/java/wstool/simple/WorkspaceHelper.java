@@ -1,8 +1,12 @@
 package wstool.simple;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import wstool.Distribution;
 import wstool.Distribution.GitRepository;
@@ -12,6 +16,7 @@ import wstool.simple.git.GitCloneInput;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitCloneInput;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
+import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.workspace.AddPackageToWorkspaceInput;
 import wstool.simple.workspace.CreateWorkspaceInput;
 
@@ -111,9 +116,20 @@ public class WorkspaceHelper {
         git.clone(clone);
     }
 
+    public Distribution refreshDistribution(Path workspace) {
+        if (!Files.exists(workspaceConfig(workspace))) {
+            throw new IllegalArgumentException("Not a workspace: " + workspace);
+        }
+
+        return distribution.getDistributionConfig(workspaceDistributionConfig(workspace));
+    }
+
     public void addPackageToWorkspace(AddPackageToWorkspaceInput input) throws Exception {
-        Distribution distroConfig =
-                distribution.getDistributionConfig(workspaceDistributionConfig(input.workspace()));
+        addPackageToWorkspace(input, refreshDistribution(input.workspace()));
+    }
+
+    public void addPackageToWorkspace(AddPackageToWorkspaceInput input, Distribution distroConfig)
+            throws Exception {
         PackageSource source =
                 distribution.findPackageMajorVersion(distroConfig, input.name(), input.version());
         switch (source) {
@@ -139,6 +155,24 @@ public class WorkspaceHelper {
                 workspacePrefixFolder(input.workspace(), input.name()).toString(),
                 workspaceBuildFolder(input.workspace(), input.name()).toString(),
                 true);
+    }
+
+    public void removePackageFromWorkspace(Path workspace, String packageName) throws Exception {
+        Path sourceFolder = packageFolder(workspaceSourceFolder(workspace), packageName);
+        Path prefixFolder = packageFolder(workspace.resolve("private/prefix"), packageName);
+        Path buildFolder = packageFolder(workspace.resolve("private/build"), packageName);
+
+        List<PackageMajorVersion> removed =
+                storage.removeClonedPackagesFromWorkspaceStorage(
+                        workspaceConfig(workspace), packageName);
+        if (removed.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No cloned package named '" + packageName + "' is present in the workspace.");
+        }
+
+        deleteTree(sourceFolder);
+        deleteTree(prefixFolder);
+        deleteTree(buildFolder);
     }
 
     public List<LocalPackage> sourcePackages(Path workspace) {
@@ -192,5 +226,40 @@ public class WorkspaceHelper {
                         .build();
 
         git.clone(clone);
+    }
+
+    private Path packageFolder(Path parent, String packageName) {
+        Path normalizedParent = parent.toAbsolutePath().normalize();
+        Path packageFolder = normalizedParent.resolve(packageName).normalize();
+        if (!normalizedParent.equals(packageFolder.getParent())) {
+            throw new IllegalArgumentException("Invalid package name: " + packageName);
+        }
+        return packageFolder;
+    }
+
+    private void deleteTree(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return;
+        }
+        Files.walkFileTree(
+                path,
+                new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attributes)
+                            throws IOException {
+                        Files.delete(file);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path directory, IOException error)
+                            throws IOException {
+                        if (error != null) {
+                            throw error;
+                        }
+                        Files.delete(directory);
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
     }
 }

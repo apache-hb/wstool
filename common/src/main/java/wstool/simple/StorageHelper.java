@@ -1,6 +1,7 @@
 package wstool.simple;
 
 import java.nio.file.Path;
+import java.util.List;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.AddPackageInput;
 import wstool.simple.storage.ImmutableAddPackageInput;
@@ -33,6 +34,13 @@ public class StorageHelper {
 
         try (var connection = new WorkspaceStorage(path)) {
             connection.addPackage(input);
+        }
+    }
+
+    public List<PackageMajorVersion> removeClonedPackagesFromWorkspaceStorage(
+            Path path, String name) throws Exception {
+        try (var connection = new WorkspaceStorage(path)) {
+            return connection.removeClonedPackages(name);
         }
     }
 }

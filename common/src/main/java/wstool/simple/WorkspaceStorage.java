@@ -84,6 +84,27 @@ public class WorkspaceStorage implements AutoCloseable {
             ORDER BY name, version
             """;
 
+    private static final String GET_CLONED_PACKAGE_VERSIONS =
+            """
+            SELECT version
+            FROM packages
+            WHERE name = ? AND cloned = '1'
+            ORDER BY version
+            """;
+
+    private static final String REMOVE_PACKAGE_DEPENDENCIES =
+            """
+            DELETE FROM dependencies
+            WHERE (package_name = ? AND package_version = ?)
+                OR (dependency_name = ? AND dependency_version = ?)
+            """;
+
+    private static final String REMOVE_CLONED_PACKAGE =
+            """
+            DELETE FROM packages
+            WHERE name = ? AND version = ? AND cloned = '1'
+            """;
+
     private static final String GET_ALL_DEPENDENCIES =
             """
             WITH RECURSIVE
@@ -163,6 +184,45 @@ public class WorkspaceStorage implements AutoCloseable {
                 }
                 return packages;
             }
+        }
+    }
+
+    public List<PackageMajorVersion> removeClonedPackages(String name) throws Exception {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            List<PackageMajorVersion> removed = new ArrayList<>();
+            try (var statement = connection.prepareStatement(GET_CLONED_PACKAGE_VERSIONS)) {
+                statement.setString(1, name);
+                try (var result = statement.executeQuery()) {
+                    while (result.next()) {
+                        removed.add(new PackageMajorVersion(name, result.getString("version")));
+                    }
+                }
+            }
+
+            for (PackageMajorVersion packageVersion : removed) {
+                try (var statement = connection.prepareStatement(REMOVE_PACKAGE_DEPENDENCIES)) {
+                    statement.setString(1, name);
+                    statement.setString(2, packageVersion.version());
+                    statement.setString(3, name);
+                    statement.setString(4, packageVersion.version());
+                    statement.executeUpdate();
+                }
+                try (var statement = connection.prepareStatement(REMOVE_CLONED_PACKAGE)) {
+                    statement.setString(1, name);
+                    statement.setString(2, packageVersion.version());
+                    statement.executeUpdate();
+                }
+            }
+
+            connection.commit();
+            return removed;
+        } catch (Exception e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
         }
     }
 

@@ -12,7 +12,8 @@ import wstool.cli.VersionProvider;
         subcommands = {
             CreateWorkspaceCommand.class,
             SetupWorkspaceCommand.class,
-            AddPackageCommand.class
+            AddPackageCommand.class,
+            RemovePackageCommand.class
         })
 public class WorkspaceCommand implements Callable<Integer> {
     @Override

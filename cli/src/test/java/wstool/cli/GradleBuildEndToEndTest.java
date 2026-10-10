@@ -1,6 +1,7 @@
 package wstool.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -103,6 +104,22 @@ class GradleBuildEndToEndTest {
                         workspace.resolve(
                                 "private/prefix/gradle-smoke/gradle-build/classes/java/main/smoke/App.class")),
                 "Gradle did not compile the project using the Maven artifact from wstool");
+
+        runCli(workspace, "workspace", "remove", "-p", "local-artifact");
+        assertFalse(Files.exists(workspace.resolve("src/local-artifact")));
+        assertFalse(Files.exists(workspace.resolve("private/prefix/local-artifact")));
+
+        runCli(workspace, "build", "gradle-smoke@1.0.0");
+        assertTrue(
+                Files.isRegularFile(
+                        workspace.resolve(
+                                "private/prefix/local-artifact/share/maven-repo/test/local-artifact/1.0.0/local-artifact-1.0.0.jar")),
+                "Build did not restore the removed package from its prebuilt artifact");
+        assertTrue(
+                Files.isRegularFile(
+                        workspace.resolve(
+                                "private/prefix/gradle-smoke/gradle-build/classes/java/main/smoke/App.class")),
+                "Gradle did not rebuild using the restored prebuilt artifact");
     }
 
     private Path createDistributionRepository() throws Exception {

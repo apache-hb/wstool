@@ -53,6 +53,7 @@ public class AddPackageCommand implements Callable<Integer> {
             WorkspaceHelper workspace = new WorkspaceHelper(git, storage, distribution);
 
             Path workspaceFolder = workspace.findWorkspaceUp(Path.of(""));
+            var distributionConfig = workspace.refreshDistribution(workspaceFolder);
 
             for (String packageName : packageNames) {
                 AddPackageToWorkspaceInput input =
@@ -62,7 +63,7 @@ public class AddPackageCommand implements Callable<Integer> {
                                 .version(packageVersion)
                                 .build();
 
-                workspace.addPackageToWorkspace(input);
+                workspace.addPackageToWorkspace(input, distributionConfig);
             }
 
             return 0;
