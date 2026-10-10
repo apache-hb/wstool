@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
 plugins { application }
 
 group = rootProject.group
@@ -148,6 +151,61 @@ fun registerJpackageTask(taskName: String, packageType: String) =
       "--linux-menu-group",
       "Development",
     )
+
+    if (packageType == "deb") {
+      doLast {
+        val packageFile =
+          packageDirectory.get().file("wstool_${project.version}-1_amd64.deb").asFile
+        val packageRoot = temporaryDir.resolve("deb-package")
+        packageRoot.deleteRecursively()
+
+        fun runPackagingCommand(vararg arguments: String) {
+          val process = ProcessBuilder(*arguments).redirectErrorStream(true).start()
+          val output = process.inputStream.bufferedReader().use { it.readText() }
+          val exitCode = process.waitFor()
+          check(exitCode == 0) {
+            "Command ${arguments.joinToString(" ")} failed with exit code $exitCode:\n$output"
+          }
+        }
+
+        runPackagingCommand(
+          "dpkg-deb",
+          "--raw-extract",
+          packageFile.absolutePath,
+          packageRoot.absolutePath,
+        )
+
+        val controlFile = packageRoot.resolve("DEBIAN/control")
+        val control = controlFile.readText()
+        val dependsField = Regex("(?m)^Depends: ([^\\n]*)$")
+        val dependsMatch =
+          dependsField.find(control)
+            ?: error("Generated Debian package has no Depends field: $controlFile")
+        val alsaDependency = Regex("(?<![A-Za-z0-9+.-])libasound2(?:t64)?(?![A-Za-z0-9+.-])")
+        check(alsaDependency.containsMatchIn(dependsMatch.groupValues[1])) {
+          "Generated Debian package does not declare an ALSA library dependency: $controlFile"
+        }
+        val compatibleDepends =
+          dependsMatch.groupValues[1].replace(alsaDependency, "libasound2 | libasound2t64")
+        controlFile.writeText(
+          control.replaceRange(dependsMatch.range, "Depends: $compatibleDepends")
+        )
+
+        val rebuiltPackage = packageFile.resolveSibling("${packageFile.name}.tmp")
+        runPackagingCommand(
+          "dpkg-deb",
+          "--build",
+          "--root-owner-group",
+          packageRoot.absolutePath,
+          rebuiltPackage.absolutePath,
+        )
+        Files.move(
+          rebuiltPackage.toPath(),
+          packageFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+        )
+      }
+    }
   }
 
 registerJpackageTask("packageDeb", "deb")
