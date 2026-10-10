@@ -9,7 +9,4 @@ buildOptions {
   tool = "wstool-gradle"
 }
 
-dependencies {
-  ["gradle"] = "9.7.1"
-  ["wstool-cli"] = "0.1.0"
-}
+dependencies { ["gradle"] = "9.7.1" }

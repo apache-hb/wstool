@@ -1,5 +1,7 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
 
+import "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl" as wstoolDistribution
+
 import "packages.pkl" as importedNpmPackages
 
 name = "npm-offline-integration"
@@ -10,10 +12,10 @@ storage {
 }
 
 packages {
-  new SourceCode {
+  new wstoolDistribution.SourceCode {
     name = "npm-wstool"
     version = "1.0.0"
-    from = new Archive {
+    from = new wstoolDistribution.Archive {
       name = "npm-wstool"
       version = "1.0.0"
       uri = read("env:WSTOOL_NPM_TOOL_PACKAGE_URI")

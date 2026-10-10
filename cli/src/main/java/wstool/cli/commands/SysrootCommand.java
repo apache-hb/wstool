@@ -7,6 +7,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import wstool.Package;
 import wstool.cli.VersionProvider;
+import wstool.simple.DependencyResolver;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.PackageHelper;
@@ -39,14 +40,16 @@ public class SysrootCommand implements Callable<Integer> {
                     new WorkspaceHelper(
                             new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));
             Path workspaceRoot = workspace.findWorkspaceUp(source);
+            String privateDirectory = System.getenv("WST_PRIVATE");
+            if (privateDirectory != null && !privateDirectory.isBlank()) {
+                Path sysroot =
+                        output == null ? Path.of(privateDirectory).resolve("sysroot") : output;
+                new DependencyResolver()
+                        .materializeClosure(sysroot, workspace.artifactPackages(workspaceRoot));
+                return 0;
+            }
             SysrootTarget target = parseTarget(selector);
             Path sysroot = output;
-            if (sysroot == null) {
-                String privatePath = System.getenv("WST_PRIVATE");
-                if (privatePath != null && !privatePath.isBlank()) {
-                    sysroot = Path.of(privatePath).resolve("sysroot");
-                }
-            }
             new SysrootManager()
                     .createSysroot(
                             sysroot,

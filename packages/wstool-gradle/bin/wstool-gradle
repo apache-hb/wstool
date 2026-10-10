@@ -3,31 +3,60 @@ set -eu
 
 : "${WST_SRCDIR:?WST_SRCDIR is required}"
 : "${WST_PRIVATE:?WST_PRIVATE is required}"
+: "${WST_PREFIX:?WST_PREFIX is required}"
 
-sysroot="$WST_PRIVATE/sysroot"
+dependency_prefixes="$(dirname "$WST_PREFIX")"
+repository="$WST_PRIVATE/maven-repo"
 gradle_user_home="$WST_PRIVATE/gradle-user-home"
+project_work="$WST_PRIVATE/gradle-project"
 mkdir -p "$gradle_user_home"
 export GRADLE_USER_HOME="$gradle_user_home"
-"${WSTOOL:-wstool}" sysroot build --output "$sysroot"
-export WST_MAVEN_REPOSITORY="$sysroot/share/maven-repo"
-export WST_GRADLE_PLUGIN_JAR="$sysroot/share/wstool-gradle/wstool-gradle-plugin.jar"
+rm -rf "$project_work"
+mkdir -p "$project_work"
+cp -a "$WST_SRCDIR/." "$project_work/"
+rm -rf "$repository"
+mkdir -p "$repository"
+gradle_bin=""
+plugin_jar=""
+init_script=""
+for prefix in "$dependency_prefixes"/*; do
+  [ -d "$prefix" ] || continue
+  [ "$prefix" = "$WST_PREFIX" ] && continue
+  if [ -d "$prefix/share/maven-repo" ]; then
+    cp -a "$prefix/share/maven-repo/." "$repository/"
+  fi
+  if [ -x "$prefix/share/gradle/bin/gradle" ]; then
+    gradle_bin="$prefix/share/gradle/bin/gradle"
+  fi
+  if [ -f "$prefix/share/wstool-gradle/wstool-gradle-plugin.jar" ]; then
+    plugin_jar="$prefix/share/wstool-gradle/wstool-gradle-plugin.jar"
+    init_script="$prefix/share/wstool-gradle/init.gradle"
+  fi
+done
+export WST_MAVEN_REPOSITORY="$repository"
+export WST_GRADLE_PLUGIN_JAR="$plugin_jar"
 
 if [ ! -d "$WST_MAVEN_REPOSITORY" ]; then
-  echo "wstool Maven repository is missing from the build sysroot." >&2
+  echo "wstool Maven repository is missing from the build dependency prefixes." >&2
   exit 1
 fi
 if [ ! -f "$WST_GRADLE_PLUGIN_JAR" ]; then
-  echo "wstool Gradle plugin is missing from the build sysroot." >&2
+  echo "wstool Gradle plugin is missing from the build dependency prefixes." >&2
   exit 1
 fi
-gradle_bin="$sysroot/share/gradle/bin/gradle"
 if [ ! -x "$gradle_bin" ]; then
   echo "Gradle executable is missing from the gradle package: $gradle_bin" >&2
+  exit 1
+fi
+if [ ! -f "$init_script" ]; then
+  echo "wstool Gradle init script is missing from the build dependency prefixes." >&2
   exit 1
 fi
 
 if [ "$#" -eq 0 ] || [ "$1" = "release" ]; then
   set -- build
 fi
-"$gradle_bin" --offline --no-daemon --init-script \
-  "$sysroot/share/wstool-gradle/init.gradle" "$@"
+cd "$project_work"
+"$gradle_bin" --offline --no-daemon \
+  --project-cache-dir "$WST_PRIVATE/gradle-project-cache" \
+  --init-script "$init_script" "$@"

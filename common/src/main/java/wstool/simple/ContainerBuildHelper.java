@@ -82,18 +82,10 @@ public class ContainerBuildHelper {
             prepareContainerWorkspace(containerWorkspace, target, buildPackages);
 
             String tool = config.getBuildOptions().getTool();
-            Path localTool = packageRoot.resolve("wstool/bin").resolve(tool);
-            if (!Files.isExecutable(localTool)) {
-                localTool =
-                        buildPackages.stream()
-                                .map(dependency -> dependency.prefix().resolve("bin").resolve(tool))
-                                .filter(Files::isExecutable)
-                                .findFirst()
-                                .orElse(localTool);
-            }
+            Path localTool = findBuildTool(packageRoot, buildPackages, tool);
             if (!Files.isExecutable(localTool)) {
                 throw new IllegalStateException(
-                        "Build tool is missing from the package source and build dependencies: "
+                        "Build tool is missing from the package source and build dependency prefixes: "
                                 + tool);
             }
 
@@ -133,13 +125,6 @@ public class ContainerBuildHelper {
                                 dependency.prefix()
                                         + ":/wstool/workspace/private/prefix/"
                                         + dependency.version().name()
-                                        + ":ro",
-                                "--volume",
-                                dependency.source()
-                                        + ":/wstool/workspace/private/cache/package-sources/"
-                                        + dependency.version().name()
-                                        + "/"
-                                        + dependency.version().version()
                                         + ":ro"));
             }
             command.addAll(
@@ -211,6 +196,18 @@ public class ContainerBuildHelper {
         }
     }
 
+    private Path findBuildTool(Path packageRoot, List<LocalPackage> buildPackages, String tool) {
+        Path packageTool = packageRoot.resolve("wstool/bin").resolve(tool);
+        if (Files.isExecutable(packageTool)) {
+            return packageTool;
+        }
+        return buildPackages.stream()
+                .map(dependency -> dependency.prefix().resolve("bin").resolve(tool))
+                .filter(Files::isExecutable)
+                .findFirst()
+                .orElse(packageTool);
+    }
+
     private boolean isArchivePackage(PackageMajorVersion version) {
         return distribution.getPackages().stream()
                 .filter(pkg -> pkg.getName().equals(version.name()))
@@ -226,7 +223,6 @@ public class ContainerBuildHelper {
         Files.createDirectories(
                 containerWorkspace.resolve("private/prefix").resolve(target.version().name()));
         Files.createDirectories(containerWorkspace.resolve("private/build"));
-        Files.createDirectories(containerWorkspace.resolve("private/cache/package-sources"));
 
         Path database = containerWorkspace.resolve("wstool.db");
         storage.createWorkspaceStorage(database);
@@ -243,11 +239,6 @@ public class ContainerBuildHelper {
             String name = dependency.version().name();
             String version = dependency.version().version();
             Files.createDirectories(containerWorkspace.resolve("private/prefix").resolve(name));
-            Files.createDirectories(
-                    containerWorkspace
-                            .resolve("private/cache/package-sources")
-                            .resolve(name)
-                            .resolve(version));
             storage.addPackageToWorkspaceStorage(
                     database,
                     name,
