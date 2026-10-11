@@ -11,7 +11,7 @@ import java.util.List;
 import wstool.Distribution;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
-import wstool.Distribution.SourceCode;
+import wstool.Distribution.Folder;
 import wstool.simple.git.GitCloneInput;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitCloneInput;
@@ -142,7 +142,7 @@ public class WorkspaceHelper {
                 distribution.findPackageMajorVersion(distroConfig, input.name(), input.version());
         switch (source) {
             case GitRepository repo -> cloneGitPackage(repo, input.workspace());
-            case SourceCode nested -> {
+            case Folder nested -> {
                 PackageSourceHelper sources = new PackageSourceHelper();
                 Path sourceDirectory = sources.materialize(nested, input.workspace(), git);
                 sources.copy(

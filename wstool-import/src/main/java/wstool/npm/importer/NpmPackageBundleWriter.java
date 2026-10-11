@@ -64,7 +64,7 @@ public class NpmPackageBundleWriter {
     private String packageConfig(ResolvedPackage pkg, String buildImage) {
         StringBuilder pkl =
                 new StringBuilder(
-                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl\"\n\n"
+                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl\"\n\n"
                                         + "package { name = \"")
                         .append(NpmPackageName.wstoolName(pkg.name()))
                         .append("\"; version = \"")
@@ -102,7 +102,7 @@ public class NpmPackageBundleWriter {
         StringBuilder pkl =
                 new StringBuilder(
                         "module wstool.importedNpmPackages\n\n"
-                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl\" as wstoolDistribution\n\n"
+                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages {\n");
         groupedPackages(resolved).values().stream()
                 .sorted(
@@ -110,7 +110,7 @@ public class NpmPackageBundleWriter {
                                 .thenComparing(ResolvedPackage::version))
                 .forEach(
                         pkg ->
-                                pkl.append("\nnew wstoolDistribution.SourceCode {\n")
+                                pkl.append("\nnew wstoolDistribution.Folder {\n")
                                         .append("  name = \"")
                                         .append(NpmPackageName.wstoolName(pkg.name()))
                                         .append("\"\n")

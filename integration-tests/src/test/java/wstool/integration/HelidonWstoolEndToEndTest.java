@@ -107,14 +107,15 @@ class HelidonWstoolEndToEndTest {
             importedPackages =
                     countOccurrences(
                             Files.readString(imported.resolve("packages.pkl")),
-                            "new wstoolDistribution.SourceCode");
+                            "new wstoolDistribution.Folder");
             assertTrue(
                     importedPackages > 1,
                     "Helidon transitive Maven dependencies were not imported");
+            Path helidonParentPom =
+                    imported.resolve(
+                            "package-tree/packages/io_helidon_webserver_helidon-webserver/4.x/repository/io/helidon/webserver/helidon-webserver-project/4.5.4/helidon-webserver-project-4.5.4.pom");
             assertTrue(
-                    Files.isRegularFile(
-                            imported.resolve(
-                                    "package-tree/packages/io_helidon_webserver_helidon-webserver/4.5.4/repository/io/helidon/webserver/helidon-webserver-project/4.5.4/helidon-webserver-project-4.5.4.pom")),
+                    Files.isRegularFile(helidonParentPom),
                     "Helidon parent POM was not included in its vendored Maven repository");
         }
 

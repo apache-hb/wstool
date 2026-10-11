@@ -73,7 +73,7 @@ class MavenDependencyResolverTest {
                         zip.getEntry("packages/org_hamcrest_hamcrest-core/1.x/wstool.pkl") != null);
             }
             String entries = Files.readString(output.resolve("packages.pkl"));
-            assertEquals(2, entries.split("new wstoolDistribution.SourceCode", -1).length - 1);
+            assertEquals(2, entries.split("new wstoolDistribution.Folder", -1).length - 1);
             assertTrue(Files.isRegularFile(output.resolve("maven-import-roots.json")));
             System.out.println("Inspectable Maven recursive import output: " + output);
         }
@@ -111,7 +111,7 @@ class MavenDependencyResolverTest {
                                 java.nio.charset.StandardCharsets.UTF_8);
                 assertTrue(
                         generatedPackageConfig.contains(
-                                "package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl"));
+                                "package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl"));
                 assertTrue(generatedPackageConfig.contains("tool = \"maven-wstool-import\""));
                 assertTrue(
                         generatedPackageConfig.contains(
@@ -167,7 +167,7 @@ class MavenDependencyResolverTest {
             assertEquals(0, secondStatus);
             String combinedEntries = Files.readString(cliOutput.resolve("packages.pkl"));
             assertEquals(
-                    2, combinedEntries.split("new wstoolDistribution.SourceCode", -1).length - 1);
+                    2, combinedEntries.split("new wstoolDistribution.Folder", -1).length - 1);
             assertEquals(
                     2,
                     new com.fasterxml.jackson.databind.ObjectMapper()

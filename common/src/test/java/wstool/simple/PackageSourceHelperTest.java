@@ -11,7 +11,7 @@ import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wstool.Distribution.Archive;
-import wstool.Distribution.SourceCode;
+import wstool.Distribution.Folder;
 import wstool.simple.archive.ImmutableCreateArchiveInput;
 
 class PackageSourceHelperTest {
@@ -35,7 +35,7 @@ class PackageSourceHelperTest {
                                 .destination(archive)
                                 .build());
         Archive parent = new Archive("maven-import", "1.0.0", archive.toUri(), sha256(archive));
-        SourceCode source = new SourceCode("example", "1.0", parent, "packages/example/1.0");
+        Folder source = new Folder("example", "1.0", parent, "packages/example/1.0");
 
         Path resolved =
                 new PackageSourceHelper()
@@ -57,7 +57,7 @@ class PackageSourceHelperTest {
                                 .destination(archive)
                                 .build());
         Archive parent = new Archive("bundle", "1", archive.toUri(), sha256(archive));
-        SourceCode source = new SourceCode("bad", "1", parent, "../outside");
+        Folder source = new Folder("bad", "1", parent, "../outside");
 
         assertThrows(
                 java.io.IOException.class,

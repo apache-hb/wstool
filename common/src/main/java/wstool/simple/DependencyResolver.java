@@ -18,7 +18,7 @@ import wstool.Distribution;
 import wstool.Distribution.Archive;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
-import wstool.Distribution.SourceCode;
+import wstool.Distribution.Folder;
 import wstool.Package;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitCloneInput;
@@ -304,7 +304,7 @@ public class DependencyResolver {
             packages.put(requested, resolved);
             return resolved;
         }
-        if (source instanceof SourceCode nested) {
+        if (source instanceof Folder nested) {
             Path metadataSource = new PackageSourceHelper().materialize(nested, workspaceRoot, git);
             if (!Files.isRegularFile(metadataSource.resolve(CONFIG_FILE))) {
                 throw new IOException(

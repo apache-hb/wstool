@@ -19,10 +19,10 @@ class Archive extends PackageSource {
   checksum: String
 }
 
-local const function isNotRecursive() = (pkg) -> !(pkg is SourceCode)
+local const function isNotRecursive() = (pkg) -> !(pkg is Folder)
 
 /// A package that is stored within another package
-class SourceCode extends PackageSource {
+class Folder extends PackageSource {
   from: PackageSource(isNotRecursive())
 
   path: String

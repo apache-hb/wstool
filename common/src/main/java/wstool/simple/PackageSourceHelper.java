@@ -9,7 +9,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import wstool.Distribution.Archive;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
-import wstool.Distribution.SourceCode;
+import wstool.Distribution.Folder;
 import wstool.simple.git.GitCloneInput;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitCloneInput;
@@ -51,7 +51,7 @@ public class PackageSourceHelper {
             }
             return cache;
         }
-        if (source instanceof SourceCode nested) {
+        if (source instanceof Folder nested) {
             Path parent = materialize(nested.getFrom(), workspace, git);
             Path resolved = parent.resolve(nested.getPath()).normalize();
             if (!resolved.startsWith(parent.normalize())) {

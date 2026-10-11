@@ -69,7 +69,7 @@ public class PackageBundleWriter {
     private String packageConfig(ResolvedArtifact artifact, String buildImage) {
         StringBuilder pkl =
                 new StringBuilder(
-                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/package.pkl\"\n\n"
+                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl\"\n\n"
                                         + "package { name = \"")
                         .append(artifact.coordinate().packageName())
                         .append("\"; version = \"")
@@ -101,7 +101,7 @@ public class PackageBundleWriter {
         StringBuilder pkl =
                 new StringBuilder(
                         "module wstool.importedMavenPackages\n\n"
-                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl\" as wstoolDistribution\n\n"
+                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages {\n");
         java.util.TreeMap<String, MavenCoordinate> packages = new java.util.TreeMap<>();
         for (MavenCoordinate coordinate : artifacts.keySet()) {
@@ -110,7 +110,7 @@ public class PackageBundleWriter {
                     coordinate);
         }
         for (MavenCoordinate coordinate : packages.values()) {
-            pkl.append("\nnew wstoolDistribution.SourceCode {\n")
+            pkl.append("\nnew wstoolDistribution.Folder {\n")
                     .append("  name = \"")
                     .append(coordinate.packageName())
                     .append("\"\n")

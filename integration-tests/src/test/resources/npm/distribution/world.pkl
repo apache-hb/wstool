@@ -1,6 +1,6 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl"
 
-import "package://pkl.konna.cloud/pkl/wstool@1.0.0#/distribution.pkl" as wstoolDistribution
+import "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl" as wstoolDistribution
 
 import "packages.pkl" as importedNpmPackages
 
@@ -12,7 +12,7 @@ storage {
 }
 
 packages {
-  new wstoolDistribution.SourceCode {
+  new wstoolDistribution.Folder {
     name = "wstool-npm-import"
     version = "1.0.0"
     from = new wstoolDistribution.Archive {

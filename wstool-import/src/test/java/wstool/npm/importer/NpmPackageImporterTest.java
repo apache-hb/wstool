@@ -73,7 +73,7 @@ class NpmPackageImporterTest {
                 assertTrue(zip.getEntry("packages/debug/4.x/wstool/bin/npm-wstool") == null);
             }
             String entries = Files.readString(output.resolve("packages.pkl"));
-            assertEquals(2, entries.split("new wstoolDistribution.SourceCode", -1).length - 1);
+            assertEquals(2, entries.split("new wstoolDistribution.Folder", -1).length - 1);
             assertTrue(Files.isRegularFile(output.resolve("npm-import-roots.json")));
             System.out.println("Inspectable npm recursive import output: " + output);
         }
@@ -130,7 +130,7 @@ class NpmPackageImporterTest {
                             output, tempDir.resolve("npm-cache-third"), proxy.url(), "ms@2.1.2"));
             String combinedEntries = Files.readString(output.resolve("packages.pkl"));
             assertEquals(
-                    2, combinedEntries.split("new wstoolDistribution.SourceCode", -1).length - 1);
+                    2, combinedEntries.split("new wstoolDistribution.Folder", -1).length - 1);
             assertEquals(1, combinedEntries.split("name = " + '"' + "npm_ms" + '"', -1).length - 1);
             String combinedRoots = Files.readString(output.resolve("npm-dependencies.pkl"));
             assertTrue(combinedRoots.contains("npm_debug"));
