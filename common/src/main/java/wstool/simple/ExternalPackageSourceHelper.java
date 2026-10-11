@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import wstool.Package.ExternalArchive;
+import wstool.Package.ExternalFiles;
 import wstool.Package.ExternalGitRepository;
 import wstool.Package.ExternalPackage;
 import wstool.simple.git.GitRepositoryLocation;
@@ -17,6 +18,7 @@ import wstool.simple.git.ImmutableGitRepositoryLocation;
 public class ExternalPackageSourceHelper {
     private final DistributionArchiveHelper archives = new DistributionArchiveHelper();
     private final PackageSourceHelper sources = new PackageSourceHelper();
+    private final ExternalFilesHelper files = new ExternalFilesHelper();
 
     public Path materialize(
             ExternalPackage source, String name, String version, Path workspace, GitHelper git)
@@ -27,6 +29,10 @@ public class ExternalPackageSourceHelper {
             if (!Files.isDirectory(destination)) {
                 archives.extract(archive, name, version, workspace, destination);
             }
+            return destination;
+        }
+        if (source instanceof ExternalFiles externalFiles) {
+            files.materialize(externalFiles, name, version, workspace, destination);
             return destination;
         }
         if (source instanceof ExternalGitRepository repository) {

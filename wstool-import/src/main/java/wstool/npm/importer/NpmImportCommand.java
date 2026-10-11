@@ -18,7 +18,7 @@ public class NpmImportCommand implements Callable<Integer> {
     @Option(
             names = {"--output", "-o"},
             required = true,
-            description = "Output directory for the package bundle and generated Pkl modules.")
+            description = "Output directory for package files and generated Pkl modules.")
     private Path output;
 
     @Option(
@@ -35,7 +35,7 @@ public class NpmImportCommand implements Callable<Integer> {
 
     @Option(
             names = "--base-url",
-            description = "Public URL prefix where the generated ZIP will be hosted.")
+            description = "Public URL prefix where the metadata ZIP will be hosted.")
     private String baseUrl;
 
     @Parameters(arity = "1..*", paramLabel = "PACKAGE[@VERSION]")
@@ -57,7 +57,7 @@ public class NpmImportCommand implements Callable<Integer> {
             Path bundle = new NpmPackageBundleWriter().write(resolved, output, baseUrl);
             ImportRoots.write(output, "npm-import-roots.json", allPackages);
             System.out.println("Imported " + resolved.packages().size() + " npm packages.");
-            System.out.println("Source bundle: " + bundle.toAbsolutePath());
+            System.out.println("Metadata bundle: " + bundle.toAbsolutePath());
             System.out.println(
                     "Distribution entries: " + output.resolve("packages.pkl").toAbsolutePath());
             System.out.println(

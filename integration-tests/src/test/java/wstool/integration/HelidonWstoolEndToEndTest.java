@@ -19,7 +19,9 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.pkl.config.java.JavaType;
@@ -59,6 +61,29 @@ class HelidonWstoolEndToEndTest {
                     .waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
 
     @TempDir Path tempDir;
+    private String originalUserHome;
+
+    @BeforeEach
+    void useLocallyGeneratedPklPackage() throws Exception {
+        originalUserHome = System.getProperty("user.home");
+        pklHomeOverride = tempDir.resolve("pkl-home");
+        Path packageCache =
+                pklHomeOverride.resolve(".pkl/cache/package-2/pkl.konna.cloud/pkl/wstool@1.0.2");
+        Files.createDirectories(packageCache);
+        Path generatedPackage = Path.of("../config/build/generated/pkl/packages");
+        Files.copy(
+                generatedPackage.resolve("wstool@1.0.2"),
+                packageCache.resolve("wstool@1.0.2.json"));
+        Files.copy(
+                generatedPackage.resolve("wstool@1.0.2.zip"),
+                packageCache.resolve("wstool@1.0.2.zip"));
+        System.setProperty("user.home", pklHomeOverride.toString());
+    }
+
+    @AfterEach
+    void restoreUserHome() {
+        System.setProperty("user.home", originalUserHome);
+    }
 
     @BeforeAll
     static void initializeGarage() throws Exception {
@@ -100,6 +125,11 @@ class HelidonWstoolEndToEndTest {
                                     imported.toString(),
                                     "--repository",
                                     proxy.url(),
+                                    "--external-files-url",
+                                    Path.of("build/integration-maven-local-repository")
+                                            .toAbsolutePath()
+                                            .toUri()
+                                            .toString(),
                                     "--local-repository",
                                     Path.of("build/integration-maven-local-repository")
                                             .toAbsolutePath()
@@ -110,12 +140,20 @@ class HelidonWstoolEndToEndTest {
             assertTrue(
                     importedPackages > 1,
                     "Helidon transitive Maven dependencies were not imported");
-            Path helidonParentPom =
+            Path helidonPackage =
                     imported.resolve(
-                            "package-tree/packages/io_helidon_webserver_helidon-webserver/4.x/repository/io/helidon/webserver/helidon-webserver-project/4.5.4/helidon-webserver-project-4.5.4.pom");
-            assertTrue(
-                    Files.isRegularFile(helidonParentPom),
-                    "Helidon parent POM was not included in its vendored Maven repository");
+                            "package-tree/packages/io_helidon_webserver_helidon-webserver/4.x/wstool.pkl");
+            try (var pkl = new PklHelper(Map.of())) {
+                var packageConfig = pkl.evaluate(helidonPackage).as(wstool.Package.class);
+                var externalFiles =
+                        (wstool.Package.ExternalFiles) packageConfig.getImportOptions().getSource();
+                assertTrue(
+                        externalFiles
+                                .getFiles()
+                                .containsKey(
+                                        "repository/io/helidon/webserver/helidon-webserver-project/4.5.4/helidon-webserver-project-4.5.4.pom"),
+                        "Helidon parent POM was not included as an external file");
+            }
         }
 
         Path appRepository = tempDir.resolve("helidon-project");
@@ -200,59 +238,62 @@ class HelidonWstoolEndToEndTest {
                                             .toString(),
                                     "is-number@7.0.0");
             assertEquals(0, status, "wstool-import npm failed to resolve package dependencies");
-        }
+            assertEquals(0, proxy.tarballRequests(), "npm import should resolve metadata only");
 
-        Path appRepository = tempDir.resolve("npm-project");
-        copyTree(resourcePath("npm/project"), appRepository);
-        Files.copy(
-                imported.resolve("npm-dependencies.pkl"),
-                appRepository.resolve("npm-dependencies.pkl"));
-        currentProjectRepository = appRepository;
-        initializeGitRepository(appRepository);
+            Path appRepository = tempDir.resolve("npm-project");
+            copyTree(resourcePath("npm/project"), appRepository);
+            Files.copy(
+                    imported.resolve("npm-dependencies.pkl"),
+                    appRepository.resolve("npm-dependencies.pkl"));
+            currentProjectRepository = appRepository;
+            initializeGitRepository(appRepository);
 
-        Path distribution = tempDir.resolve("npm-distribution");
-        Files.createDirectories(distribution);
-        Files.copy(imported.resolve("packages.pkl"), distribution.resolve("packages.pkl"));
-        Files.copy(resourcePath("npm/distribution/world.pkl"), distribution.resolve("world.pkl"));
-        initializeGitRepository(distribution);
+            Path distribution = tempDir.resolve("npm-distribution");
+            Files.createDirectories(distribution);
+            Files.copy(imported.resolve("packages.pkl"), distribution.resolve("packages.pkl"));
+            Files.copy(
+                    resourcePath("npm/distribution/world.pkl"), distribution.resolve("world.pkl"));
+            initializeGitRepository(distribution);
 
-        Path workspaces = tempDir.resolve("npm-workspaces");
-        Files.createDirectories(workspaces);
-        runCli(workspaces, "workspace", "create", "--name", "npm-offline");
-        Path workspace = workspaces.resolve("npm-offline");
-        runCli(
-                workspace,
-                "workspace",
-                "setup",
-                "--distro",
-                "npm-offline-integration",
-                "--from",
-                distribution.toString(),
-                "--branch",
-                "main");
-        List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
-        List<ImportedPackage> npmPackages =
-                importedNpmPackages(imported.resolve("package-tree/packages"));
-        for (ImportedPackage dependency : npmPackages) {
+            Path workspaces = tempDir.resolve("npm-workspaces");
+            Files.createDirectories(workspaces);
+            runCli(workspaces, "workspace", "create", "--name", "npm-offline");
+            Path workspace = workspaces.resolve("npm-offline");
+            runCli(
+                    workspace,
+                    "workspace",
+                    "setup",
+                    "--distro",
+                    "npm-offline-integration",
+                    "--from",
+                    distribution.toString(),
+                    "--branch",
+                    "main");
+            List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
+            List<ImportedPackage> npmPackages =
+                    importedNpmPackages(imported.resolve("package-tree/packages"));
+            for (ImportedPackage dependency : npmPackages) {
+                addArguments.add("--package");
+                addArguments.add(dependency.name());
+            }
             addArguments.add("--package");
-            addArguments.add(dependency.name());
-        }
-        addArguments.add("--package");
-        addArguments.add("wstool-npm-import");
-        addArguments.add("--package");
-        addArguments.add("npm-demo");
-        runCli(workspace, addArguments.toArray(String[]::new));
+            addArguments.add("wstool-npm-import");
+            addArguments.add("--package");
+            addArguments.add("npm-demo");
+            runCli(workspace, addArguments.toArray(String[]::new));
 
-        runCli(workspace, "build", "wstool-npm-import@1.0.0");
-        for (ImportedPackage dependency : npmPackages) {
-            runCli(workspace, "build", dependency.name() + "@" + dependency.version());
-        }
-        runCli(workspace, "build", "npm-demo@1.0.0");
+            runCli(workspace, "build", "wstool-npm-import@1.0.0");
+            for (ImportedPackage dependency : npmPackages) {
+                runCli(workspace, "build", dependency.name() + "@" + dependency.version());
+            }
+            runCli(workspace, "build", "npm-demo@1.0.0");
 
-        Path builtProject =
-                workspace.resolve(
-                        "private/prefix/npm-demo/lib/node_modules/npm-demo/dist/result.txt");
-        assertEquals("true", Files.readString(builtProject));
+            Path builtProject =
+                    workspace.resolve(
+                            "private/prefix/npm-demo/lib/node_modules/npm-demo/dist/result.txt");
+            assertEquals("true", Files.readString(builtProject));
+            assertTrue(proxy.tarballRequests() > 0, "Build should fetch the external npm tarball");
+        }
     }
 
     @Test
@@ -276,17 +317,6 @@ class HelidonWstoolEndToEndTest {
                 resourcePath("third-party/distribution/world.pkl"),
                 distribution.resolve("world.pkl"));
         initializeGitRepository(distribution);
-
-        Path pklHome = tempDir.resolve("third-party-pkl-home");
-        Path pklPackageCache =
-                pklHome.resolve(".pkl/cache/package-2/pkl.konna.cloud/pkl/wstool@1.0.2");
-        Files.createDirectories(pklPackageCache);
-        Path localPackage = Path.of("../config/build/generated/pkl/packages/wstool@1.0.2");
-        Files.copy(localPackage, pklPackageCache.resolve("wstool@1.0.2.json"));
-        Files.copy(
-                Path.of("../config/build/generated/pkl/packages/wstool@1.0.2.zip"),
-                pklPackageCache.resolve("wstool@1.0.2.zip"));
-        pklHomeOverride = pklHome;
 
         Path workspaces = tempDir.resolve("third-party-workspaces");
         Files.createDirectories(workspaces);

@@ -17,7 +17,7 @@ public class MavenImportCommand implements Callable<Integer> {
     @Option(
             names = {"--output", "-o"},
             required = true,
-            description = "Output directory for the source bundle and generated Pkl entries.")
+            description = "Output directory for the metadata bundle and generated Pkl entries.")
     private Path output;
 
     @Option(
@@ -33,8 +33,13 @@ public class MavenImportCommand implements Callable<Integer> {
 
     @Option(
             names = "--base-url",
-            description = "Public URL prefix where the generated ZIP will be hosted.")
+            description = "Public URL prefix where the generated metadata ZIP will be hosted.")
     private String baseUrl;
+
+    @Option(
+            names = "--external-files-url",
+            description = "Maven repository URL used for ExternalFiles (defaults to --repository).")
+    private String externalFilesUrl;
 
     @Parameters(arity = "1..*", paramLabel = "GROUP:ARTIFACT:VERSION")
     private List<String> coordinates = new ArrayList<>();
@@ -54,10 +59,11 @@ public class MavenImportCommand implements Callable<Integer> {
         for (MavenCoordinate root : roots) {
             allArtifacts.putAll(resolver.resolve(root));
         }
-        Path bundle = new PackageBundleWriter().write(allArtifacts, output, baseUrl);
+        String filesUrl = externalFilesUrl == null ? repository : externalFilesUrl;
+        Path bundle = new PackageBundleWriter().write(allArtifacts, output, filesUrl, baseUrl);
         ImportRoots.write(output, "maven-import-roots.json", allCoordinates);
         System.out.println("Imported " + allArtifacts.size() + " Maven artifacts.");
-        System.out.println("Source bundle: " + bundle.toAbsolutePath());
+        System.out.println("Metadata bundle: " + bundle.toAbsolutePath());
         System.out.println(
                 "Distribution entries: " + output.resolve("packages.pkl").toAbsolutePath());
         return 0;

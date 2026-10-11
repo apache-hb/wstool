@@ -209,3 +209,9 @@ Maven imports use the shared `maven-wstool-import` build-tool package. Each gene
 npm imports use the shared `wstool-npm-import` build-tool package. Each generated npm package depends on it and does not bundle its own copy of `npm-wstool`. Build and package it with `./gradlew :wstool-import:packageWstoolNpmImport`; its release archive is `wstool-npm-import-1.0.0.zip`.
 
 For npm packages, `buildOptions.tool` remains `npm-wstool`; the shared package that provides it is `wstool-npm-import`, which generated packages list under `buildDependencies`.
+
+### External import sources
+
+Maven import package configs use `ExternalFiles`, fetching each artifact from the configured Maven repository and verifying its SHA-256 checksum. npm package configs use `ExternalArchive` with the tarball URL and integrity recorded by npm. The npm importer writes only package metadata and does not copy package files into an `external-files/` directory.
+
+Archive extraction uses Apache Commons Compress to read ZIP and TAR archives, including compressed TAR files. It uses the archive entry metadata to preserve file permissions and rejects paths and links that escape the extraction directory.

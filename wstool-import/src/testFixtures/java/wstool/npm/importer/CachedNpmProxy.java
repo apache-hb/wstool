@@ -31,6 +31,7 @@ public final class CachedNpmProxy implements AutoCloseable {
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
     private final AtomicInteger upstreamRequests = new AtomicInteger();
+    private final AtomicInteger tarballRequests = new AtomicInteger();
 
     public CachedNpmProxy(Path cache) throws IOException {
         this.cache = cache;
@@ -49,9 +50,16 @@ public final class CachedNpmProxy implements AutoCloseable {
         return upstreamRequests.get();
     }
 
+    public int tarballRequests() {
+        return tarballRequests.get();
+    }
+
     private void handle(HttpExchange exchange) throws IOException {
         try {
             String requestPath = exchange.getRequestURI().getRawPath();
+            if (requestPath.endsWith(".tgz")) {
+                tarballRequests.incrementAndGet();
+            }
             String query = exchange.getRequestURI().getRawQuery();
             String relative = requestPath.substring(1) + (query == null ? "" : "?" + query);
             Path bodyFile = cache.resolve(cacheKey(relative));

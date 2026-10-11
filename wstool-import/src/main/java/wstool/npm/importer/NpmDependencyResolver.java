@@ -34,6 +34,7 @@ public class NpmDependencyResolver {
                         List.of(
                                 npm,
                                 "install",
+                                "--package-lock-only",
                                 "--ignore-scripts",
                                 "--no-audit",
                                 "--no-fund",
@@ -45,17 +46,57 @@ public class NpmDependencyResolver {
         install.addAll(packageSpecs);
         run(install, workingDirectory);
 
-        String listing =
-                run(
-                        List.of(npm, "ls", "--json", "--all", "--long", "--offline", "--depth=999"),
-                        workingDirectory);
-        JsonNode tree = json.readTree(listing);
+        JsonNode lockPackages =
+                json.readTree(workingDirectory.resolve("package-lock.json").toFile())
+                        .path("packages");
+        LinkedHashMap<String, JsonNode> installedPackages = readInstalledPackages(lockPackages);
         LinkedHashMap<String, ResolvedPackage> packages = new LinkedHashMap<>();
-        collect(tree.path("dependencies"), packages);
+        for (Map.Entry<String, JsonNode> entry : installedPackages.entrySet()) {
+            String installPath = entry.getKey();
+            JsonNode installed = entry.getValue();
+            String name = installed.path("name").asText(packageName(installPath));
+            String version = installed.path("version").asText();
+            ArchiveSource archiveSource =
+                    readArchiveSource(installed, name, version, registry, workingDirectory);
+            LinkedHashMap<String, String> dependencies =
+                    readDependencies(
+                            installPath, installed.path("dependencies"), installedPackages);
+            packages.putIfAbsent(
+                    key(name, version),
+                    new ResolvedPackage(
+                            name,
+                            version,
+                            archiveSource.uri(),
+                            archiveSource.integrity(),
+                            Map.copyOf(dependencies)));
+        }
         if (packages.isEmpty()) {
             throw new IllegalStateException("npm resolved no packages for " + packageSpecs);
         }
         return new Result(Map.copyOf(packages), readRootDependencies(manifest));
+    }
+
+    private LinkedHashMap<String, JsonNode> readInstalledPackages(JsonNode lockPackages) {
+        LinkedHashMap<String, JsonNode> packages = new LinkedHashMap<>();
+        var fields = lockPackages.fields();
+        while (fields.hasNext()) {
+            var field = fields.next();
+            if (field.getKey().isEmpty()) {
+                continue;
+            }
+            JsonNode installed = field.getValue();
+            String name = installed.path("name").asText(packageName(field.getKey()));
+            String version = installed.path("version").asText();
+            if (!name.isBlank() && !version.isBlank()) {
+                packages.put(field.getKey(), installed);
+            }
+        }
+        return packages;
+    }
+
+    private String packageName(String lockPath) {
+        int marker = lockPath.lastIndexOf("node_modules/");
+        return marker < 0 ? "" : lockPath.substring(marker + "node_modules/".length());
     }
 
     private Map<String, String> readRootDependencies(Path manifest) throws IOException {
@@ -67,34 +108,69 @@ public class NpmDependencyResolver {
         return Map.copyOf(dependencies);
     }
 
-    private void collect(JsonNode dependencies, Map<String, ResolvedPackage> packages)
-            throws IOException {
-        var fields = dependencies.fields();
+    private LinkedHashMap<String, String> readDependencies(
+            String installPath, JsonNode dependencySpecs, Map<String, JsonNode> installedPackages) {
+        LinkedHashMap<String, String> dependencies = new LinkedHashMap<>();
+        var fields = dependencySpecs.fields();
         while (fields.hasNext()) {
-            var field = fields.next();
-            JsonNode dependency = field.getValue();
-            String name = dependency.path("name").asText(field.getKey());
-            String version = dependency.path("version").asText();
-            String pathValue = dependency.path("path").asText();
-            if (version.isBlank() || pathValue.isBlank()) {
-                continue;
+            var dependency = fields.next();
+            String target = resolveInstallPath(installPath, dependency.getKey(), installedPackages);
+            if (target != null) {
+                dependencies.put(
+                        dependency.getKey(),
+                        installedPackages.get(target).path("version").asText());
             }
-            Path packagePath = Path.of(pathValue).toAbsolutePath().normalize();
-            LinkedHashMap<String, String> childDependencies = new LinkedHashMap<>();
-            JsonNode children = dependency.path("dependencies");
-            var childFields = children.fields();
-            while (childFields.hasNext()) {
-                var child = childFields.next();
-                String childVersion = child.getValue().path("version").asText();
-                if (!childVersion.isBlank()) {
-                    childDependencies.put(child.getKey(), childVersion);
-                }
-            }
-            ResolvedPackage resolved =
-                    new ResolvedPackage(name, version, packagePath, Map.copyOf(childDependencies));
-            packages.putIfAbsent(key(name, version), resolved);
-            collect(children, packages);
         }
+        return dependencies;
+    }
+
+    private String resolveInstallPath(
+            String packagePath, String dependencyName, Map<String, JsonNode> installedPackages) {
+        String parent = packagePath;
+        while (true) {
+            String candidate =
+                    (parent.isEmpty() ? "" : parent + "/") + "node_modules/" + dependencyName;
+            if (installedPackages.containsKey(candidate)) {
+                return candidate;
+            }
+            int marker = parent.lastIndexOf("/node_modules/");
+            if (marker >= 0) {
+                parent = parent.substring(0, marker);
+            } else if (parent.startsWith("node_modules/")) {
+                parent = "";
+            } else {
+                return null;
+            }
+        }
+    }
+
+    private ArchiveSource readArchiveSource(
+            JsonNode installed, String name, String version, String registry, Path workingDirectory)
+            throws Exception {
+        String archive = installed.path("resolved").asText();
+        String integrity = installed.path("integrity").asText();
+        if (!archive.isBlank() && !integrity.isBlank()) {
+            return new ArchiveSource(archive, integrity);
+        }
+        String metadata =
+                run(
+                        List.of(
+                                npm,
+                                "view",
+                                name + "@" + version,
+                                "dist",
+                                "--json",
+                                "--registry=" + registry,
+                                "--loglevel=error"),
+                        workingDirectory);
+        JsonNode distribution = json.readTree(metadata);
+        archive = distribution.path("tarball").asText();
+        integrity = distribution.path("integrity").asText();
+        if (archive.isBlank() || integrity.isBlank()) {
+            throw new IllegalStateException(
+                    "npm did not provide a tarball URL and integrity for " + name + "@" + version);
+        }
+        return new ArchiveSource(archive, integrity);
     }
 
     private String run(List<String> command, Path directory) throws Exception {
@@ -125,8 +201,14 @@ public class NpmDependencyResolver {
         return name + Character.toString(0) + version;
     }
 
+    public record ArchiveSource(String uri, String integrity) {}
+
     public record ResolvedPackage(
-            String name, String version, Path directory, Map<String, String> dependencies) {}
+            String name,
+            String version,
+            String archiveUri,
+            String integrity,
+            Map<String, String> dependencies) {}
 
     public record Result(
             Map<String, ResolvedPackage> packages, Map<String, String> rootDependencies) {}

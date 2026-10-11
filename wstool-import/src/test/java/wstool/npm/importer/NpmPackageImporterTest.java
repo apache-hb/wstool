@@ -10,6 +10,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.pkl.config.java.JavaType;
@@ -17,10 +19,25 @@ import picocli.CommandLine;
 import wstool.Distribution.PackageSource;
 import wstool.Package;
 import wstool.importer.Main;
+import wstool.importer.PklPackageCache;
 import wstool.simple.PklHelper;
 
 class NpmPackageImporterTest {
     @TempDir Path tempDir;
+    private String originalUserHome;
+
+    @BeforeEach
+    void useLocallyGeneratedPklPackage() throws Exception {
+        originalUserHome = System.getProperty("user.home");
+        Path userHome = tempDir.resolve("pkl-user-home");
+        PklPackageCache.install(userHome);
+        System.setProperty("user.home", userHome.toString());
+    }
+
+    @AfterEach
+    void restoreUserHome() {
+        System.setProperty("user.home", originalUserHome);
+    }
 
     @Test
     void importsAwsMdaaSftpServerAsMajorVersionPackagesForInspection() throws Exception {
@@ -37,9 +54,7 @@ class NpmPackageImporterTest {
                     Files.isRegularFile(
                             output.resolve(
                                     "package-tree/packages/@aws-mdaa/sftp-server/1.x/wstool.pkl")));
-            try (var paths = Files.walk(output.resolve("package-tree/packages"))) {
-                assertTrue(paths.filter(Files::isRegularFile).count() > 100);
-            }
+            assertTrue(Files.notExists(output.resolve("external-files")));
             System.out.println("Inspectable AWS MDAA npm import output: " + output);
         }
     }
@@ -55,14 +70,15 @@ class NpmPackageImporterTest {
             assertEquals(0, importPackage(output, npmCache, proxy.url(), "ms@2.1.2"));
 
             Path packages = output.resolve("package-tree/packages");
-            assertTrue(Files.isRegularFile(packages.resolve("debug/4.x/package/package.json")));
-            assertTrue(Files.isRegularFile(packages.resolve("ms/2.x/package/package.json")));
+            assertTrue(Files.isRegularFile(packages.resolve("debug/4.x/wstool.pkl")));
+            assertTrue(Files.isRegularFile(packages.resolve("ms/2.x/wstool.pkl")));
+            assertTrue(Files.notExists(output.resolve("external-files")));
             try (var packageDirectories = Files.list(packages)) {
                 assertEquals(2, packageDirectories.count());
             }
             try (ZipFile zip = new ZipFile(output.resolve("wstool-npm-import.zip").toFile())) {
                 assertEquals(
-                        1,
+                        0,
                         zip.stream()
                                 .filter(
                                         entry ->
@@ -90,6 +106,7 @@ class NpmPackageImporterTest {
             Path output = tempDir.resolve("first");
             int status = importPackage(output, tempDir.resolve("npm-cache-first"), proxy.url());
             assertEquals(0, status);
+            assertEquals(0, proxy.tarballRequests(), "Import should not download npm tarballs");
 
             List<PackageSource> packageEntries = readPackageSources(output.resolve("packages.pkl"));
             assertEquals(2, packageEntries.size());
@@ -99,26 +116,31 @@ class NpmPackageImporterTest {
                     readStringMap(output.resolve("npm-dependencies.pkl"), "dependencies");
             assertEquals(Map.of("npm_debug", "4.x"), directDependencies);
 
-            Path debugPackage =
-                    output.resolve("package-tree/packages/debug/4.x/package/package.json");
-            assertTrue(Files.isRegularFile(debugPackage));
+            assertTrue(Files.notExists(output.resolve("external-files")));
             Package debugConfig =
                     readPackage(output.resolve("package-tree/packages/debug/4.x/wstool.pkl"));
             assertEquals("npm-wstool", debugConfig.getBuildOptions().getTool());
             assertEquals(Map.of("wstool-npm-import", "1.0.0"), debugConfig.getBuildDependencies());
+            assertTrue(
+                    debugConfig.getImportOptions().getSource() instanceof Package.ExternalArchive);
+            Package.ExternalArchive debugArchive =
+                    (Package.ExternalArchive) debugConfig.getImportOptions().getSource();
+            assertTrue(debugArchive.getArchive().toString().contains("/debug/-/debug-4.3.4.tgz"));
+            assertTrue(debugArchive.getChecksum().startsWith("sha512-"));
             try (ZipFile zip = new ZipFile(output.resolve("wstool-npm-import.zip").toFile())) {
-                assertTrue(zip.getEntry("packages/debug/4.x/package/package.json") != null);
-                assertTrue(zip.getEntry("packages/ms/2.x/package/package.json") != null);
+                assertTrue(zip.getEntry("packages/debug/4.x/wstool.pkl") != null);
+                assertTrue(zip.getEntry("packages/ms/2.x/wstool.pkl") != null);
             }
 
             int upstreamRequests = proxy.upstreamRequests();
+            assertEquals(0, proxy.tarballRequests(), "Import should not download npm tarballs");
             try (var cachedResponses = Files.list(proxyCache)) {
                 assertTrue(
                         cachedResponses
                                         .filter(path -> path.toString().endsWith(".content-type"))
                                         .count()
                                 >= 4,
-                        "The proxy should cache package metadata and tarball responses");
+                        "The proxy should cache package metadata responses");
             }
             Path secondOutput = tempDir.resolve("second");
             assertEquals(
@@ -128,6 +150,8 @@ class NpmPackageImporterTest {
                     upstreamRequests,
                     proxy.upstreamRequests(),
                     "A repeat import should use the persistent registry proxy cache");
+            assertEquals(
+                    0, proxy.tarballRequests(), "Repeated imports should not download tarballs");
 
             assertEquals(
                     0,
@@ -142,8 +166,8 @@ class NpmPackageImporterTest {
                     readStringMap(output.resolve("npm-dependencies.pkl"), "dependencies");
             assertEquals(Map.of("npm_debug", "4.x", "npm_ms", "2.x"), combinedRoots);
             try (ZipFile zip = new ZipFile(output.resolve("wstool-npm-import.zip").toFile())) {
-                assertTrue(zip.getEntry("packages/debug/4.x/package/package.json") != null);
-                assertTrue(zip.getEntry("packages/ms/2.x/package/package.json") != null);
+                assertTrue(zip.getEntry("packages/debug/4.x/wstool.pkl") != null);
+                assertTrue(zip.getEntry("packages/ms/2.x/wstool.pkl") != null);
             }
             assertEquals(upstreamRequests, proxy.upstreamRequests());
         }

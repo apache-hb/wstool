@@ -11,8 +11,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import wstool.Distribution.Archive;
 import wstool.Package.ExternalArchive;
 import wstool.simple.archive.ImmutableExtractArchiveInput;
@@ -54,13 +56,25 @@ public class DistributionArchiveHelper {
             Path workspace,
             Path destination)
             throws Exception {
-        String checksum = expectedChecksum.toLowerCase();
+        String checksum = expectedChecksum;
         Path cache =
                 workspace
                         .resolve("private/cache/archives")
-                        .resolve(name + "-" + version + "-" + checksum);
+                        .resolve(
+                                name
+                                        + "-"
+                                        + version
+                                        + "-"
+                                        + HexFormat.of()
+                                                .formatHex(
+                                                        MessageDigest.getInstance("SHA-256")
+                                                                .digest(
+                                                                        checksum.getBytes(
+                                                                                java.nio.charset
+                                                                                        .StandardCharsets
+                                                                                        .UTF_8))));
         Files.createDirectories(cache.getParent());
-        if (!Files.isRegularFile(cache) || !checksum.equals(sha256(cache))) {
+        if (!Files.isRegularFile(cache) || !matchesChecksum(cache, checksum)) {
             Files.deleteIfExists(cache);
             List<URI> locations = new ArrayList<>();
             locations.add(uri);
@@ -84,14 +98,14 @@ public class DistributionArchiveHelper {
         for (URI location : locations) {
             try {
                 download(location, cache);
-                String actual = sha256(cache);
-                if (checksum.equals(actual)) {
+                if (matchesChecksum(cache, checksum)) {
                     return;
                 }
+                String actual = sha256(cache);
                 Files.deleteIfExists(cache);
                 failures.addSuppressed(
                         new IOException(
-                                "SHA-256 checksum mismatch from "
+                                "Archive integrity mismatch from "
                                         + location
                                         + ": expected "
                                         + checksum
@@ -141,6 +155,38 @@ public class DistributionArchiveHelper {
             }
         }
         return HexFormat.of().formatHex(digest.digest());
+    }
+
+    private boolean matchesChecksum(Path path, String expected) throws Exception {
+        if (expected.matches("(?i)[0-9a-f]{64}")) {
+            return expected.equalsIgnoreCase(sha256(path));
+        }
+        for (String token : expected.split("\\s+")) {
+            int separator = token.indexOf('-');
+            if (separator <= 0) {
+                continue;
+            }
+            String algorithm = token.substring(0, separator);
+            String encoded = token.substring(separator + 1).split("\\?", 2)[0];
+            try {
+                byte[] expectedDigest = Base64.getDecoder().decode(encoded);
+                MessageDigest digest =
+                        MessageDigest.getInstance(algorithm.toUpperCase(Locale.ROOT));
+                try (InputStream input = Files.newInputStream(path)) {
+                    byte[] buffer = new byte[64 * 1024];
+                    int count;
+                    while ((count = input.read(buffer)) >= 0) {
+                        digest.update(buffer, 0, count);
+                    }
+                }
+                if (MessageDigest.isEqual(expectedDigest, digest.digest())) {
+                    return true;
+                }
+            } catch (IllegalArgumentException | java.security.NoSuchAlgorithmException ignored) {
+                // Try another SRI token when this digest algorithm is unavailable or malformed.
+            }
+        }
+        return false;
     }
 
     private void deleteTree(Path path) throws IOException {

@@ -10,6 +10,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.pkl.config.java.JavaType;
@@ -22,6 +24,20 @@ import wstool.simple.PklHelper;
 
 class MavenDependencyResolverTest {
     @TempDir Path tempDir;
+    private String originalUserHome;
+
+    @BeforeEach
+    void useLocallyGeneratedPklPackage() throws Exception {
+        originalUserHome = System.getProperty("user.home");
+        Path userHome = tempDir.resolve("pkl-user-home");
+        PklPackageCache.install(userHome);
+        System.setProperty("user.home", userHome.toString());
+    }
+
+    @AfterEach
+    void restoreUserHome() {
+        System.setProperty("user.home", originalUserHome);
+    }
 
     private static final MavenCoordinate ROOT =
             new MavenCoordinate("org.hamcrest", "hamcrest-library", "1.3");
@@ -41,7 +57,7 @@ class MavenDependencyResolverTest {
             PackageSource smithyBom = findPackage(entries, "software_amazon_smithy_smithy-bom");
             assertEquals("1.x", smithyBom.getVersion());
             try (var paths = Files.walk(output.resolve("package-tree/packages"))) {
-                assertTrue(paths.filter(Files::isRegularFile).count() > 100);
+                assertTrue(paths.filter(Files::isRegularFile).count() > 10);
             }
             System.out.println("Inspectable Smithy BOM import output: " + output);
         }
@@ -60,20 +76,21 @@ class MavenDependencyResolverTest {
             assertEquals(0, importMaven(output, localRepository, proxy.url(), core.key()));
 
             Path tree = output.resolve("package-tree/packages");
+            Path coreConfig = tree.resolve("org_hamcrest_hamcrest-core/1.x/wstool.pkl");
+            assertTrue(Files.isRegularFile(coreConfig));
+            assertInstanceOf(
+                    Package.ExternalFiles.class,
+                    readPackage(coreConfig).getImportOptions().getSource());
             assertTrue(
-                    Files.isRegularFile(
+                    Files.notExists(
                             tree.resolve(
-                                    "org_hamcrest_hamcrest-library/1.x/repository/org/hamcrest/hamcrest-library/1.3/hamcrest-library-1.3.jar")));
-            Path coreJar =
-                    tree.resolve(
-                            "org_hamcrest_hamcrest-core/1.x/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar");
-            assertTrue(Files.isRegularFile(coreJar));
+                                    "org_hamcrest_hamcrest-core/1.x/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar")));
             try (var packageDirectories = Files.list(tree)) {
                 assertEquals(2, packageDirectories.count());
             }
             try (ZipFile zip = new ZipFile(output.resolve("wstool-maven-import.zip").toFile())) {
                 assertEquals(
-                        1,
+                        0,
                         zip.stream()
                                 .filter(entry -> entry.getName().endsWith("hamcrest-core-1.3.jar"))
                                 .count());
@@ -104,7 +121,7 @@ class MavenDependencyResolverTest {
             assertTrue(resolved.get(ROOT).pom() != null);
 
             Path output = tempDir.resolve("generated");
-            Path bundle = new PackageBundleWriter().write(resolved, output, null);
+            Path bundle = new PackageBundleWriter().write(resolved, output, proxy.url(), null);
             assertTrue(Files.isRegularFile(bundle));
             List<PackageSource> entries = readPackageSources(output.resolve("packages.pkl"));
             PackageSource library = findPackage(entries, "org_hamcrest_hamcrest-library");
@@ -135,7 +152,10 @@ class MavenDependencyResolverTest {
                 assertTrue(
                         zip.getEntry(
                                         "packages/org_hamcrest_hamcrest-library/1.x/repository/org/hamcrest/hamcrest-library/1.3/hamcrest-library-1.3.jar")
-                                != null);
+                                == null);
+                assertTrue(
+                        packageConfig.getImportOptions().getSource()
+                                instanceof Package.ExternalFiles);
             }
 
             int requestsAfterInitialResolve = proxy.upstreamRequests();

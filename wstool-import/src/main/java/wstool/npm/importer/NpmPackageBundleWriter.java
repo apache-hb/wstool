@@ -6,8 +6,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Map;
@@ -26,6 +24,7 @@ public class NpmPackageBundleWriter {
         Path tree = outputDirectory.resolve("package-tree");
         Path bundle = outputDirectory.resolve("wstool-npm-import.zip");
         ImportRoots.resetGeneratedTree(outputDirectory, "package-tree");
+        ImportRoots.resetGeneratedTree(outputDirectory, "external-files");
         Files.createDirectories(tree);
         for (ResolvedPackage pkg : groupedPackages(resolved).values()) {
             writePackage(pkg, tree);
@@ -40,11 +39,11 @@ public class NpmPackageBundleWriter {
         return bundle;
     }
 
-    private void writePackage(ResolvedPackage pkg, Path root) throws IOException {
+    private void writePackage(ResolvedPackage pkg, Path root) throws Exception {
         String wstoolName = NpmPackageName.wstoolName(pkg.name());
         String versionLine = MajorVersion.line(pkg.version());
         Path directory = root.resolve("packages").resolve(pkg.name()).resolve(versionLine);
-        copyTree(pkg.directory(), directory.resolve("package"));
+        Files.createDirectories(directory);
         json.writeValue(
                 directory.resolve("wstool-npm.json").toFile(),
                 Map.of(
@@ -68,7 +67,17 @@ public class NpmPackageBundleWriter {
                         .append("buildOptions {\n")
                         .append("  tool = \"npm-wstool\"\n")
                         .append("  networkIsolation = \"isolated\"\n")
-                        .append("}\n");
+                        .append("}\n\n")
+                        .append("importOptions {\n")
+                        .append("  source = new ExternalArchive {\n")
+                        .append("    archive = \"")
+                        .append(escape(pkg.archiveUri()))
+                        .append("\"\n")
+                        .append("    checksum = \"")
+                        .append(escape(pkg.integrity()))
+                        .append("\"\n")
+                        .append("  }\n")
+                        .append("  license = \"NOASSERTION\"\n}\n");
         if (!pkg.dependencies().isEmpty()) {
             pkl.append("\ndependencies {\n");
             pkg.dependencies().entrySet().stream()
@@ -172,18 +181,6 @@ public class NpmPackageBundleWriter {
                 : baseUrl + "/" + bundle.getFileName();
     }
 
-    private String sha256(Path path) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        try (InputStream input = Files.newInputStream(path)) {
-            byte[] buffer = new byte[64 * 1024];
-            int count;
-            while ((count = input.read(buffer)) >= 0) {
-                digest.update(buffer, 0, count);
-            }
-        }
-        return HexFormat.of().formatHex(digest.digest());
-    }
-
     private void zip(Path source, Path archive) throws IOException {
         try (OutputStream output = Files.newOutputStream(archive);
                 ZipOutputStream zip = new ZipOutputStream(output)) {
@@ -198,30 +195,16 @@ public class NpmPackageBundleWriter {
         }
     }
 
-    private void copyTree(Path source, Path destination) throws IOException {
-        Files.walkFileTree(
-                source,
-                new SimpleFileVisitor<>() {
-                    @Override
-                    public java.nio.file.FileVisitResult preVisitDirectory(
-                            Path directory, BasicFileAttributes attributes) throws IOException {
-                        Files.createDirectories(destination.resolve(source.relativize(directory)));
-                        return java.nio.file.FileVisitResult.CONTINUE;
-                    }
-
-                    @Override
-                    public java.nio.file.FileVisitResult visitFile(
-                            Path file, BasicFileAttributes attributes) throws IOException {
-                        Path target = destination.resolve(source.relativize(file));
-                        Files.createDirectories(target.getParent());
-                        Files.copy(
-                                file,
-                                target,
-                                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                                java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);
-                        return java.nio.file.FileVisitResult.CONTINUE;
-                    }
-                });
+    private String sha256(Path path) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream input = Files.newInputStream(path)) {
+            byte[] buffer = new byte[64 * 1024];
+            int count;
+            while ((count = input.read(buffer)) >= 0) {
+                digest.update(buffer, 0, count);
+            }
+        }
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     private String escape(String value) {
