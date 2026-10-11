@@ -12,6 +12,8 @@ import wstool.Distribution;
 import wstool.Distribution.Folder;
 import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
+import wstool.Package;
+import wstool.Package.ImportOptions;
 import wstool.simple.git.GitCloneInput;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitCloneInput;
@@ -27,11 +29,22 @@ public class WorkspaceHelper {
     private final GitHelper git;
     private final StorageHelper storage;
     private final DistributionHelper distribution;
+    private final PackageHelper packages;
+    private final ExternalPackageSourceHelper externalSources = new ExternalPackageSourceHelper();
 
     public WorkspaceHelper(GitHelper git, StorageHelper storage, DistributionHelper distribution) {
+        this(git, storage, distribution, null);
+    }
+
+    public WorkspaceHelper(
+            GitHelper git,
+            StorageHelper storage,
+            DistributionHelper distribution,
+            PackageHelper packages) {
         this.git = git;
         this.storage = storage;
         this.distribution = distribution;
+        this.packages = packages;
     }
 
     public Path workspaceSourceFolder(Path workspace) {
@@ -153,6 +166,38 @@ public class WorkspaceHelper {
                             String.format(
                                     "Unsupported package source type '%s' for package '%s'.",
                                     source.getClass().getSimpleName(), input.name()));
+        }
+
+        Path packageDirectory = workspacePackageFolder(input.workspace(), input.name());
+        Path packageConfig = packageDirectory.resolve("wstool.pkl");
+        if (packages != null && Files.isRegularFile(packageConfig)) {
+            Package packageDefinition = packages.getPackageConfig(packageConfig);
+            ImportOptions importOptions = packageDefinition.getImportOptions();
+            if (importOptions != null) {
+                Path externalSource =
+                        externalSources.materialize(
+                                importOptions.getSource(),
+                                source.getName(),
+                                source.getVersion(),
+                                input.workspace(),
+                                git);
+                Path localOverlay =
+                        input.workspace()
+                                .resolve("private/cache/import-overlays")
+                                .resolve(source.getName())
+                                .resolve(source.getVersion());
+                PackageSourceHelper sources = new PackageSourceHelper();
+                sources.copy(packageDirectory, localOverlay);
+                try {
+                    externalSources.mergeAndPatch(
+                            externalSource,
+                            localOverlay,
+                            packageDirectory,
+                            importOptions.getPatchContents());
+                } finally {
+                    deleteTree(localOverlay);
+                }
+            }
         }
 
         storage.addPackageToWorkspaceStorage(

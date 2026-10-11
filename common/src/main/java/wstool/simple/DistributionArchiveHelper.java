@@ -10,8 +10,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 import wstool.Distribution.Archive;
+import wstool.Package.ExternalArchive;
 import wstool.simple.archive.ImmutableExtractArchiveInput;
 
 /** Downloads and extracts immutable package archives into the workspace metadata cache. */
@@ -19,28 +22,50 @@ public class DistributionArchiveHelper {
     private final ArchiveHelper archives = new ArchiveHelper();
 
     public void extract(Archive archive, Path workspace, Path destination) throws Exception {
-        String checksum = archive.getChecksum().toLowerCase();
+        extract(
+                archive.getName(),
+                archive.getVersion(),
+                archive.getUri(),
+                List.of(),
+                archive.getChecksum(),
+                workspace,
+                destination);
+    }
+
+    public void extract(
+            ExternalArchive archive, String name, String version, Path workspace, Path destination)
+            throws Exception {
+        extract(
+                name,
+                version,
+                archive.getArchive(),
+                archive.getMirrors(),
+                archive.getChecksum(),
+                workspace,
+                destination);
+    }
+
+    private void extract(
+            String name,
+            String version,
+            URI uri,
+            List<URI> mirrors,
+            String expectedChecksum,
+            Path workspace,
+            Path destination)
+            throws Exception {
+        String checksum = expectedChecksum.toLowerCase();
         Path cache =
                 workspace
                         .resolve("private/cache/archives")
-                        .resolve(archive.getName() + "-" + archive.getVersion() + "-" + checksum);
+                        .resolve(name + "-" + version + "-" + checksum);
         Files.createDirectories(cache.getParent());
         if (!Files.isRegularFile(cache) || !checksum.equals(sha256(cache))) {
             Files.deleteIfExists(cache);
-            download(archive.getUri(), cache);
-            String actual = sha256(cache);
-            if (!checksum.equals(actual)) {
-                Files.deleteIfExists(cache);
-                throw new IOException(
-                        "SHA-256 checksum mismatch for package archive "
-                                + archive.getName()
-                                + "@"
-                                + archive.getVersion()
-                                + ": expected "
-                                + checksum
-                                + " but received "
-                                + actual);
-            }
+            List<URI> locations = new ArrayList<>();
+            locations.add(uri);
+            locations.addAll(mirrors);
+            downloadAndVerify(locations, cache, checksum, name, version);
         }
         deleteTree(destination);
         Files.createDirectories(destination);
@@ -49,6 +74,35 @@ public class DistributionArchiveHelper {
                         .archive(cache)
                         .destination(destination)
                         .build());
+    }
+
+    private void downloadAndVerify(
+            List<URI> locations, Path cache, String checksum, String name, String version)
+            throws Exception {
+        IOException failures =
+                new IOException("Unable to fetch package archive " + name + "@" + version);
+        for (URI location : locations) {
+            try {
+                download(location, cache);
+                String actual = sha256(cache);
+                if (checksum.equals(actual)) {
+                    return;
+                }
+                Files.deleteIfExists(cache);
+                failures.addSuppressed(
+                        new IOException(
+                                "SHA-256 checksum mismatch from "
+                                        + location
+                                        + ": expected "
+                                        + checksum
+                                        + " but received "
+                                        + actual));
+            } catch (Exception error) {
+                Files.deleteIfExists(cache);
+                failures.addSuppressed(error);
+            }
+        }
+        throw failures;
     }
 
     private void download(URI uri, Path destination) throws Exception {

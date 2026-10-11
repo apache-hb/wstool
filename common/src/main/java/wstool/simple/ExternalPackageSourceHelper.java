@@ -1,0 +1,104 @@
+package wstool.simple;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
+import wstool.Package.ExternalArchive;
+import wstool.Package.ExternalGitRepository;
+import wstool.Package.ExternalPackage;
+import wstool.simple.git.GitRepositoryLocation;
+import wstool.simple.git.ImmutableGitCloneInput;
+import wstool.simple.git.ImmutableGitRepositoryLocation;
+
+/** Materializes third-party package sources and applies their configured patches. */
+public class ExternalPackageSourceHelper {
+    private final DistributionArchiveHelper archives = new DistributionArchiveHelper();
+    private final PackageSourceHelper sources = new PackageSourceHelper();
+
+    public Path materialize(
+            ExternalPackage source, String name, String version, Path workspace, GitHelper git)
+            throws Exception {
+        Path destination =
+                workspace.resolve("private/cache/external-sources").resolve(name).resolve(version);
+        if (source instanceof ExternalArchive archive) {
+            if (!Files.isDirectory(destination)) {
+                archives.extract(archive, name, version, workspace, destination);
+            }
+            return destination;
+        }
+        if (source instanceof ExternalGitRepository repository) {
+            if (!Files.isDirectory(destination.resolve(".git"))) {
+                deleteTree(destination);
+                GitRepositoryLocation location =
+                        ImmutableGitRepositoryLocation.builder()
+                                .repository(repository.getRepo())
+                                .branch(repository.getBranch())
+                                .build();
+                git.clone(
+                        ImmutableGitCloneInput.builder()
+                                .parent(destination.getParent())
+                                .name(destination.getFileName().toString())
+                                .repository(location)
+                                .build());
+            }
+            return destination;
+        }
+        throw new IllegalArgumentException(
+                "Unsupported external package source type: " + source.getClass().getSimpleName());
+    }
+
+    public void mergeAndPatch(
+            Path externalSource, Path localSource, Path destination, List<String> patches)
+            throws Exception {
+        sources.copy(externalSource, destination);
+        deleteTree(destination.resolve(".git"));
+        sources.overlay(localSource, destination);
+        for (int index = 0; index < patches.size(); index++) {
+            applyPatch(destination, patches.get(index), index);
+        }
+    }
+
+    private void applyPatch(Path source, String content, int index) throws Exception {
+        Path patchFile = Files.createTempFile("wstool-import-patch-", "-" + index + ".patch");
+        try {
+            Files.writeString(patchFile, content, StandardCharsets.UTF_8);
+            Process process =
+                    new ProcessBuilder(
+                                    "patch",
+                                    "--batch",
+                                    "--forward",
+                                    "--fuzz=0",
+                                    "-p1",
+                                    "-i",
+                                    patchFile.toString())
+                            .directory(source.toFile())
+                            .redirectErrorStream(true)
+                            .start();
+            byte[] output = process.getInputStream().readAllBytes();
+            int status = process.waitFor();
+            if (status != 0) {
+                throw new IOException(
+                        "Unable to apply import patch "
+                                + (index + 1)
+                                + ": "
+                                + new String(output, StandardCharsets.UTF_8));
+            }
+        } finally {
+            Files.deleteIfExists(patchFile);
+        }
+    }
+
+    private void deleteTree(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return;
+        }
+        try (var paths = Files.walk(path)) {
+            for (Path entry : paths.sorted(Comparator.reverseOrder()).toList()) {
+                Files.delete(entry);
+            }
+        }
+    }
+}

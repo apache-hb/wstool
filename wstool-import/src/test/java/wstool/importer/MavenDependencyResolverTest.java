@@ -7,12 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.pkl.config.java.JavaType;
 import picocli.CommandLine;
-import wstool.Distribution;
 import wstool.Distribution.Archive;
 import wstool.Distribution.Folder;
 import wstool.Distribution.PackageSource;
@@ -36,7 +37,7 @@ class MavenDependencyResolverTest {
                 new CachedMavenProxy(
                         Path.of("build/recursive-import-e2e-cache/maven-proxy").toAbsolutePath())) {
             assertEquals(0, importMaven(output, localRepository, proxy.url(), bom.key()));
-            Distribution entries = readDistribution(output.resolve("packages.pkl"));
+            List<PackageSource> entries = readPackageSources(output.resolve("packages.pkl"));
             PackageSource smithyBom = findPackage(entries, "software_amazon_smithy_smithy-bom");
             assertEquals("1.x", smithyBom.getVersion());
             try (var paths = Files.walk(output.resolve("package-tree/packages"))) {
@@ -79,8 +80,8 @@ class MavenDependencyResolverTest {
                 assertTrue(
                         zip.getEntry("packages/org_hamcrest_hamcrest-core/1.x/wstool.pkl") != null);
             }
-            Distribution entries = readDistribution(output.resolve("packages.pkl"));
-            assertEquals(2, entries.getPackages().size());
+            List<PackageSource> entries = readPackageSources(output.resolve("packages.pkl"));
+            assertEquals(2, entries.size());
             assertEquals("1.x", findPackage(entries, "org_hamcrest_hamcrest-library").getVersion());
             assertEquals("1.x", findPackage(entries, "org_hamcrest_hamcrest-core").getVersion());
             assertTrue(Files.isRegularFile(output.resolve("maven-import-roots.json")));
@@ -105,10 +106,10 @@ class MavenDependencyResolverTest {
             Path output = tempDir.resolve("generated");
             Path bundle = new PackageBundleWriter().write(resolved, output, null);
             assertTrue(Files.isRegularFile(bundle));
-            Distribution entries = readDistribution(output.resolve("packages.pkl"));
+            List<PackageSource> entries = readPackageSources(output.resolve("packages.pkl"));
             PackageSource library = findPackage(entries, "org_hamcrest_hamcrest-library");
             assertEquals("1.x", library.getVersion());
-            for (PackageSource source : entries.getPackages()) {
+            for (PackageSource source : entries) {
                 Folder folder = assertInstanceOf(Folder.class, source);
                 Archive archive = assertInstanceOf(Archive.class, folder.getFrom());
                 assertEquals("file", archive.getUri().getScheme());
@@ -176,8 +177,9 @@ class MavenDependencyResolverTest {
                                     tempDir.resolve("cli-local-cache-second").toString(),
                                     core.key());
             assertEquals(0, secondStatus);
-            Distribution combinedEntries = readDistribution(cliOutput.resolve("packages.pkl"));
-            assertEquals(2, combinedEntries.getPackages().size());
+            List<PackageSource> combinedEntries =
+                    readPackageSources(cliOutput.resolve("packages.pkl"));
+            assertEquals(2, combinedEntries.size());
             assertEquals(
                     2,
                     new com.fasterxml.jackson.databind.ObjectMapper()
@@ -201,9 +203,9 @@ class MavenDependencyResolverTest {
                         coordinate);
     }
 
-    private Distribution readDistribution(Path path) throws Exception {
+    private List<PackageSource> readPackageSources(Path path) throws Exception {
         try (var pkl = new PklHelper(Map.of())) {
-            return pkl.evaluate(path).as(Distribution.class);
+            return pkl.evaluate(path).get("packages").as(JavaType.listOf(PackageSource.class));
         }
     }
 
@@ -213,8 +215,8 @@ class MavenDependencyResolverTest {
         }
     }
 
-    private PackageSource findPackage(Distribution distribution, String name) {
-        return distribution.getPackages().stream()
+    private PackageSource findPackage(List<PackageSource> packages, String name) {
+        return packages.stream()
                 .filter(pkg -> pkg.getName().equals(name))
                 .findFirst()
                 .orElseThrow();

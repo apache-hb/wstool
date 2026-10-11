@@ -1,21 +1,19 @@
 package wstool.npm.importer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.pkl.config.java.JavaType;
 import picocli.CommandLine;
-import wstool.Distribution;
 import wstool.Distribution.PackageSource;
 import wstool.Package;
 import wstool.importer.Main;
@@ -33,7 +31,7 @@ class NpmPackageImporterTest {
         Path npmCache = Path.of("build/recursive-import-e2e-cache/npm-cache").toAbsolutePath();
         try (var proxy = new CachedNpmProxy(proxyCache)) {
             assertEquals(0, importPackage(output, npmCache, proxy.url(), "@aws-mdaa/sftp-server"));
-            Distribution entries = readDistribution(output.resolve("packages.pkl"));
+            List<PackageSource> entries = readPackageSources(output.resolve("packages.pkl"));
             assertEquals("1.x", findPackage(entries, "npm_@aws-mdaa/sftp-server").getVersion());
             assertTrue(
                     Files.isRegularFile(
@@ -76,8 +74,8 @@ class NpmPackageImporterTest {
                 assertTrue(zip.getEntry("packages/ms/2.x/wstool.pkl") != null);
                 assertTrue(zip.getEntry("packages/debug/4.x/wstool/bin/npm-wstool") == null);
             }
-            Distribution entries = readDistribution(output.resolve("packages.pkl"));
-            assertEquals(2, entries.getPackages().size());
+            List<PackageSource> entries = readPackageSources(output.resolve("packages.pkl"));
+            assertEquals(2, entries.size());
             assertEquals("4.x", findPackage(entries, "npm_debug").getVersion());
             assertEquals("2.x", findPackage(entries, "npm_ms").getVersion());
             assertTrue(Files.isRegularFile(output.resolve("npm-import-roots.json")));
@@ -93,8 +91,8 @@ class NpmPackageImporterTest {
             int status = importPackage(output, tempDir.resolve("npm-cache-first"), proxy.url());
             assertEquals(0, status);
 
-            Distribution packageEntries = readDistribution(output.resolve("packages.pkl"));
-            assertEquals(2, packageEntries.getPackages().size());
+            List<PackageSource> packageEntries = readPackageSources(output.resolve("packages.pkl"));
+            assertEquals(2, packageEntries.size());
             assertEquals("4.x", findPackage(packageEntries, "npm_debug").getVersion());
             assertEquals("2.x", findPackage(packageEntries, "npm_ms").getVersion());
             Map<String, String> directDependencies =
@@ -135,8 +133,9 @@ class NpmPackageImporterTest {
                     0,
                     importPackage(
                             output, tempDir.resolve("npm-cache-third"), proxy.url(), "ms@2.1.2"));
-            Distribution combinedEntries = readDistribution(output.resolve("packages.pkl"));
-            assertEquals(2, combinedEntries.getPackages().size());
+            List<PackageSource> combinedEntries =
+                    readPackageSources(output.resolve("packages.pkl"));
+            assertEquals(2, combinedEntries.size());
             assertEquals("4.x", findPackage(combinedEntries, "npm_debug").getVersion());
             assertEquals("2.x", findPackage(combinedEntries, "npm_ms").getVersion());
             Map<String, String> combinedRoots =
@@ -169,9 +168,9 @@ class NpmPackageImporterTest {
         return new CommandLine(Main.class).execute(arguments.toArray(String[]::new));
     }
 
-    private Distribution readDistribution(Path path) throws Exception {
+    private List<PackageSource> readPackageSources(Path path) throws Exception {
         try (var pkl = new PklHelper(Map.of())) {
-            return pkl.evaluate(path).as(Distribution.class);
+            return pkl.evaluate(path).get("packages").as(JavaType.listOf(PackageSource.class));
         }
     }
 
@@ -183,19 +182,15 @@ class NpmPackageImporterTest {
 
     private Map<String, String> readStringMap(Path path, String property) throws Exception {
         try (var pkl = new PklHelper(Map.of())) {
-            Map<?, ?> values = pkl.evaluate(path).get(property).as(Map.class);
-            Map<String, String> result = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : values.entrySet()) {
-                result.put(
-                        assertInstanceOf(String.class, entry.getKey()),
-                        assertInstanceOf(String.class, entry.getValue()));
-            }
-            return Map.copyOf(result);
+            return Map.copyOf(
+                    pkl.evaluate(path)
+                            .get(property)
+                            .as(JavaType.mapOf(String.class, String.class)));
         }
     }
 
-    private PackageSource findPackage(Distribution distribution, String name) {
-        return distribution.getPackages().stream()
+    private PackageSource findPackage(List<PackageSource> packages, String name) {
+        return packages.stream()
                 .filter(pkg -> pkg.getName().equals(name))
                 .findFirst()
                 .orElseThrow();

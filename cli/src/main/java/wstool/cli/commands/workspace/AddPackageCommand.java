@@ -9,6 +9,7 @@ import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
+import wstool.simple.PackageHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
@@ -50,7 +51,8 @@ public class AddPackageCommand implements Callable<Integer> {
             GitHelper git = new GitHelper(interactive);
             StorageHelper storage = new StorageHelper();
             DistributionHelper distribution = new DistributionHelper(pkl);
-            WorkspaceHelper workspace = new WorkspaceHelper(git, storage, distribution);
+            WorkspaceHelper workspace =
+                    new WorkspaceHelper(git, storage, distribution, new PackageHelper(pkl));
 
             Path workspaceFolder = workspace.findWorkspaceUp(Path.of(""));
             var distributionConfig = workspace.refreshDistribution(workspaceFolder);

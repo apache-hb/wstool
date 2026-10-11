@@ -30,8 +30,10 @@ class Folder extends PackageSource {
 
 /// A package that is stored in a git repository
 class GitRepository extends PackageSource {
+  /// The uri of the git repository
   repo: Uri
 
+  /// The branch to checkout, defaults to master
   branch: String = "master"
 }
 

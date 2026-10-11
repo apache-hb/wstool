@@ -95,7 +95,7 @@ public class NpmPackageBundleWriter {
                 new StringBuilder(
                         "module wstool.importedNpmPackages\n\n"
                                 + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl\" as wstoolDistribution\n\n"
-                                + "packages {\n");
+                                + "packages: Listing<wstoolDistribution.PackageSource> = new Listing {\n");
         groupedPackages(resolved).values().stream()
                 .sorted(
                         java.util.Comparator.comparing(ResolvedPackage::name)

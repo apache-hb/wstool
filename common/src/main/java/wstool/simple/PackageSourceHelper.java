@@ -5,6 +5,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import wstool.Distribution.Archive;
 import wstool.Distribution.Folder;
@@ -89,8 +90,45 @@ public class PackageSourceHelper {
                         Files.copy(
                                 file,
                                 target,
-                                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                                java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.COPY_ATTRIBUTES);
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+    }
+
+    /** Copies files from {@code overlay} over {@code destination}, preserving other files. */
+    public void overlay(Path overlay, Path destination) throws IOException {
+        Files.walkFileTree(
+                overlay,
+                new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(
+                            Path directory, BasicFileAttributes attributes) throws IOException {
+                        Path relative = overlay.relativize(directory);
+                        if (relative.getNameCount() > 0
+                                && ".git".equals(relative.getName(0).toString())) {
+                            return FileVisitResult.SKIP_SUBTREE;
+                        }
+                        Files.createDirectories(destination.resolve(relative));
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attributes)
+                            throws IOException {
+                        Path relative = overlay.relativize(file);
+                        if (relative.getNameCount() > 0
+                                && ".git".equals(relative.getName(0).toString())) {
+                            return FileVisitResult.CONTINUE;
+                        }
+                        Path target = destination.resolve(relative);
+                        Files.createDirectories(target.getParent());
+                        Files.copy(
+                                file,
+                                target,
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.COPY_ATTRIBUTES);
                         return FileVisitResult.CONTINUE;
                     }
                 });

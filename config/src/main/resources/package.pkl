@@ -29,16 +29,57 @@ class BuildOptions {
   sourceMount: SourceMount = "readonly"
 }
 
-/// Options for 3rd party imports
-class ImportOptions {
-  /// Path to the compressed archive path the code is stored in
+abstract class ExternalPackage {}
+
+class ExternalFile {
+  uri: Uri
+
+  mirrors: Listing<Uri> = new Listing {}
+
+  checksum: String
+}
+
+class ExternalFiles extends ExternalPackage {
+  /// A list of files that will be copied into the package at the specified path, the path is relative to the root of the package
+  /// These files will not be extracted, and are copied as is.
+  files: Mapping<String, ExternalFile>
+}
+
+class ExternalArchive extends ExternalPackage {
+  /// The uri of the compressed archive path the code is stored in
   archive: Uri
+
+  /// A list of mirrors to use for downloading the archive, if the primary uri is unavailable
+  mirrors: Listing<Uri> = new Listing {}
 
   // SHA-256 checksum of the compressed archive
   checksum: String
+}
+
+class ExternalGitRepository extends ExternalPackage {
+  /// The uri of the git repository
+  repo: Uri
+
+  /// The branch to checkout, defaults to master
+  branch: String = "master"
+}
+
+/// Options for 3rd party imports
+class ImportOptions {
+  /// Uri of the compressed archive path the code is stored in
+  source: ExternalPackage
 
   /// The license of the code, should be a valid SPDX license identifier
   license: String
+
+  /// Patches to apply to the source code after it has been extracted from the archive, but before it is built
+  hidden patches: Listing<Resource> = new Listing {}
+
+  patchContents: Listing<String> = new Listing {
+    for (patch in patches) {
+      patch.text
+    }
+  }
 }
 
 package: WsToolPackage

@@ -1,0 +1,19 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+name = "third-party-integration"
+
+platforms { "wstool-third-party-integration:latest" }
+
+storage {
+  bucket = "wstool-helidon-integration"
+  endpoint = read("env:AWS_S3_ENDPOINT")
+}
+
+packages {
+  new GitRepository {
+    name = "third-party"
+    version = "1.0.0"
+    repo = read("env:WSTOOL_THIRD_PARTY_LOCAL_REPO")
+    branch = "main"
+  }
+}

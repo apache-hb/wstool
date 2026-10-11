@@ -1,6 +1,7 @@
 package wstool.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.pkl.config.java.JavaType;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -29,7 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 import picocli.CommandLine;
-import wstool.Distribution;
+import wstool.Distribution.PackageSource;
 import wstool.importer.CachedMavenProxy;
 import wstool.importer.Main;
 import wstool.npm.importer.CachedNpmProxy;
@@ -104,8 +106,7 @@ class HelidonWstoolEndToEndTest {
                                             .toString(),
                                     HELIDON_COORDINATE);
             assertEquals(0, status, "wstool-import failed to resolve Helidon");
-            importedPackages =
-                    readDistribution(imported.resolve("packages.pkl")).getPackages().size();
+            importedPackages = readPackageSources(imported.resolve("packages.pkl")).size();
             assertTrue(
                     importedPackages > 1,
                     "Helidon transitive Maven dependencies were not imported");
@@ -254,6 +255,81 @@ class HelidonWstoolEndToEndTest {
         assertEquals("true", Files.readString(builtProject));
     }
 
+    @Test
+    void overlaysAndPatchesThirdPartySourceThenBuildsWithLocalPackageScript() throws Exception {
+        Path packageRepository = tempDir.resolve("third-party-package");
+        copyTree(resourcePath("third-party/package"), packageRepository);
+        assertTrue(
+                packageRepository.resolve("wstool/bin/local-build").toFile().setExecutable(true));
+        initializeGitRepository(packageRepository);
+        currentProjectRepository = packageRepository;
+        thirdPartyLocalRepository = packageRepository;
+
+        Path upstreamRepository = tempDir.resolve("third-party-upstream");
+        copyTree(resourcePath("third-party/upstream"), upstreamRepository);
+        initializeGitRepository(upstreamRepository);
+        thirdPartyUpstreamRepository = upstreamRepository;
+
+        Path distribution = tempDir.resolve("third-party-distribution");
+        Files.createDirectories(distribution);
+        Files.copy(
+                resourcePath("third-party/distribution/world.pkl"),
+                distribution.resolve("world.pkl"));
+        initializeGitRepository(distribution);
+
+        Path pklHome = tempDir.resolve("third-party-pkl-home");
+        Path pklPackageCache =
+                pklHome.resolve(".pkl/cache/package-2/pkl.konna.cloud/pkl/wstool@1.0.2");
+        Files.createDirectories(pklPackageCache);
+        Path localPackage = Path.of("../config/build/generated/pkl/packages/wstool@1.0.2");
+        Files.copy(localPackage, pklPackageCache.resolve("wstool@1.0.2.json"));
+        Files.copy(
+                Path.of("../config/build/generated/pkl/packages/wstool@1.0.2.zip"),
+                pklPackageCache.resolve("wstool@1.0.2.zip"));
+        pklHomeOverride = pklHome;
+
+        Path workspaces = tempDir.resolve("third-party-workspaces");
+        Files.createDirectories(workspaces);
+        runCli(workspaces, "workspace", "create", "--name", "third-party-workspace");
+        Path workspace = workspaces.resolve("third-party-workspace");
+        runCli(
+                workspace,
+                "workspace",
+                "setup",
+                "--distro",
+                "third-party-integration",
+                "--from",
+                distribution.toUri().toString(),
+                "--branch",
+                "main");
+        runCli(workspace, "workspace", "add", "--package", "third-party");
+
+        Path importedSource = workspace.resolve("src/third-party");
+        assertEquals(
+                "patched upstream source\n",
+                Files.readString(importedSource.resolve("src/value.txt")));
+        assertEquals(
+                "local package overlay\n",
+                Files.readString(importedSource.resolve("src/local-overlay.txt")));
+        assertFalse(Files.exists(importedSource.resolve(".git")));
+
+        Path fakeDocker = tempDir.resolve("fake-docker-bin");
+        Files.createDirectories(fakeDocker);
+        Path dockerExecutable = fakeDocker.resolve("docker");
+        Files.copy(resourcePath("third-party/fake-docker"), dockerExecutable);
+        assertTrue(dockerExecutable.toFile().setExecutable(true));
+        dockerShimDirectory = fakeDocker;
+        try {
+            runCli(workspace, "build", "third-party@1.0.0");
+        } finally {
+            dockerShimDirectory = null;
+        }
+
+        assertEquals(
+                "built by the local package script\n",
+                Files.readString(workspace.resolve("private/prefix/third-party/result.txt")));
+    }
+
     private void verifyRestApi(Path application) throws Exception {
         int port = 18080;
         ProcessBuilder serverBuilder =
@@ -312,6 +388,30 @@ class HelidonWstoolEndToEndTest {
         builder.environment().put("AWS_REGION", "us-east-1");
         builder.environment().put("AWS_S3_ENDPOINT", s3Endpoint());
         builder.environment().put("WST_BUILD_IMAGE", BUILD_IMAGE);
+        if (pklHomeOverride != null) {
+            builder.environment().put("HOME", pklHomeOverride.toString());
+            builder.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + pklHomeOverride);
+        }
+        if (thirdPartyLocalRepository != null) {
+            builder.environment()
+                    .put(
+                            "WSTOOL_THIRD_PARTY_LOCAL_REPO",
+                            thirdPartyLocalRepository.toUri().toString());
+        }
+        if (thirdPartyUpstreamRepository != null) {
+            builder.environment()
+                    .put(
+                            "WSTOOL_THIRD_PARTY_UPSTREAM_REPO",
+                            thirdPartyUpstreamRepository.toUri().toString());
+        }
+        if (dockerShimDirectory != null) {
+            builder.environment()
+                    .put(
+                            "PATH",
+                            dockerShimDirectory
+                                    + java.io.File.pathSeparator
+                                    + System.getenv().getOrDefault("PATH", ""));
+        }
         builder.environment().put("WSTOOL_CLI_ARCHIVE", requiredEnv("WSTOOL_CLI_ARCHIVE"));
         builder.environment().put("WSTOOL_CLI_CHECKSUM", sha256(archivePath("WSTOOL_CLI_ARCHIVE")));
         builder.environment()
@@ -359,6 +459,10 @@ class HelidonWstoolEndToEndTest {
     }
 
     private Path currentProjectRepository;
+    private Path thirdPartyLocalRepository;
+    private Path thirdPartyUpstreamRepository;
+    private Path dockerShimDirectory;
+    private Path pklHomeOverride;
 
     private void initializeGitRepository(Path repository) throws Exception {
         run(repository, "git", "init", "--initial-branch=main");
@@ -428,9 +532,9 @@ class HelidonWstoolEndToEndTest {
         }
     }
 
-    private Distribution readDistribution(Path path) throws Exception {
+    private List<PackageSource> readPackageSources(Path path) throws Exception {
         try (var pkl = new PklHelper(Map.of())) {
-            return pkl.evaluate(path).as(Distribution.class);
+            return pkl.evaluate(path).get("packages").as(JavaType.listOf(PackageSource.class));
         }
     }
 
