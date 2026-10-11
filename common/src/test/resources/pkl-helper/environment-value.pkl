@@ -1,0 +1,1 @@
+answer = read("env:HELPER_TEST_VALUE")

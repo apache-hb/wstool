@@ -29,6 +29,8 @@ dependencies {
   runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
+  testImplementation(project(":common"))
+  testImplementation("org.pkl-lang:pkl-config-java:0.32.1")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 }
 

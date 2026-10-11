@@ -22,9 +22,13 @@ class PackageSourceHelperTest {
         Path bundleContents = tempDir.resolve("bundle-contents");
         Path packageDirectory = bundleContents.resolve("packages/example/1.0");
         Files.createDirectories(packageDirectory.resolve("wstool/bin"));
-        Files.writeString(packageDirectory.resolve("wstool.pkl"), "package config");
+        copyResource(
+                "package-source-helper/bundle-contents/packages/example/1.0/wstool.pkl",
+                packageDirectory.resolve("wstool.pkl"));
         Path tool = packageDirectory.resolve("wstool/bin/example-tool");
-        Files.writeString(tool, "#!/bin/sh\nexit 0\n");
+        copyResource(
+                "package-source-helper/bundle-contents/packages/example/1.0/wstool/bin/example-tool",
+                tool);
         tool.toFile().setExecutable(true, false);
 
         Path archive = tempDir.resolve("maven-packages.zip");
@@ -41,7 +45,8 @@ class PackageSourceHelperTest {
                 new PackageSourceHelper()
                         .materialize(source, tempDir.resolve("workspace"), new GitHelper(false));
 
-        assertEquals("package config", Files.readString(resolved.resolve("wstool.pkl")));
+        assertEquals(
+                "fixture = \"package config\"\n", Files.readString(resolved.resolve("wstool.pkl")));
         assertTrue(Files.isExecutable(resolved.resolve("wstool/bin/example-tool")));
     }
 
@@ -72,5 +77,15 @@ class PackageSourceHelperTest {
     private String sha256(Path file) throws Exception {
         return HexFormat.of()
                 .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
+    }
+
+    private void copyResource(String name, Path destination) throws Exception {
+        var resource = getClass().getClassLoader().getResourceAsStream(name);
+        if (resource == null) {
+            throw new IllegalArgumentException("Missing test resource: " + name);
+        }
+        try (resource) {
+            Files.copy(resource, destination);
+        }
     }
 }

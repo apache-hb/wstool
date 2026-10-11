@@ -29,9 +29,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 import picocli.CommandLine;
+import wstool.Distribution;
 import wstool.importer.CachedMavenProxy;
 import wstool.importer.Main;
 import wstool.npm.importer.CachedNpmProxy;
+import wstool.simple.PklHelper;
 
 /** Verifies imported Helidon artifacts and a REST application build offline through wstool. */
 @Testcontainers(disabledWithoutDocker = true)
@@ -103,9 +105,7 @@ class HelidonWstoolEndToEndTest {
                                     HELIDON_COORDINATE);
             assertEquals(0, status, "wstool-import failed to resolve Helidon");
             importedPackages =
-                    countOccurrences(
-                            Files.readString(imported.resolve("packages.pkl")),
-                            "new wstoolDistribution.Folder");
+                    readDistribution(imported.resolve("packages.pkl")).getPackages().size();
             assertTrue(
                     importedPackages > 1,
                     "Helidon transitive Maven dependencies were not imported");
@@ -428,8 +428,10 @@ class HelidonWstoolEndToEndTest {
         }
     }
 
-    private static int countOccurrences(String value, String needle) {
-        return (value.length() - value.replace(needle, "").length()) / needle.length();
+    private Distribution readDistribution(Path path) throws Exception {
+        try (var pkl = new PklHelper(Map.of())) {
+            return pkl.evaluate(path).as(Distribution.class);
+        }
     }
 
     private List<ImportedPackage> importedPackages(Path packagesRoot) throws IOException {

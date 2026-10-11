@@ -1,5 +1,6 @@
 package wstool.simple;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,7 +10,6 @@ import io.gitea.ApiClient;
 import io.gitea.api.RepositoryApi;
 import io.gitea.model.CreateRepoOption;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -72,8 +72,8 @@ public class GitHelperTest {
 
         Path clone = parent.resolve("package");
         assertTrue(Files.isDirectory(clone.resolve(".git")));
-        assertTrue(Files.readString(clone.resolve("README.md")).contains("fixture"));
-        assertTrue(Files.readString(clone.resolve(".git/HEAD")).contains("refs/heads/main"));
+        assertEquals("fixture\n", Files.readString(clone.resolve("README.md")));
+        assertEquals("ref: refs/heads/main\n", Files.readString(clone.resolve(".git/HEAD")));
     }
 
     @Test
@@ -115,13 +115,21 @@ public class GitHelperTest {
         runGit(uploadDirectory, "init", "--initial-branch=main");
         runGit(uploadDirectory, "config", "user.name", gitServer.getUserName());
         runGit(uploadDirectory, "config", "user.email", "git-helper@example.test");
-        Files.writeString(
-                uploadDirectory.resolve("README.md"), "fixture\n", StandardCharsets.UTF_8);
+        copyResource("git-helper/repository/README.md", uploadDirectory.resolve("README.md"));
         runGit(uploadDirectory, "add", "--all");
         runGit(uploadDirectory, "commit", "--message", "Add fixture");
         runGit(uploadDirectory, "remote", "add", "origin", repository.toString());
         runGit(uploadDirectory, "push", "--set-upstream", "origin", "main");
         return uploadDirectory;
+    }
+
+    private void copyResource(String name, Path destination) throws Exception {
+        try (var input = getClass().getClassLoader().getResourceAsStream(name)) {
+            if (input == null) {
+                throw new IllegalArgumentException("Missing test resource: " + name);
+            }
+            Files.copy(input, destination);
+        }
     }
 
     private void runGit(Path directory, String... arguments) throws Exception {

@@ -184,7 +184,7 @@ class DependencyResolverTest {
                     Files.isSymbolicLink(sysroot.resolve("include").resolve(packageName + ".h")),
                     "Missing sysroot link for " + packageName);
             assertEquals(
-                    "header from " + packageName,
+                    "header from package\n",
                     Files.readString(sysroot.resolve("include").resolve(packageName + ".h")));
         }
 
@@ -318,12 +318,16 @@ class DependencyResolverTest {
                 source.resolve("wstool.pkl"),
                 StandardCopyOption.REPLACE_EXISTING);
         Files.createDirectories(prefix.resolve("include"));
-        Files.writeString(
+        Files.copy(
+                resourcePath("dependency-resolver/artifacts/include/package.h"),
                 prefix.resolve("include").resolve(packageName + ".h"),
-                "header from " + packageName);
+                StandardCopyOption.REPLACE_EXISTING);
         if (packageName.equals("compiler")) {
             Files.createDirectories(prefix.resolve("bin"));
-            Files.writeString(prefix.resolve("bin/compiler"), "compiler executable");
+            Files.copy(
+                    resourcePath("dependency-resolver/artifacts/bin/compiler"),
+                    prefix.resolve("bin/compiler"),
+                    StandardCopyOption.REPLACE_EXISTING);
         }
         if (packageName.equals("shared")) {
             Files.createDirectories(prefix.resolve("lib"));

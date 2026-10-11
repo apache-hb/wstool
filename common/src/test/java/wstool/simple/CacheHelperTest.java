@@ -94,7 +94,7 @@ public class CacheHelperTest {
     void uploadsAndDownloadsFile() throws Exception {
         Path source = tempDir.resolve("source.txt");
         Path downloaded = tempDir.resolve("downloaded.txt");
-        Files.writeString(source, "cache object contents\n");
+        copyResource("cache-helper/source.txt", source);
 
         cache.upload(BUCKET, "objects/source.txt", source);
         cache.download(BUCKET, "objects/source.txt", downloaded);
@@ -106,8 +106,9 @@ public class CacheHelperTest {
     void uploadsAndDownloadsFolderAsArchive() throws Exception {
         Path source = tempDir.resolve("source-folder");
         Files.createDirectories(source.resolve("nested"));
-        Files.writeString(source.resolve("root.txt"), "root file\n");
-        Files.writeString(source.resolve("nested/child.txt"), "nested file\n");
+        copyResource("cache-helper/source-folder/root.txt", source.resolve("root.txt"));
+        copyResource(
+                "cache-helper/source-folder/nested/child.txt", source.resolve("nested/child.txt"));
         Path destination = tempDir.resolve("restored-folder");
 
         cache.uploadFolder(BUCKET, "folders/source-folder.zip", source);
@@ -116,6 +117,15 @@ public class CacheHelperTest {
         assertTrue(Files.isDirectory(destination));
         assertEquals("root file\n", Files.readString(destination.resolve("root.txt")));
         assertEquals("nested file\n", Files.readString(destination.resolve("nested/child.txt")));
+    }
+
+    private void copyResource(String name, Path destination) throws Exception {
+        try (var input = getClass().getClassLoader().getResourceAsStream(name)) {
+            if (input == null) {
+                throw new IllegalArgumentException("Missing test resource: " + name);
+            }
+            Files.copy(input, destination);
+        }
     }
 
     private static String runGarage(String... arguments) throws IOException, InterruptedException {

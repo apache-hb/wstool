@@ -1,16 +1,23 @@
 package wstool.importer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
+import wstool.Distribution;
+import wstool.Distribution.Archive;
+import wstool.Distribution.Folder;
+import wstool.Distribution.PackageSource;
+import wstool.Package;
+import wstool.simple.PklHelper;
 
 class MavenDependencyResolverTest {
     @TempDir Path tempDir;
@@ -29,9 +36,9 @@ class MavenDependencyResolverTest {
                 new CachedMavenProxy(
                         Path.of("build/recursive-import-e2e-cache/maven-proxy").toAbsolutePath())) {
             assertEquals(0, importMaven(output, localRepository, proxy.url(), bom.key()));
-            String entries = Files.readString(output.resolve("packages.pkl"));
-            assertTrue(entries.contains("name = \"software_amazon_smithy_smithy-bom\""));
-            assertTrue(entries.contains("version = \"1.x\""));
+            Distribution entries = readDistribution(output.resolve("packages.pkl"));
+            PackageSource smithyBom = findPackage(entries, "software_amazon_smithy_smithy-bom");
+            assertEquals("1.x", smithyBom.getVersion());
             try (var paths = Files.walk(output.resolve("package-tree/packages"))) {
                 assertTrue(paths.filter(Files::isRegularFile).count() > 100);
             }
@@ -72,8 +79,10 @@ class MavenDependencyResolverTest {
                 assertTrue(
                         zip.getEntry("packages/org_hamcrest_hamcrest-core/1.x/wstool.pkl") != null);
             }
-            String entries = Files.readString(output.resolve("packages.pkl"));
-            assertEquals(2, entries.split("new wstoolDistribution.Folder", -1).length - 1);
+            Distribution entries = readDistribution(output.resolve("packages.pkl"));
+            assertEquals(2, entries.getPackages().size());
+            assertEquals("1.x", findPackage(entries, "org_hamcrest_hamcrest-library").getVersion());
+            assertEquals("1.x", findPackage(entries, "org_hamcrest_hamcrest-core").getVersion());
             assertTrue(Files.isRegularFile(output.resolve("maven-import-roots.json")));
             System.out.println("Inspectable Maven recursive import output: " + output);
         }
@@ -96,26 +105,28 @@ class MavenDependencyResolverTest {
             Path output = tempDir.resolve("generated");
             Path bundle = new PackageBundleWriter().write(resolved, output, null);
             assertTrue(Files.isRegularFile(bundle));
-            String pkl = Files.readString(output.resolve("packages.pkl"));
-            assertTrue(pkl.contains("name = \"org_hamcrest_hamcrest-library\""));
-            assertFalse(pkl.contains("https://"));
+            Distribution entries = readDistribution(output.resolve("packages.pkl"));
+            PackageSource library = findPackage(entries, "org_hamcrest_hamcrest-library");
+            assertEquals("1.x", library.getVersion());
+            for (PackageSource source : entries.getPackages()) {
+                Folder folder = assertInstanceOf(Folder.class, source);
+                Archive archive = assertInstanceOf(Archive.class, folder.getFrom());
+                assertEquals("file", archive.getUri().getScheme());
+            }
             try (ZipFile zip = new ZipFile(bundle.toFile())) {
-                var packageConfig =
+                Path packageConfigPath = tempDir.resolve("maven-package.pkl");
+                try (var packageConfig =
                         zip.getInputStream(
                                 zip.getEntry(
-                                        "packages/org_hamcrest_hamcrest-library/1.x/wstool.pkl"));
-                assertTrue(packageConfig != null);
-                String generatedPackageConfig =
-                        new String(
-                                packageConfig.readAllBytes(),
-                                java.nio.charset.StandardCharsets.UTF_8);
-                assertTrue(
-                        generatedPackageConfig.contains(
-                                "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"));
-                assertTrue(generatedPackageConfig.contains("tool = \"maven-wstool-import\""));
-                assertTrue(
-                        generatedPackageConfig.contains(
-                                "buildDependencies { [\"maven-wstool-import\"] = \"1.0.0\" }"));
+                                        "packages/org_hamcrest_hamcrest-library/1.x/wstool.pkl"))) {
+                    assertTrue(packageConfig != null);
+                    Files.copy(packageConfig, packageConfigPath);
+                }
+                Package packageConfig = readPackage(packageConfigPath);
+                assertEquals("maven-wstool-import", packageConfig.getBuildOptions().getTool());
+                assertEquals(
+                        Map.of("maven-wstool-import", "1.0.0"),
+                        packageConfig.getBuildDependencies());
                 assertTrue(
                         zip.getEntry(
                                         "packages/org_hamcrest_hamcrest-library/1.x/wstool/bin/maven-wstool-import")
@@ -165,8 +176,8 @@ class MavenDependencyResolverTest {
                                     tempDir.resolve("cli-local-cache-second").toString(),
                                     core.key());
             assertEquals(0, secondStatus);
-            String combinedEntries = Files.readString(cliOutput.resolve("packages.pkl"));
-            assertEquals(2, combinedEntries.split("new wstoolDistribution.Folder", -1).length - 1);
+            Distribution combinedEntries = readDistribution(cliOutput.resolve("packages.pkl"));
+            assertEquals(2, combinedEntries.getPackages().size());
             assertEquals(
                     2,
                     new com.fasterxml.jackson.databind.ObjectMapper()
@@ -188,6 +199,25 @@ class MavenDependencyResolverTest {
                         "--local-repository",
                         localRepository.toString(),
                         coordinate);
+    }
+
+    private Distribution readDistribution(Path path) throws Exception {
+        try (var pkl = new PklHelper(Map.of())) {
+            return pkl.evaluate(path).as(Distribution.class);
+        }
+    }
+
+    private Package readPackage(Path path) throws Exception {
+        try (var pkl = new PklHelper(Map.of())) {
+            return pkl.evaluate(path).as(Package.class);
+        }
+    }
+
+    private PackageSource findPackage(Distribution distribution, String name) {
+        return distribution.getPackages().stream()
+                .filter(pkg -> pkg.getName().equals(name))
+                .findFirst()
+                .orElseThrow();
     }
 
     private void deleteTree(Path path) throws Exception {
