@@ -89,6 +89,7 @@ public class ContainerBuildHelper {
                                 + tool);
             }
 
+            String platform = distribution.getPlatforms().getFirst();
             List<String> command = new ArrayList<>(List.of("docker", "run", "--rm"));
             String isolation = config.getBuildOptions().getNetworkIsolation().toString();
             if ("isolated".equals(isolation)) {
@@ -137,10 +138,7 @@ public class ContainerBuildHelper {
             command.addAll(List.of("--workdir", "/wstool/workspace/src/" + version.name()));
             command.addAll(List.of("--env", "WST_SRCDIR=/wstool/workspace/src/" + version.name()));
             command.addAll(List.of("--env", "WST_PRIVATE=/tmp/wstool-private"));
-            command.addAll(
-                    List.of(
-                            "--env",
-                            "WST_BUILD_IMAGE=" + config.getBuildOptions().getDockerImage()));
+            command.addAll(List.of("--env", "WST_BUILD_IMAGE=" + platform));
             command.addAll(
                     List.of(
                             "--env",
@@ -172,7 +170,7 @@ public class ContainerBuildHelper {
                         (name, value) -> command.addAll(List.of("--env", name + "=" + value)));
             }
             command.addAll(List.of("--entrypoint", "/wstool/tools/" + tool));
-            command.add(config.getBuildOptions().getDockerImage());
+            command.add(platform);
             command.add("release");
 
             Process process =

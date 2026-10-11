@@ -1,4 +1,4 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package {
   name = "runtime-lib"

@@ -1,7 +1,8 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl"
-
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
 
 name = "gradle-e2e"
+
+platforms { read("env:WST_BUILD_IMAGE") }
 
 storage {
   bucket = "wstool-gradle-e2e"

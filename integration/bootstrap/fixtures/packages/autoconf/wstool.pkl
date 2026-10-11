@@ -1,11 +1,10 @@
-amends "modulepath:/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "autoconf"; version = "2.72" }
 
 buildOptions {
   tool = "wstool-autotools"
   buildImage = "bootstrap"
-  dockerImage = "ubuntu:24.04"
   buildEnvironment {
     ["WST_CACHE_REVISION"] = "portable-tool-paths"
     ["WST_COPY_SOURCE"] = "true"

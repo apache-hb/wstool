@@ -1,11 +1,10 @@
-amends "modulepath:/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "bison"; version = "3.8.2" }
 
 buildOptions {
   tool = "wstool-autotools"
   buildImage = "bootstrap"
-  dockerImage = "ubuntu:24.04"
   buildEnvironment {
     ["WST_MAKE_SUBDIRS"] = "po runtime-po gnulib-po ."
     ["WST_MAKEINFO"] = "true"

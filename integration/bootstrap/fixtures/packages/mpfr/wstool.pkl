@@ -1,11 +1,10 @@
-amends "modulepath:/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "mpfr"; version = "4.2.1" }
 
 buildOptions {
   tool = "wstool-autotools"
   buildImage = "bootstrap"
-  dockerImage = "ubuntu:24.04"
   buildEnvironment {
     ["WST_MAKE_SUBDIRS"] = "src tune"
     ["WST_JOBS"] = "1"

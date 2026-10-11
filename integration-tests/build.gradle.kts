@@ -12,6 +12,7 @@ java {
 dependencies {
   testImplementation(platform(project(":")))
   testImplementation(project(":cli"))
+  testImplementation(project(":common"))
   testImplementation(testFixtures(project(":wstool-import")))
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
   testImplementation("info.picocli:picocli:4.7.6")

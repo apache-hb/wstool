@@ -1,11 +1,10 @@
-amends "modulepath:/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "linux-headers"; version = "6.12.54" }
 
 buildOptions {
   tool = "wstool-linux-headers"
   buildImage = "bootstrap"
-  dockerImage = "wstool-bootstrap-integration:rsync"
 }
 
 importOptions {

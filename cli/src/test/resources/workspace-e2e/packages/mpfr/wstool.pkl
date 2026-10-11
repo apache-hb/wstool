@@ -1,7 +1,7 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "mpfr"; version = "4.2.1" }
-buildOptions { tool = "wstool-mpfr"; dockerImage = read("env:WST_BUILD_IMAGE") }
+buildOptions { tool = "wstool-mpfr" }
 buildDependencies {
   ["gmp"] = "6.3.0"
   ["wstool-cli"] = "0.1.0"

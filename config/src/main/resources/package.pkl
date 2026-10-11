@@ -27,7 +27,6 @@ class BuildOptions {
 
   networkIsolation: NetworkIsolation = "isolated"
   sourceMount: SourceMount = "readonly"
-  dockerImage: String = "scratch"
 }
 
 /// Options for 3rd party imports

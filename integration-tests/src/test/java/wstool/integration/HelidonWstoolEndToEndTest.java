@@ -100,8 +100,6 @@ class HelidonWstoolEndToEndTest {
                                     Path.of("build/integration-maven-local-repository")
                                             .toAbsolutePath()
                                             .toString(),
-                                    "--build-image",
-                                    BUILD_IMAGE,
                                     HELIDON_COORDINATE);
             assertEquals(0, status, "wstool-import failed to resolve Helidon");
             importedPackages =
@@ -199,8 +197,6 @@ class HelidonWstoolEndToEndTest {
                                     Path.of("build/integration-npm-local-cache")
                                             .toAbsolutePath()
                                             .toString(),
-                                    "--build-image",
-                                    NPM_BUILD_IMAGE,
                                     "is-number@7.0.0");
             assertEquals(0, status, "wstool-import npm failed to resolve package dependencies");
         }

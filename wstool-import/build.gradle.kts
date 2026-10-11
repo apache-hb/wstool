@@ -58,9 +58,7 @@ tasks.named<ProcessResources>("processTestResources") {
 tasks.register<Zip>("packageMavenWstoolImport") {
   group = "distribution"
   description = "Packages the shared maven-wstool-import build tool."
-  from(rootProject.file("packages/maven-wstool-import")) {
-    include("wstool.pkl")
-  }
+  from(rootProject.file("packages/maven-wstool-import")) { include("wstool.pkl") }
   from(rootProject.file("packages/maven-wstool-import/wstool/bin/maven-wstool-import")) {
     into("bin")
   }

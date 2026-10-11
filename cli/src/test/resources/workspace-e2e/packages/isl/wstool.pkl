@@ -1,7 +1,7 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "isl"; version = "0.26" }
-buildOptions { tool = "wstool-isl"; dockerImage = read("env:WST_BUILD_IMAGE") }
+buildOptions { tool = "wstool-isl" }
 buildDependencies {
   ["gmp"] = "6.3.0"
   ["wstool-cli"] = "0.1.0"

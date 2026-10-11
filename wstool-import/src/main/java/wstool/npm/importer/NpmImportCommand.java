@@ -38,12 +38,6 @@ public class NpmImportCommand implements Callable<Integer> {
             description = "Public URL prefix where the generated ZIP will be hosted.")
     private String baseUrl;
 
-    @Option(
-            names = "--build-image",
-            defaultValue = "node:22",
-            description = "Container image with Node.js and npm used to build packages.")
-    private String buildImage;
-
     @Parameters(arity = "1..*", paramLabel = "PACKAGE[@VERSION]")
     private List<String> packages = new ArrayList<>();
 
@@ -60,7 +54,7 @@ public class NpmImportCommand implements Callable<Integer> {
             var resolved =
                     new NpmDependencyResolver(npm)
                             .resolve(allPackages, registry, resolvedCache, temporary);
-            Path bundle = new NpmPackageBundleWriter().write(resolved, output, baseUrl, buildImage);
+            Path bundle = new NpmPackageBundleWriter().write(resolved, output, baseUrl);
             ImportRoots.write(output, "npm-import-roots.json", allPackages);
             System.out.println("Imported " + resolved.packages().size() + " npm packages.");
             System.out.println("Source bundle: " + bundle.toAbsolutePath());

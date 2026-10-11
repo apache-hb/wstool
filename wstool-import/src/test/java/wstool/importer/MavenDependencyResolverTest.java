@@ -94,7 +94,7 @@ class MavenDependencyResolverTest {
             assertTrue(resolved.get(ROOT).pom() != null);
 
             Path output = tempDir.resolve("generated");
-            Path bundle = new PackageBundleWriter().write(resolved, output, null, "ubuntu:24.04");
+            Path bundle = new PackageBundleWriter().write(resolved, output, null);
             assertTrue(Files.isRegularFile(bundle));
             String pkl = Files.readString(output.resolve("packages.pkl"));
             assertTrue(pkl.contains("name = \"org_hamcrest_hamcrest-library\""));
@@ -111,7 +111,7 @@ class MavenDependencyResolverTest {
                                 java.nio.charset.StandardCharsets.UTF_8);
                 assertTrue(
                         generatedPackageConfig.contains(
-                                "package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl"));
+                                "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"));
                 assertTrue(generatedPackageConfig.contains("tool = \"maven-wstool-import\""));
                 assertTrue(
                         generatedPackageConfig.contains(
@@ -166,8 +166,7 @@ class MavenDependencyResolverTest {
                                     core.key());
             assertEquals(0, secondStatus);
             String combinedEntries = Files.readString(cliOutput.resolve("packages.pkl"));
-            assertEquals(
-                    2, combinedEntries.split("new wstoolDistribution.Folder", -1).length - 1);
+            assertEquals(2, combinedEntries.split("new wstoolDistribution.Folder", -1).length - 1);
             assertEquals(
                     2,
                     new com.fasterxml.jackson.databind.ObjectMapper()

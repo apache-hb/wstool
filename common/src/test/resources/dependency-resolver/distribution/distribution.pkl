@@ -1,10 +1,12 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
 
 local git = read("env:GIT_ENDPOINT")
 local user = read("env:GIT_USERNAME")
 local suffix = read("env:REPOSITORY_SUFFIX")
 
 name = "dependency-resolver"
+
+platforms { "ubuntu:24.04" }
 
 storage {
   bucket = "dependency-resolver-fixtures"

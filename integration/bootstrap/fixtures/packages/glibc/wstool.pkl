@@ -1,11 +1,10 @@
-amends "modulepath:/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "glibc"; version = "2.39" }
 
 buildOptions {
   tool = "wstool-glibc"
   buildImage = "bootstrap"
-  dockerImage = "ubuntu:24.04"
   buildEnvironment {
     ["M4"] = "m4"
     ["WST_COPY_SOURCE"] = "true"

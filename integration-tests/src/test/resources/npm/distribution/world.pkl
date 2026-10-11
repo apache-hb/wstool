@@ -1,10 +1,12 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
 
-import "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl" as wstoolDistribution
+import "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl" as wstoolDistribution
 
 import "packages.pkl" as importedNpmPackages
 
 name = "npm-offline-integration"
+
+platforms { "wstool-npm-integration:latest" }
 
 storage {
   bucket = "wstool-npm-integration"

@@ -54,3 +54,13 @@ local const function noDuplicatePackageMajorVersions() = (pkgs: Listing<PackageS
 
 /// A map of package names to the sources of those packages
 packages: Listing<PackageSource>(noDuplicatePackageMajorVersions())
+
+local const function isValidDockerImageName() = (name: String) ->
+  name.matches(Regex("[a-z0-9]+([._/-][a-z0-9]+)*(:[a-zA-Z0-9_.-]+)?"))
+local const function hasSinglePlatform() = (platforms: Listing<DockerImageName>) ->
+  platforms.toList().length == 1
+
+typealias DockerImageName = String(isValidDockerImageName())
+
+/// The Docker image used to build this distribution
+platforms: Listing<DockerImageName>(hasSinglePlatform())

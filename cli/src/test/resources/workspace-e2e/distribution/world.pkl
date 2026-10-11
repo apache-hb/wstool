@@ -1,4 +1,4 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
 
 local cmake = read("env:CMAKE_REPO")
 local ninja = read("env:NINJA_REPO")
@@ -18,6 +18,8 @@ local wstoolCliArchive = read("env:WSTOOL_CLI_ARCHIVE")
 local wstoolCliChecksum = read("env:WSTOOL_CLI_CHECKSUM")
 
 name = "bootstrap-test"
+
+platforms { read("env:WST_BUILD_IMAGE") }
 
 storage {
   bucket = "cli-toolchain"

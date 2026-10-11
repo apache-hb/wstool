@@ -21,18 +21,14 @@ import wstool.npm.importer.NpmDependencyResolver.ResolvedPackage;
 public class NpmPackageBundleWriter {
     private final ObjectMapper json = new ObjectMapper();
 
-    public Path write(
-            NpmDependencyResolver.Result resolved,
-            Path outputDirectory,
-            String baseUrl,
-            String buildImage)
+    public Path write(NpmDependencyResolver.Result resolved, Path outputDirectory, String baseUrl)
             throws Exception {
         Path tree = outputDirectory.resolve("package-tree");
         Path bundle = outputDirectory.resolve("wstool-npm-import.zip");
         ImportRoots.resetGeneratedTree(outputDirectory, "package-tree");
         Files.createDirectories(tree);
         for (ResolvedPackage pkg : groupedPackages(resolved).values()) {
-            writePackage(pkg, tree, buildImage);
+            writePackage(pkg, tree);
         }
         zip(tree, bundle);
         String uri = artifactUri(baseUrl, bundle);
@@ -44,8 +40,7 @@ public class NpmPackageBundleWriter {
         return bundle;
     }
 
-    private void writePackage(ResolvedPackage pkg, Path root, String buildImage)
-            throws IOException {
+    private void writePackage(ResolvedPackage pkg, Path root) throws IOException {
         String wstoolName = NpmPackageName.wstoolName(pkg.name());
         String versionLine = MajorVersion.line(pkg.version());
         Path directory = root.resolve("packages").resolve(pkg.name()).resolve(versionLine);
@@ -58,13 +53,13 @@ public class NpmPackageBundleWriter {
                         "version", pkg.version(),
                         "wstoolVersion", versionLine,
                         "dependencies", pkg.dependencies()));
-        Files.writeString(directory.resolve("wstool.pkl"), packageConfig(pkg, buildImage));
+        Files.writeString(directory.resolve("wstool.pkl"), packageConfig(pkg));
     }
 
-    private String packageConfig(ResolvedPackage pkg, String buildImage) {
+    private String packageConfig(ResolvedPackage pkg) {
         StringBuilder pkl =
                 new StringBuilder(
-                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl\"\n\n"
+                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl\"\n\n"
                                         + "package { name = \"")
                         .append(NpmPackageName.wstoolName(pkg.name()))
                         .append("\"; version = \"")
@@ -72,9 +67,6 @@ public class NpmPackageBundleWriter {
                         .append("\" }\n\n")
                         .append("buildOptions {\n")
                         .append("  tool = \"npm-wstool\"\n")
-                        .append("  dockerImage = \"")
-                        .append(escape(buildImage))
-                        .append("\"\n")
                         .append("  networkIsolation = \"isolated\"\n")
                         .append("}\n");
         if (!pkg.dependencies().isEmpty()) {
@@ -102,7 +94,7 @@ public class NpmPackageBundleWriter {
         StringBuilder pkl =
                 new StringBuilder(
                         "module wstool.importedNpmPackages\n\n"
-                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl\" as wstoolDistribution\n\n"
+                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages {\n");
         groupedPackages(resolved).values().stream()
                 .sorted(

@@ -15,17 +15,14 @@ import wstool.importer.MavenDependencyResolver.ResolvedArtifact;
 /** Writes a checksummed source bundle and the Pkl entries that expose its Maven packages. */
 public class PackageBundleWriter {
     public Path write(
-            Map<MavenCoordinate, ResolvedArtifact> artifacts,
-            Path outputDirectory,
-            String baseUrl,
-            String buildImage)
+            Map<MavenCoordinate, ResolvedArtifact> artifacts, Path outputDirectory, String baseUrl)
             throws Exception {
         Path tree = outputDirectory.resolve("package-tree");
         Path bundle = outputDirectory.resolve("wstool-maven-import.zip");
         ImportRoots.resetGeneratedTree(outputDirectory, "package-tree");
         Files.createDirectories(tree);
         for (ResolvedArtifact artifact : artifacts.values()) {
-            writeArtifact(artifact, tree, buildImage);
+            writeArtifact(artifact, tree);
         }
         zip(tree, bundle);
         String uri = artifactUri(baseUrl, bundle);
@@ -35,8 +32,7 @@ public class PackageBundleWriter {
         return bundle;
     }
 
-    private void writeArtifact(ResolvedArtifact artifact, Path root, String buildImage)
-            throws IOException {
+    private void writeArtifact(ResolvedArtifact artifact, Path root) throws IOException {
         MavenCoordinate coordinate = artifact.coordinate();
         Path directory =
                 root.resolve("packages")
@@ -63,13 +59,13 @@ public class PackageBundleWriter {
         copyOptional(
                 artifact.sources(),
                 repositoryDirectory.resolve(coordinate.fileStem() + "-sources.jar"));
-        Files.writeString(directory.resolve("wstool.pkl"), packageConfig(artifact, buildImage));
+        Files.writeString(directory.resolve("wstool.pkl"), packageConfig(artifact));
     }
 
-    private String packageConfig(ResolvedArtifact artifact, String buildImage) {
+    private String packageConfig(ResolvedArtifact artifact) {
         StringBuilder pkl =
                 new StringBuilder(
-                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl\"\n\n"
+                                "amends \"package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl\"\n\n"
                                         + "package { name = \"")
                         .append(artifact.coordinate().packageName())
                         .append("\"; version = \"")
@@ -77,9 +73,6 @@ public class PackageBundleWriter {
                         .append("\" }\n\n")
                         .append("buildOptions {\n")
                         .append("  tool = \"maven-wstool-import\"\n")
-                        .append("  dockerImage = \"")
-                        .append(escape(buildImage))
-                        .append("\"\n")
                         .append("}\n\n")
                         .append("buildDependencies { [\"maven-wstool-import\"] = \"1.0.0\" }\n");
         if (!artifact.dependencies().isEmpty()) {
@@ -101,7 +94,7 @@ public class PackageBundleWriter {
         StringBuilder pkl =
                 new StringBuilder(
                         "module wstool.importedMavenPackages\n\n"
-                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.1#/distribution.pkl\" as wstoolDistribution\n\n"
+                                + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages {\n");
         java.util.TreeMap<String, MavenCoordinate> packages = new java.util.TreeMap<>();
         for (MavenCoordinate coordinate : artifacts.keySet()) {

@@ -36,12 +36,6 @@ public class MavenImportCommand implements Callable<Integer> {
             description = "Public URL prefix where the generated ZIP will be hosted.")
     private String baseUrl;
 
-    @Option(
-            names = "--build-image",
-            defaultValue = "ubuntu:24.04",
-            description = "Container image used to build imported packages.")
-    private String buildImage;
-
     @Parameters(arity = "1..*", paramLabel = "GROUP:ARTIFACT:VERSION")
     private List<String> coordinates = new ArrayList<>();
 
@@ -60,7 +54,7 @@ public class MavenImportCommand implements Callable<Integer> {
         for (MavenCoordinate root : roots) {
             allArtifacts.putAll(resolver.resolve(root));
         }
-        Path bundle = new PackageBundleWriter().write(allArtifacts, output, baseUrl, buildImage);
+        Path bundle = new PackageBundleWriter().write(allArtifacts, output, baseUrl);
         ImportRoots.write(output, "maven-import-roots.json", allCoordinates);
         System.out.println("Imported " + allArtifacts.size() + " Maven artifacts.");
         System.out.println("Source bundle: " + bundle.toAbsolutePath());

@@ -1,9 +1,8 @@
-amends "package://pkl.konna.cloud/pkl/wstool@1.0.1#/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "c-smoke"; version = "1.0.0" }
 buildOptions {
   tool = "wstool-c-smoke"
-  dockerImage = read("env:WST_BUILD_IMAGE")
 }
 buildDependencies {
   ["gcc"] = "14.2.0"

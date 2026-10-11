@@ -1,11 +1,10 @@
-amends "modulepath:/package.pkl"
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "pkg-config"; version = "0.29.2" }
 
 buildOptions {
   tool = "wstool-autotools"
   buildImage = "bootstrap"
-  dockerImage = "ubuntu:24.04"
   buildConfig { ["with-internal-glib"] = "yes" }
   buildEnvironment { ["WST_COPY_SOURCE"] = "true" }
 }
