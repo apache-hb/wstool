@@ -118,8 +118,8 @@ class NpmCdktnWstoolEndToEndTest {
             Files.createDirectories(distribution);
             Files.copy(imported.resolve("packages.pkl"), distribution.resolve("packages.pkl"));
             Files.copy(
-                    resourcePath("npm-cdktn/distribution/world.pkl"),
-                    distribution.resolve("world.pkl"));
+                    resourcePath("npm-cdktn/distribution/distribution.pkl"),
+                    distribution.resolve("distribution.pkl"));
             initializeGitRepository(distribution);
 
             runWstool(artifacts, "workspace", "create", "--name", "cdktn-s3");

@@ -162,7 +162,8 @@ class HelidonWstoolEndToEndTest {
         Files.createDirectories(distribution);
         Files.copy(imported.resolve("packages.pkl"), distribution.resolve("packages.pkl"));
         Files.copy(
-                resourcePath("helidon/distribution/world.pkl"), distribution.resolve("world.pkl"));
+                resourcePath("helidon/distribution/distribution.pkl"),
+                distribution.resolve("distribution.pkl"));
         initializeGitRepository(distribution);
 
         Path workspaces = tempDir.resolve("workspaces");
@@ -248,7 +249,8 @@ class HelidonWstoolEndToEndTest {
             Files.createDirectories(distribution);
             Files.copy(imported.resolve("packages.pkl"), distribution.resolve("packages.pkl"));
             Files.copy(
-                    resourcePath("npm/distribution/world.pkl"), distribution.resolve("world.pkl"));
+                    resourcePath("npm/distribution/distribution.pkl"),
+                    distribution.resolve("distribution.pkl"));
             initializeGitRepository(distribution);
 
             Path workspaces = tempDir.resolve("npm-workspaces");
@@ -323,8 +325,8 @@ class HelidonWstoolEndToEndTest {
         Path distribution = tempDir.resolve("third-party-distribution");
         Files.createDirectories(distribution);
         Files.copy(
-                resourcePath("third-party/distribution/world.pkl"),
-                distribution.resolve("world.pkl"));
+                resourcePath("third-party/distribution/distribution.pkl"),
+                distribution.resolve("distribution.pkl"));
         initializeGitRepository(distribution);
 
         Path workspaces = tempDir.resolve("third-party-workspaces");

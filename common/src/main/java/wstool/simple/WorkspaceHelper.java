@@ -76,12 +76,7 @@ public class WorkspaceHelper {
     }
 
     public Path workspaceDistributionConfig(Path workspace) {
-        Path distributionConfig =
-                workspaceDistributionFolder(workspace).resolve("distribution.pkl");
-        if (Files.exists(distributionConfig)) {
-            return distributionConfig;
-        }
-        return workspaceDistributionFolder(workspace).resolve("world.pkl");
+        return workspaceDistributionFolder(workspace).resolve("distribution.pkl");
     }
 
     public boolean hasDistributionConfig(Path workspace) {

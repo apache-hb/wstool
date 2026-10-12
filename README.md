@@ -18,9 +18,9 @@ To build a package enter the folder its cloned to, i.e. `MyWorkspace/src/MyFirst
 
 To create a distribution release run `wstool distro build`, this will package all updated dependencies and their dependants. The build is run locally in docker containers, the docker build containers by default contain nothing. Base packages can opt into a small installation of gcc, glibc, and shell. Containers also have access to the subset of packages it declares a dependency on that are in the current distribution. Once `wstool distro build` succeeds create a release using `wstool distro release`, this creates a concrete revision of the distro with all build artifacts finalized.
 
-### world.pkl config file
+### distribution.pkl config file
 
-To start using wstool you must first invent the universe. This means creating a "distribution". A distribution is defined using pkl and a file named `world.pkl` in the root of a repository. This config file defines all the packages the distribution requires to build.
+To start using wstool you must first invent the universe. This means creating a "distribution". A distribution is defined using pkl and a file named `distribution.pkl` in the root of a repository. This config file defines all the packages the distribution requires to build.
 
 ```pkl
 amends "package://<package-base-uri>@<version>#/distribution.pkl"
@@ -105,8 +105,7 @@ Workspaces have a fixed layout
 
 ```
 Workspace - The root of the workspace
-  world.pkl - A symlink to distribution/world.pkl
-  distribution - The distribution git repo, containing world.pkl
+  distribution - The distribution git repo, containing distribution.pkl
   src/ - Any cloned source packages
     FirstPackage - Package source
   .wstool/ - wstool internal folder, all internal config is stored here

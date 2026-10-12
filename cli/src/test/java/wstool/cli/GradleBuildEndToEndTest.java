@@ -135,8 +135,8 @@ class GradleBuildEndToEndTest {
         Path localRepository = tempDir.resolve("distribution");
         Files.createDirectories(localRepository);
         Files.copy(
-                resourcePath("gradle-e2e/distribution/world.pkl"),
-                localRepository.resolve("world.pkl"));
+                resourcePath("gradle-e2e/distribution/distribution.pkl"),
+                localRepository.resolve("distribution.pkl"));
         initializeGitRepository(localRepository);
         return localRepository;
     }

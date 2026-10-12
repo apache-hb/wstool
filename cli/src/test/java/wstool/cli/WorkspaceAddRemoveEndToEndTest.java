@@ -81,8 +81,9 @@ class WorkspaceAddRemoveEndToEndTest {
                 "main");
 
         Files.copy(
-                resourcePath("workspace-add-remove/distribution/" + updatedConfig + "/world.pkl"),
-                workspace.resolve("distribution/world.pkl"),
+                resourcePath(
+                        "workspace-add-remove/distribution/" + updatedConfig + "/distribution.pkl"),
+                workspace.resolve("distribution/distribution.pkl"),
                 StandardCopyOption.REPLACE_EXISTING);
         return workspace;
     }
