@@ -185,9 +185,13 @@ class DependencyResolverTest {
     private DependencyResolver dependencyResolver() {
         GitHelper git = new GitHelper(false);
         DistributionArchiveHelper archives = new DistributionArchiveHelper(new ArchiveHelper());
+        PackageHelper packageHelper = new PackageHelper(pkl);
         PackageMapper mapper = new PackageMapper();
-        return new DependencyResolver(
-                git, pkl, new PackageSourceHelper(archives, git, mapper), archives, mapper);
+        PackageSourceHelper packageSourceHelper = new PackageSourceHelper(archives, git, mapper);
+        ExternalFilesHelper externalFilesHelper = new ExternalFilesHelper();
+        ExternalPackageSourceHelper externalPackageSourceHelper = new ExternalPackageSourceHelper(archives, packageSourceHelper, externalFilesHelper, git);
+        WorkspaceHelper workspaceHelper = new WorkspaceHelper(git, storage, new DistributionHelper(pkl), packageHelper, packageSourceHelper, externalPackageSourceHelper);
+        return new DependencyResolver(git, pkl, new PackageSourceHelper(archives, git, mapper), archives, workspaceHelper, packageHelper, mapper);
     }
 
     private WorkspaceHelper workspaceHelper(GitHelper git, StorageHelper storage, PklHelper pkl) {

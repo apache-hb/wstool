@@ -35,6 +35,8 @@ public class DependencyResolver {
     private final PklHelper pklHelper;
     private final PackageSourceHelper packageSourceHelper;
     private final DistributionArchiveHelper distributionArchiveHelper;
+    private final WorkspaceHelper workspaceHelper;
+    private final PackageHelper packageHelper;
     private final PackageMapper packageMapper;
 
     public DependencyResolver(
@@ -42,11 +44,15 @@ public class DependencyResolver {
             PklHelper pklHelper,
             PackageSourceHelper packageSourceHelper,
             DistributionArchiveHelper distributionArchiveHelper,
+            WorkspaceHelper workspaceHelper,
+            PackageHelper packageHelper,
             PackageMapper packageMapper) {
         this.git = gitHelper;
         this.pklHelper = pklHelper;
         this.packageSourceHelper = packageSourceHelper;
         this.distributionArchiveHelper = distributionArchiveHelper;
+        this.workspaceHelper = workspaceHelper;
+        this.packageHelper = packageHelper;
         this.packageMapper = packageMapper;
     }
 
@@ -64,9 +70,9 @@ public class DependencyResolver {
         Objects.requireNonNull(workspace, "workspace");
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
-        LocalPackage root = findRoot(indexPackages(workspace, workspaceRoot), selector.root());
+        LocalPackage root = findRoot(indexPackages(workspaceRoot), selector.root());
         LinkedHashMap<PackageMajorVersion, LocalPackage> selected =
-                resolvePackages(workspace, workspaceRoot, packageName, closure);
+                resolvePackages(workspaceRoot, packageName, closure);
         Path sysroot =
                 output == null
                         ? workspaceRoot
@@ -88,23 +94,21 @@ public class DependencyResolver {
 
     /** Returns the package prefixes required by a closure, in dependency order. */
     public LinkedHashMap<PackageMajorVersion, LocalPackage> resolvePackages(
-            WorkspaceHelper workspace, Path workspaceRoot, String packageName, String closure) {
-        return resolvePackages(workspace, workspaceRoot, packageName, closure, null);
+            Path workspaceRoot, String packageName, String closure) {
+        return resolvePackages(workspaceRoot, packageName, closure, null);
     }
 
     /**
      * Resolves missing dependency manifests from the distribution and caches them in the workspace.
      */
     public LinkedHashMap<PackageMajorVersion, LocalPackage> resolvePackages(
-            WorkspaceHelper workspace,
             Path workspaceRoot,
             String packageName,
             String closure,
             Distribution distribution) {
-        Objects.requireNonNull(workspace, "workspace");
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
-        Map<PackageMajorVersion, LocalPackage> packages = indexPackages(workspace, workspaceRoot);
+        Map<PackageMajorVersion, LocalPackage> packages = indexPackages(workspaceRoot);
         LocalPackage root = findRoot(packages, selector.root());
         try {
             Package rootConfig = readConfig(root.config());
@@ -231,14 +235,13 @@ public class DependencyResolver {
         source.forEach((name, version) -> destination.add(new PackageMajorVersion(name, version)));
     }
 
-    private Map<PackageMajorVersion, LocalPackage> indexPackages(
-            WorkspaceHelper workspace, Path workspaceRoot) {
+    private Map<PackageMajorVersion, LocalPackage> indexPackages(Path workspaceRoot) {
         Map<PackageMajorVersion, LocalPackage> result = new LinkedHashMap<>();
         // Local checkouts win if the workspace contains both a checkout and a cached artifact.
-        for (LocalPackage pkg : workspace.artifactPackages(workspaceRoot)) {
+        for (LocalPackage pkg : workspaceHelper.artifactPackages(workspaceRoot)) {
             result.put(pkg.version(), pkg);
         }
-        for (LocalPackage pkg : workspace.sourcePackages(workspaceRoot)) {
+        for (LocalPackage pkg : workspaceHelper.sourcePackages(workspaceRoot)) {
             result.put(pkg.version(), pkg);
         }
         return result;
@@ -290,19 +293,7 @@ public class DependencyResolver {
 
         Objects.requireNonNull(distribution);
 
-        PackageSource source =
-                distribution.getPackages().stream()
-                        .filter(pkg -> pkg.getName().equals(requested.name()))
-                        .filter(pkg -> pkg.getVersion().equals(requested.version()))
-                        .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "No package with name '"
-                                                        + requested.name()
-                                                        + "' and version '"
-                                                        + requested.version()
-                                                        + "' found in distribution."));
+        PackageSource source = packageHelper.getPackageSource(distribution, requested);
 
         LocalPackage resolved = packageMapper.toLocalPackage(source, workspaceRoot);
 
@@ -317,6 +308,7 @@ public class DependencyResolver {
             packages.put(requested, resolved);
             return resolved;
         }
+
         if (source instanceof Folder nested) {
             Path metadataSource = packageSourceHelper.materialize(nested, workspaceRoot);
             if (!Files.isRegularFile(metadataSource.resolve(CONFIG_FILE))) {
@@ -326,6 +318,7 @@ public class DependencyResolver {
             packages.put(requested, resolved);
             return resolved;
         }
+
         if (!(source instanceof GitRepository repository)) {
             throw new IllegalArgumentException(
                     "Dependency metadata for "
@@ -333,25 +326,24 @@ public class DependencyResolver {
                             + " must be available from a Git repository.");
         }
 
-        Path metadataSource =
-                workspaceRoot
-                        .resolve("private/cache/package-sources")
-                        .resolve(requested.name())
-                        .resolve(requested.version());
+        Path metadataSource = resolved.source();
         Path config = metadataSource.resolve(CONFIG_FILE);
-        if (!Files.isRegularFile(config)) {
+        if (!Files.isRegularFile(resolved.config())) {
             deleteTree(metadataSource);
+
             GitRepositoryLocation location =
                     ImmutableGitRepositoryLocation.builder()
                             .repository(repository.getRepo())
                             .branch(repository.getBranch())
                             .build();
+
             git.clone(
                     ImmutableGitCloneInput.builder()
                             .parent(metadataSource.getParent())
                             .name(metadataSource.getFileName().toString())
                             .repository(location)
                             .build());
+
             if (!Files.isRegularFile(config)) {
                 throw new IOException(
                         "Package configuration not found in repository for " + requested);

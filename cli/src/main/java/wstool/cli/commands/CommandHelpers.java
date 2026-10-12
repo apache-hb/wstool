@@ -32,9 +32,14 @@ public final class CommandHelpers {
     }
 
     public static DependencyResolver dependencies(GitHelper git, PklHelper pkl) {
+        StorageHelper storage = new StorageHelper();
         DistributionArchiveHelper archives = new DistributionArchiveHelper(new ArchiveHelper());
+        PackageHelper packageHelper = new PackageHelper(pkl);
         PackageMapper mapper = new PackageMapper();
-        return new DependencyResolver(
-                git, pkl, new PackageSourceHelper(archives, git, mapper), archives, mapper);
+        PackageSourceHelper packageSourceHelper = new PackageSourceHelper(archives, git, mapper);
+        ExternalFilesHelper externalFilesHelper = new ExternalFilesHelper();
+        ExternalPackageSourceHelper externalPackageSourceHelper = new ExternalPackageSourceHelper(archives, packageSourceHelper, externalFilesHelper, git);
+        WorkspaceHelper workspaceHelper = new WorkspaceHelper(git, storage, new DistributionHelper(pkl), packageHelper, packageSourceHelper, externalPackageSourceHelper);
+        return new DependencyResolver(git, pkl, new PackageSourceHelper(archives, git, mapper), archives, workspaceHelper, packageHelper, mapper);
     }
 }

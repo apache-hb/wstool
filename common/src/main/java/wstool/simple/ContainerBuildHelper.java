@@ -60,7 +60,6 @@ public class ContainerBuildHelper {
                     List.copyOf(
                             dependencies
                                     .resolvePackages(
-                                            workspace,
                                             root,
                                             version.name() + "@" + version.version(),
                                             "build",

@@ -18,7 +18,7 @@ public record LocalPackage(PackageMajorVersion version, Path workspace, Path sou
     public static LocalPackage ofCached(PackageMajorVersion name, Path workspace) {
         Path source =
                 workspace
-                        .resolve("private/cache/package-sources/")
+                        .resolve("private/cache/package-sources")
                         .resolve(name.name())
                         .resolve(name.version());
         return new LocalPackage(name, workspace, source);
