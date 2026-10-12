@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
+
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.AddDependencyInput;
 import wstool.simple.storage.AddPackageInput;
@@ -288,6 +290,50 @@ public class WorkspaceStorage implements AutoCloseable {
             statement.setString(4, input.dependency().version());
             statement.setString(5, input.type().name().toLowerCase());
             statement.executeUpdate();
+        }
+    }
+
+    public List<PackageMajorVersion> directDependenciesOf(PackageMajorVersion name, DependencyType type) throws Exception {
+        String sql = """
+                SELECT dependency_name, dependency_version
+                FROM dependencies
+                WHERE package_name = ? AND package_version = ? AND dependency_type = ?
+                """;
+
+        try (var statement = connection.prepareStatement(sql)) {
+            statement.setString(1, name.name());
+            statement.setString(2, name.version());
+            statement.setString(3, type.name().toLowerCase(Locale.ROOT));
+            try (var result = statement.executeQuery()) {
+                List<PackageMajorVersion> dependencies = new ArrayList<>();
+                while (result.next()) {
+                    dependencies.add(new PackageMajorVersion(result.getString("dependency_name"), result.getString("dependency_version")));
+                }
+                return dependencies;
+            }
+        }
+    }
+
+    public LocalPackage find(PackageMajorVersion name) throws Exception {
+        String sql = """
+                SELECT *
+                FROM packages
+                WHERE name = ? AND version = ?
+                """;
+
+        try (var statement = connection.prepareStatement(sql)) {
+            statement.setString(1, name.name());
+            statement.setString(2, name.version());
+            try (var result = statement.executeQuery()) {
+                while (result.next()) {
+                    PackageMajorVersion pmv = new PackageMajorVersion(result.getString("name"), result.getString("version"));
+                    Path source = Path.of(result.getString("source"));
+                    Path prefix = Path.of(result.getString("prefix"));
+                    return new LocalPackage(pmv, source, prefix);
+                }
+
+                throw new NoSuchElementException("Package not found: " + name);
+            }
         }
     }
 

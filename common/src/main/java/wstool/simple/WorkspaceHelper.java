@@ -268,7 +268,7 @@ public class WorkspaceHelper {
         return current;
     }
 
-    Path workspaceConfig(Path workspace) {
+    public Path workspaceConfig(Path workspace) {
         return workspace.resolve(CONFIG_FILE);
     }
 

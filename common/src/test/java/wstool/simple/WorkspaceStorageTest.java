@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wstool.simple.model.PackageMajorVersion;
@@ -115,6 +116,60 @@ class WorkspaceStorageTest {
             assertTrue(
                     storage.getDirectDependencies(new PackageMajorVersion("missing", "1.x"))
                             .isEmpty());
+        }
+    }
+
+    @Test
+    void directDependenciesOfReturnsOnlyDependenciesOfRequestedType() throws Exception {
+        Path database = tempDir.resolve("workspace.db");
+        PackageMajorVersion app = new PackageMajorVersion("app", "1.x");
+        PackageMajorVersion otherApp = new PackageMajorVersion("app", "2.x");
+        PackageMajorVersion compiler = new PackageMajorVersion("compiler", "1.x");
+        PackageMajorVersion library = new PackageMajorVersion("library", "2.x");
+        PackageMajorVersion otherLibrary = new PackageMajorVersion("other-library", "3.x");
+
+        try (var storage = new WorkspaceStorage(database)) {
+            storage.setup();
+            addPackages(storage, app, otherApp, compiler, library, otherLibrary);
+            storage.addDependency(dependency(app, "compiler", "1.x", DependencyType.BUILD));
+            storage.addDependency(dependency(app, "library", "2.x", DependencyType.PUBLIC));
+            storage.addDependency(
+                    dependency(otherApp, "other-library", "3.x", DependencyType.BUILD));
+
+            assertEquals(List.of(compiler), storage.directDependenciesOf(app, DependencyType.BUILD));
+            assertEquals(List.of(library), storage.directDependenciesOf(app, DependencyType.PUBLIC));
+            assertTrue(storage.directDependenciesOf(app, DependencyType.TEST).isEmpty());
+        }
+    }
+
+    @Test
+    void findReturnsPackageWithMatchingNameAndVersion() throws Exception {
+        Path database = tempDir.resolve("workspace.db");
+        PackageMajorVersion first = new PackageMajorVersion("library", "1.x");
+        PackageMajorVersion second = new PackageMajorVersion("library", "2.x");
+        Path firstSource = tempDir.resolve("first-source");
+        Path firstPrefix = tempDir.resolve("first-prefix");
+        Path secondSource = tempDir.resolve("second-source");
+        Path secondPrefix = tempDir.resolve("second-prefix");
+
+        try (var storage = new WorkspaceStorage(database)) {
+            storage.setup();
+            storage.addPackage(packageInput(first, firstSource, firstPrefix));
+            storage.addPackage(packageInput(second, secondSource, secondPrefix));
+
+            assertEquals(new LocalPackage(second, secondSource, secondPrefix), storage.find(second));
+        }
+    }
+
+    @Test
+    void findThrowsWhenPackageDoesNotExist() throws Exception {
+        Path database = tempDir.resolve("workspace.db");
+        PackageMajorVersion missing = new PackageMajorVersion("missing", "1.x");
+
+        try (var storage = new WorkspaceStorage(database)) {
+            storage.setup();
+
+            assertThrows(NoSuchElementException.class, () -> storage.find(missing));
         }
     }
 
@@ -289,14 +344,18 @@ class WorkspaceStorageTest {
     private static void addPackages(WorkspaceStorage storage, PackageMajorVersion... packages)
             throws Exception {
         for (PackageMajorVersion name : packages) {
-            storage.addPackage(
-                    ImmutableAddPackageInput.builder()
-                            .name(name)
-                            .source(Path.of("source"))
-                            .prefix(Path.of("prefix"))
-                            .build(Path.of("build"))
-                            .cloned(false)
-                            .build());
+            storage.addPackage(packageInput(name, Path.of("source"), Path.of("prefix")));
         }
+    }
+
+    private static ImmutableAddPackageInput packageInput(
+            PackageMajorVersion name, Path source, Path prefix) {
+        return ImmutableAddPackageInput.builder()
+                .name(name)
+                .source(source)
+                .prefix(prefix)
+                .build(Path.of("build"))
+                .cloned(false)
+                .build();
     }
 }

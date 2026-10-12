@@ -1,5 +1,6 @@
 package wstool.cli.commands.packages;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,24 +56,23 @@ public class RunTargetCommand implements Callable<Integer> {
                                             new IllegalArgumentException(
                                                     "Package is not in the workspace: " + version));
             Path prefix = localPackage.prefix();
+            Path privateDirectory = workspace.workspaceBuildFolder(workspaceRoot, name);
+            Files.createDirectories(privateDirectory);
             String tool = config.getBuildOptions().getTool();
-            Path localTool = source.resolve("wstool").resolve("bin").resolve(tool);
-            if (!Files.isExecutable(localTool)) {
-                throw new IllegalStateException(
-                        "Build tool '" + tool + "' was not found at " + localTool);
-            }
 
             List<String> command = new ArrayList<>();
-            command.add(localTool.toString());
+            command.add(tool);
             command.addAll(args);
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             processBuilder.directory(source.toFile());
             processBuilder.inheritIO();
             Map<String, String> environment = processBuilder.environment();
             environment.put("WST_SRCDIR", source.toString());
-            environment.put(
-                    "WST_PRIVATE", workspace.workspaceBuildFolder(workspaceRoot, name).toString());
+            environment.put("WST_PRIVATE", privateDirectory.toString());
             environment.put("WST_PREFIX", prefix.toString());
+
+            String path = environment.getOrDefault("PATH", "");
+            environment.put("PATH", prefix.resolve("bin") + File.pathSeparator + path);
             return processBuilder.start().waitFor();
         }
     }
