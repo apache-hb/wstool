@@ -1,27 +1,7 @@
 package wstool.cli.commands;
 
-import jakarta.inject.Inject;
-import java.net.URI;
-import java.nio.file.Path;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Parameters;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3Configuration;
-import wstool.Distribution;
 import wstool.cli.VersionProvider;
-import wstool.simple.ArchiveHelper;
-import wstool.simple.CacheHelper;
-import wstool.simple.ContainerBuildHelper;
-import wstool.simple.DependencyResolver;
-import wstool.simple.DistributionHelper;
-import wstool.simple.PackageArtifactCache;
-import wstool.simple.PackageHelper;
-import wstool.simple.StorageHelper;
-import wstool.simple.WorkspaceHelper;
-import wstool.simple.container.ImmutableRunContainerBuildInput;
-import wstool.simple.model.PackageMajorVersion;
 
 @Command(
         name = "build",
@@ -29,94 +9,8 @@ import wstool.simple.model.PackageMajorVersion;
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
 public class BuildCommand extends CommonCommand {
-    @Parameters(index = "0", paramLabel = "target", description = "Package name or name@version.")
-    private String target;
-
-    private final StorageHelper storage;
-    private final WorkspaceHelper workspace;
-    private final DistributionHelper distributionHelper;
-    private final DependencyResolver dependencies;
-    private final ArchiveHelper archives;
-    private final PackageHelper packages;
-
-    @Inject
-    public BuildCommand(
-            StorageHelper storage,
-            WorkspaceHelper workspace,
-            DistributionHelper distributionHelper,
-            DependencyResolver dependencies,
-            ArchiveHelper archives,
-            PackageHelper packages) {
-        this.storage = storage;
-        this.workspace = workspace;
-        this.distributionHelper = distributionHelper;
-        this.dependencies = dependencies;
-        this.archives = archives;
-        this.packages = packages;
-    }
-
     @Override
     public Integer call() throws Exception {
-        Path root = workspace.findWorkspaceUp(cwd);
-        Distribution distribution =
-                distributionHelper.getDistributionConfig(
-                        workspace.workspaceDistributionConfig(root));
-        PackageMajorVersion version = parseTarget(target, workspace, root);
-        URI endpoint = distribution.getStorage().getEndpoint();
-        Region region = Region.of(System.getenv().getOrDefault("AWS_REGION", "us-east-1"));
-        var builder =
-                S3Client.builder()
-                        .region(region)
-                        .credentialsProvider(DefaultCredentialsProvider.builder().build());
-        if (endpoint != null) {
-            builder.endpointOverride(endpoint)
-                    .serviceConfiguration(
-                            S3Configuration.builder()
-                                    .pathStyleAccessEnabled(true)
-                                    .chunkedEncodingEnabled(false)
-                                    .build());
-        }
-        try (S3Client s3 = builder.build()) {
-            ContainerBuildHelper build =
-                    new ContainerBuildHelper(
-                            new PackageArtifactCache(
-                                    new CacheHelper(s3, archives),
-                                    distribution.getStorage().getBucket(),
-                                    distribution.getName()),
-                            workspace,
-                            dependencies,
-                            distribution,
-                            storage,
-                            packages);
-            build.runContainerBuild(
-                    ImmutableRunContainerBuildInput.builder()
-                            .workspace(root)
-                            .name(version)
-                            .build());
-        }
         return 0;
-    }
-
-    private PackageMajorVersion parseTarget(String value, WorkspaceHelper workspace, Path root) {
-        int at = value.lastIndexOf('@');
-        String name = at < 0 ? value : value.substring(0, at);
-        String version = at < 0 ? "" : value.substring(at + 1);
-        if (name.isBlank() || (at >= 0 && version.isBlank())) {
-            throw new IllegalArgumentException("Expected target in the form name or name@version.");
-        }
-        var matches =
-                workspace.sourcePackages(root).stream()
-                        .map(pkg -> pkg.name())
-                        .filter(pkg -> pkg.name().equals(name))
-                        .filter(pkg -> version.isEmpty() || pkg.version().equals(version))
-                        .toList();
-        if (matches.isEmpty()) {
-            throw new IllegalArgumentException("Package not found in workspace: " + value);
-        }
-        if (matches.size() > 1) {
-            throw new IllegalArgumentException(
-                    "Multiple package versions found; specify name@version.");
-        }
-        return matches.getFirst();
     }
 }

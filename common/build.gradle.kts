@@ -8,6 +8,7 @@ plugins {
 
 dependencies {
   testImplementation(project(":wstool-test-components"))
+  implementation(project(":wstool-git"))
   implementation(platform(project(":")))
   api(project(":config"))
   api("org.jspecify:jspecify:1.0.0")
@@ -19,14 +20,15 @@ dependencies {
   implementation("org.apache.commons:commons-compress:1.28.0")
   implementation("org.tukaani:xz:1.12")
   implementation("org.apache.logging.log4j:log4j-api")
-  runtimeOnly("org.apache.logging.log4j:log4j-core")
-  runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")
   implementation("io.opentelemetry:opentelemetry-api")
   implementation("software.amazon.awssdk:s3")
   implementation("software.amazon.awssdk:sts")
   implementation("org.xerial:sqlite-jdbc:3.53.4.0")
   implementation("org.pkl-lang:pkl-core")
   implementation("org.pkl-lang:pkl-config-java")
+
+  runtimeOnly("org.apache.logging.log4j:log4j-core")
+  runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
   testImplementation("io.github.le-shi:java-gitea-api:1.27.3")

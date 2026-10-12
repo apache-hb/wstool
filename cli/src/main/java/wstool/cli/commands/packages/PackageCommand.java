@@ -1,7 +1,6 @@
 package wstool.cli.commands.packages;
 
 import jakarta.inject.Inject;
-import jakarta.inject.Provider;
 import java.util.ArrayList;
 import java.util.List;
 import picocli.CommandLine.Command;
@@ -17,20 +16,11 @@ import wstool.cli.commands.CommonCommand;
 public class PackageCommand extends CommonCommand {
     @Unmatched private List<String> targetArguments = new ArrayList<>();
 
-    private final Provider<RunTargetCommand> runTargetCommands;
-
     @Inject
-    public PackageCommand(Provider<RunTargetCommand> runTargetCommands) {
-        this.runTargetCommands = runTargetCommands;
-    }
+    public PackageCommand() {}
 
     @Override
     public Integer call() throws Exception {
-        if (targetArguments.isEmpty()) {
-            return 0;
-        }
-        RunTargetCommand run = runTargetCommands.get();
-        run.args = new ArrayList<>(targetArguments);
-        return run.call();
+        return 0;
     }
 }
