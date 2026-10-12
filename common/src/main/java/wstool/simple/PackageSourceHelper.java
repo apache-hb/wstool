@@ -20,20 +20,28 @@ import wstool.simple.git.ImmutableGitRepositoryLocation;
  * Materializes package sources from archives, repositories, or a path in another package source.
  */
 public class PackageSourceHelper {
-    private final DistributionArchiveHelper archives = new DistributionArchiveHelper();
+    private final DistributionArchiveHelper archives;
+    private final GitHelper git;
+    private final PackageMapper packageMapper;
 
-    public Path materialize(PackageSource source, Path workspace, GitHelper git) throws Exception {
-        Path cache =
-                workspace
-                        .resolve("private/cache/package-sources")
-                        .resolve(source.getName())
-                        .resolve(source.getVersion());
+    public PackageSourceHelper(
+            DistributionArchiveHelper archives, GitHelper git, PackageMapper packageMapper) {
+        this.archives = archives;
+        this.git = git;
+        this.packageMapper = packageMapper;
+    }
+
+    public Path materialize(PackageSource source, Path workspace) throws Exception {
+        LocalPackage resolved = packageMapper.toLocalPackage(source, workspace);
+        Path cache = resolved.source();
+
         if (source instanceof Archive archive) {
-            if (!Files.isDirectory(cache)) {
+            if (!Files.isDirectory(resolved.source())) {
                 archives.extract(archive, workspace, cache);
             }
             return cache;
         }
+
         if (source instanceof GitRepository repository) {
             if (!Files.isDirectory(cache.resolve(".git"))) {
                 deleteTree(cache);
@@ -52,18 +60,19 @@ public class PackageSourceHelper {
             }
             return cache;
         }
+
         if (source instanceof Folder nested) {
-            Path parent = materialize(nested.getFrom(), workspace, git);
-            Path resolved = parent.resolve(nested.getPath()).normalize();
-            if (!resolved.startsWith(parent.normalize())) {
+            Path parent = materialize(nested.getFrom(), workspace);
+            Path nestedPath = parent.resolve(nested.getPath()).normalize();
+            if (!nestedPath.startsWith(parent.normalize())) {
                 throw new IOException(
                         "Package source path escapes its parent: " + nested.getPath());
             }
-            if (!Files.isRegularFile(resolved.resolve("wstool.pkl"))) {
+            if (!Files.isRegularFile(nestedPath.resolve("wstool.pkl"))) {
                 throw new IOException(
-                        "Package configuration not found: " + resolved.resolve("wstool.pkl"));
+                        "Package configuration not found: " + nestedPath.resolve("wstool.pkl"));
             }
-            return resolved;
+            return nestedPath;
         }
         throw new IllegalArgumentException(
                 "Unsupported package source type: " + source.getClass().getSimpleName());

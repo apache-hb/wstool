@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -13,7 +14,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,8 +22,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
 import wstool.simple.workspace.ImmutableAddPackageToWorkspaceInput;
@@ -60,11 +58,9 @@ class DependencyResolverTest {
                     "test-framework",
                     "alternate");
 
-    @Container
-    private static final GiteaContainer GITEA = PackageGitManager.container();
+    @Container private static final GiteaContainer GITEA = PackageGitManager.container();
 
-    @Container
-    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    @Container private static final GenericContainer<?> GARAGE = StorageServerManager.container();
 
     private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
 
@@ -72,8 +68,7 @@ class DependencyResolverTest {
 
     private PackageGitManager gitManager;
 
-    @AutoClose
-    private static S3Client s3;
+    @AutoClose private static S3Client s3;
 
     @AutoClose private PklHelper pkl;
     private WorkspaceHelper workspaceHelper;
@@ -100,8 +95,7 @@ class DependencyResolverTest {
                                 "GIT_USERNAME", GITEA.getUserName(),
                                 "REPOSITORY_SUFFIX", repositorySuffix));
         storage = new StorageHelper();
-        workspaceHelper =
-                new WorkspaceHelper(new GitHelper(false), storage, new DistributionHelper(pkl));
+        workspaceHelper = workspaceHelper(new GitHelper(false), storage, pkl);
 
         cache = new CacheHelper(s3, new ArchiveHelper());
     }
@@ -109,7 +103,7 @@ class DependencyResolverTest {
     @Test
     void assemblesDevelopmentSysrootFromLocallyClonedAndCachedPackages() throws Exception {
         Path workspace = createWorkspace();
-        DependencyResolver resolver = new DependencyResolver();
+        DependencyResolver resolver = dependencyResolver();
 
         Path sysroot = resolver.createClosure(workspaceHelper, workspace, "app", "development");
 
@@ -163,7 +157,7 @@ class DependencyResolverTest {
     @Test
     void buildAndRuntimeSelectorsCollectTheirDocumentedGraphs() throws Exception {
         Path workspace = createWorkspace();
-        DependencyResolver resolver = new DependencyResolver();
+        DependencyResolver resolver = dependencyResolver();
 
         Path build = resolver.createClosure(workspaceHelper, workspace, "app", "build");
         assertTrue(Files.exists(build.resolve("bin/compiler")));
@@ -183,7 +177,7 @@ class DependencyResolverTest {
     @Test
     void qualifiedSelectorChangesTheTraversalRoot() throws Exception {
         Path workspace = createWorkspace();
-        DependencyResolver resolver = new DependencyResolver();
+        DependencyResolver resolver = dependencyResolver();
 
         Path sysroot =
                 resolver.createClosure(workspaceHelper, workspace, "app", "alternate@2.0/runtime");
@@ -191,6 +185,27 @@ class DependencyResolverTest {
         assertTrue(Files.exists(sysroot.resolve("include/alternate-runtime.h")));
         assertFalse(Files.exists(sysroot.resolve("include/public-api.h")));
         assertTrue(sysroot.startsWith(workspace.resolve(".wstool/sysroots/alternate@2.0")));
+    }
+
+    private DependencyResolver dependencyResolver() {
+        GitHelper git = new GitHelper(false);
+        DistributionArchiveHelper archives = new DistributionArchiveHelper(new ArchiveHelper());
+        PackageMapper mapper = new PackageMapper();
+        return new DependencyResolver(
+                git, pkl, new PackageSourceHelper(archives, git, mapper), archives, mapper);
+    }
+
+    private WorkspaceHelper workspaceHelper(GitHelper git, StorageHelper storage, PklHelper pkl) {
+        DistributionArchiveHelper archives = new DistributionArchiveHelper(new ArchiveHelper());
+        PackageMapper mapper = new PackageMapper();
+        PackageSourceHelper sources = new PackageSourceHelper(archives, git, mapper);
+        return new WorkspaceHelper(
+                git,
+                storage,
+                new DistributionHelper(pkl),
+                new PackageHelper(pkl),
+                sources,
+                new ExternalPackageSourceHelper(archives, sources, new ExternalFilesHelper(), git));
     }
 
     private Path createWorkspace() throws Exception {
@@ -234,20 +249,25 @@ class DependencyResolverTest {
                     workspaceHelper.workspaceCacheFolder(workspace, packageName).resolve(version);
             Files.createDirectories(cachedPackage.getParent());
             cache.downloadFolder(BUCKET, artifactKey, cachedPackage);
+            Path cachedPrefix = cachedPackage.resolve("prefix");
+            Path packagePrefix =
+                    workspace.resolve("private/prefix").resolve(packageName).resolve(version);
+            new PackageSourceHelper(
+                            new DistributionArchiveHelper(new ArchiveHelper()),
+                            new GitHelper(false),
+                            new PackageMapper())
+                    .copy(cachedPrefix, packagePrefix);
 
             boolean cloned = CLONED_PACKAGE_NAMES.contains(packageName);
             Path source =
                     cloned
                             ? workspaceHelper.workspacePackageFolder(workspace, packageName)
                             : cachedPackage.resolve("source");
-            Path prefix = cachedPackage.resolve("prefix");
             storage.addPackageToWorkspaceStorage(
                     workspace.resolve("wstool.db"),
                     packageName,
                     version,
                     source.toString(),
-                    prefix.toString(),
-                    workspaceHelper.workspaceBuildFolder(workspace, packageName).toString(),
                     cloned);
         }
         return workspace;

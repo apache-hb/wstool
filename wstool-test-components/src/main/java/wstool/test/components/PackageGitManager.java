@@ -1,14 +1,5 @@
 package wstool.test.components;
 
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.time.Duration;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import dev.parsick.testcontainers.gitserver.gitea.GiteaVersions;
 import io.gitea.ApiClient;
@@ -16,6 +7,13 @@ import io.gitea.api.RepositoryApi;
 import io.gitea.model.CreateRepoOption;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ScanResult;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import wstool.git.GitClient;
 import wstool.git.model.GitRunInput;
 import wstool.git.model.ImmutableGitRunInput;
@@ -59,17 +57,24 @@ public class PackageGitManager {
 
         configure(tmp, branch);
 
-        Files.walk(folder).filter(Files::isRegularFile).forEach(file -> {
-            Path path = folder.relativize(file);
-            try {
-                Path dst = tmp.resolve(path).toAbsolutePath();
-                LOGGER.info("Copying file {} to {}", file, dst);
-                Files.createDirectories(dst.getParent());
-                Files.copy(file, dst, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        Files.walk(folder)
+                .filter(Files::isRegularFile)
+                .forEach(
+                        file -> {
+                            Path path = folder.relativize(file);
+                            try {
+                                Path dst = tmp.resolve(path).toAbsolutePath();
+                                LOGGER.info("Copying file {} to {}", file, dst);
+                                Files.createDirectories(dst.getParent());
+                                Files.copy(
+                                        file,
+                                        dst,
+                                        StandardCopyOption.REPLACE_EXISTING,
+                                        StandardCopyOption.COPY_ATTRIBUTES);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
 
         initialCommit(tmp, name, branch);
     }
@@ -124,13 +129,14 @@ public class PackageGitManager {
     }
 
     public void run(Path directory, String... args) throws Exception {
-        GitRunInput input = ImmutableGitRunInput.builder()
-            .directory(directory)
-            .addArguments(args)
-            .interactive(false)
-            .username(username())
-            .password(password())
-            .build();
+        GitRunInput input =
+                ImmutableGitRunInput.builder()
+                        .directory(directory)
+                        .addArguments(args)
+                        .interactive(false)
+                        .username(username())
+                        .password(password())
+                        .build();
 
         git.run(input);
     }

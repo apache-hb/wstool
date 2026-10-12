@@ -35,7 +35,11 @@ class ExternalPackageSourceHelperTest {
                         .formatHex(
                                 MessageDigest.getInstance("SHA-256")
                                         .digest(Files.readAllBytes(archive)));
-        ExternalPackageSourceHelper helper = new ExternalPackageSourceHelper();
+        GitHelper git = new GitHelper(false);
+        DistributionArchiveHelper archives = new DistributionArchiveHelper(new ArchiveHelper());
+        PackageSourceHelper sources = new PackageSourceHelper(archives, git, new PackageMapper());
+        ExternalPackageSourceHelper helper =
+                new ExternalPackageSourceHelper(archives, sources, new ExternalFilesHelper(), git);
         Path workspace = tempDir.resolve("workspace");
 
         Path unstripped =
@@ -43,8 +47,7 @@ class ExternalPackageSourceHelperTest {
                         new ExternalArchive(archive.toUri(), List.of(), checksum, null),
                         "npm_example",
                         "1.x",
-                        workspace,
-                        new GitHelper(false));
+                        workspace);
         assertTrue(Files.isRegularFile(unstripped.resolve("package/package.json")));
 
         Path stripped =
@@ -52,8 +55,7 @@ class ExternalPackageSourceHelperTest {
                         new ExternalArchive(archive.toUri(), List.of(), checksum, "package"),
                         "npm_example",
                         "1.x",
-                        workspace,
-                        new GitHelper(false));
+                        workspace);
         assertTrue(Files.isRegularFile(stripped.resolve("package.json")));
         assertFalse(Files.exists(stripped.resolve("package/package.json")));
     }

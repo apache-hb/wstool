@@ -43,6 +43,7 @@ public class CacheHelper {
     public void downloadFolder(String bucket, String key, Path folder) throws Exception {
         Path archiveFile = folder.resolveSibling(folder.getFileName() + ".zip");
         try {
+            Files.createDirectories(archiveFile.getParent());
             download(bucket, key, archiveFile);
             deleteTree(folder);
             archive.extract(

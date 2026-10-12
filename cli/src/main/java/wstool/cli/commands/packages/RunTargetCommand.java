@@ -9,17 +9,18 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
 import wstool.Package;
 import wstool.cli.VersionProvider;
+import wstool.cli.commands.CommandHelpers;
 import wstool.simple.BuildToolHelper;
-import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.PackageHelper;
 import wstool.simple.PathHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
 import wstool.simple.Workspace;
+import wstool.simple.WorkspaceFactory;
 import wstool.simple.WorkspaceHelper;
-import wstool.simple.tool.ImmutableRunBuildToolInput;
 import wstool.simple.model.PackageMajorVersion;
+import wstool.simple.tool.ImmutableRunBuildToolInput;
 
 @Command(
         name = "run",
@@ -40,9 +41,9 @@ public class RunTargetCommand implements Callable<Integer> {
         Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(null)) {
             PathHelper pathHelper = new PathHelper();
+            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl);
             WorkspaceHelper workspace =
-                    new WorkspaceHelper(
-                            new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));
+                    CommandHelpers.workspace(new GitHelper(false), new StorageHelper(), pkl);
             Path workspaceRoot = workspace.findWorkspaceUp(source);
             Package config = new PackageHelper(pkl).getPackageConfig(source.resolve("wstool.pkl"));
             String name = config.getPackage().getName();
@@ -63,7 +64,9 @@ public class RunTargetCommand implements Callable<Integer> {
             List<String> command = new ArrayList<>();
             command.add(config.getBuildOptions().getTool());
             command.addAll(args);
-            try (Workspace buildWorkspace = new Workspace(workspaceRoot)) {
+            try (Workspace buildWorkspace = workspaceFactory.open(workspaceRoot)) {
+                workspace.refresh(buildWorkspace);
+
                 return buildToolHelper.run(
                         ImmutableRunBuildToolInput.builder()
                                 .workspace(buildWorkspace)

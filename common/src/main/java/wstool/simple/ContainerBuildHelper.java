@@ -20,7 +20,6 @@ public class ContainerBuildHelper {
     private final DependencyResolver dependencies;
     private final PklHelper pkl;
     private final Distribution distribution;
-    private final GitHelper git;
     private final StorageHelper storage;
 
     public ContainerBuildHelper(
@@ -29,14 +28,12 @@ public class ContainerBuildHelper {
             DependencyResolver dependencies,
             PklHelper pkl,
             Distribution distribution,
-            GitHelper git,
             StorageHelper storage) {
         this.artifacts = artifacts;
         this.workspace = workspace;
         this.dependencies = dependencies;
         this.pkl = pkl;
         this.distribution = distribution;
-        this.git = git;
         this.storage = storage;
     }
 
@@ -55,8 +52,7 @@ public class ContainerBuildHelper {
         Path packageRoot = source;
         Package config = new PackageHelper(pkl).getPackageConfig(packageRoot.resolve("wstool.pkl"));
         Path output = target.prefix().toAbsolutePath().normalize();
-        Path privateDirectory =
-                workspace.workspaceBuildFolder(root, version.name()).toAbsolutePath().normalize();
+        Path privateDirectory = target.builddir().toAbsolutePath().normalize();
         Path containerWorkspace = privateDirectory.resolve("container-workspace");
 
         try {
@@ -68,8 +64,7 @@ public class ContainerBuildHelper {
                                             root,
                                             version.name() + "@" + version.version(),
                                             "build",
-                                            distribution,
-                                            git)
+                                            distribution)
                                     .values());
             for (LocalPackage dependency : buildPackages) {
                 if (!isArchivePackage(dependency.version())) {
@@ -85,7 +80,8 @@ public class ContainerBuildHelper {
             Path localTool = findBuildTool(packageRoot, buildPackages, tool);
             if (!Files.isExecutable(localTool)) {
                 throw new IllegalStateException(
-                        "Build tool is missing from the package source and build dependency prefixes: "
+                        "Build tool is missing from the package source and build dependency"
+                                + " prefixes: "
                                 + tool);
             }
 
@@ -126,6 +122,8 @@ public class ContainerBuildHelper {
                                 dependency.prefix()
                                         + ":/wstool/workspace/private/prefix/"
                                         + dependency.version().name()
+                                        + "/"
+                                        + dependency.version().version()
                                         + ":ro"));
             }
             command.addAll(
@@ -134,6 +132,8 @@ public class ContainerBuildHelper {
                             output
                                     + ":/wstool/workspace/private/prefix/"
                                     + version.name()
+                                    + "/"
+                                    + version.version()
                                     + ":rw"));
             command.addAll(List.of("--workdir", "/wstool/workspace/src/" + version.name()));
             command.addAll(List.of("--env", "WST_SRCDIR=/wstool/workspace/src/" + version.name()));
@@ -142,7 +142,10 @@ public class ContainerBuildHelper {
             command.addAll(
                     List.of(
                             "--env",
-                            "WST_PREFIX=/wstool/workspace/private/prefix/" + version.name()));
+                            "WST_PREFIX=/wstool/workspace/private/prefix/"
+                                    + version.name()
+                                    + "/"
+                                    + version.version()));
             command.addAll(List.of("--env", "HOME=/tmp/wstool-cli-home"));
             command.addAll(List.of("--env", "JAVA_OPTS=-Duser.home=/tmp/wstool-cli-home"));
             List<String> dependencyBins =
@@ -152,6 +155,8 @@ public class ContainerBuildHelper {
                                             dependency ->
                                                     "/wstool/workspace/private/prefix/"
                                                             + dependency.version().name()
+                                                            + "/"
+                                                            + dependency.version().version()
                                                             + "/bin")
                                     .toList());
             dependencyBins.addAll(
@@ -219,7 +224,10 @@ public class ContainerBuildHelper {
         deleteTree(containerWorkspace);
         Files.createDirectories(containerWorkspace.resolve("src").resolve(target.version().name()));
         Files.createDirectories(
-                containerWorkspace.resolve("private/prefix").resolve(target.version().name()));
+                containerWorkspace
+                        .resolve("private/prefix")
+                        .resolve(target.version().name())
+                        .resolve(target.version().version()));
         Files.createDirectories(containerWorkspace.resolve("private/build"));
 
         Path database = containerWorkspace.resolve("wstool.db");
@@ -229,21 +237,18 @@ public class ContainerBuildHelper {
                 target.version().name(),
                 target.version().version(),
                 "/wstool/workspace/src/" + target.version().name(),
-                "/wstool/workspace/private/prefix/" + target.version().name(),
-                "/wstool/workspace/private/build/" + target.version().name(),
                 true);
 
         for (LocalPackage dependency : buildPackages) {
             String name = dependency.version().name();
             String version = dependency.version().version();
-            Files.createDirectories(containerWorkspace.resolve("private/prefix").resolve(name));
+            Files.createDirectories(
+                    containerWorkspace.resolve("private/prefix").resolve(name).resolve(version));
             storage.addPackageToWorkspaceStorage(
                     database,
                     name,
                     version,
                     "/wstool/workspace/private/cache/package-sources/" + name + "/" + version,
-                    "/wstool/workspace/private/prefix/" + name,
-                    "/wstool/workspace/private/build/" + name,
                     false);
         }
     }

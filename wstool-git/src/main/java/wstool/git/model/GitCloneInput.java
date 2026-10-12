@@ -1,7 +1,6 @@
 package wstool.git.model;
 
 import java.nio.file.Path;
-
 import org.immutables.value.Value;
 
 @Value.Immutable

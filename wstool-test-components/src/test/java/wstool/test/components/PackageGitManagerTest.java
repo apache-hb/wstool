@@ -1,5 +1,6 @@
 package wstool.test.components;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.URI;
@@ -7,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,12 +16,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
-
 @Testcontainers(disabledWithoutDocker = true)
 public class PackageGitManagerTest {
-    @Container
-    private static final GiteaContainer GITEA = PackageGitManager.container();
+    @Container private static final GiteaContainer GITEA = PackageGitManager.container();
 
     @TempDir(cleanup = CleanupMode.ON_SUCCESS)
     Path tmp;
@@ -39,7 +36,9 @@ public class PackageGitManagerTest {
 
         git.run(tmp, "clone", uri.toString(), "cloned");
         for (String name : List.of("LICENSE", "main.c", "README.md")) {
-            Assertions.assertEquals(Files.readString(tmp.resolve("cloned").resolve(name)), resourceAsString(getClass(), "/package/" + name));
+            Assertions.assertEquals(
+                    Files.readString(tmp.resolve("cloned").resolve(name)),
+                    resourceAsString(getClass(), "/package/" + name));
         }
     }
 

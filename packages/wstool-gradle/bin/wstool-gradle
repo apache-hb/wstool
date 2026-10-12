@@ -5,7 +5,7 @@ set -eu
 : "${WST_PRIVATE:?WST_PRIVATE is required}"
 : "${WST_PREFIX:?WST_PREFIX is required}"
 
-dependency_prefixes="$(dirname "$WST_PREFIX")"
+dependency_prefixes="$(dirname "$(dirname "$WST_PREFIX")")"
 repository="$WST_PRIVATE/maven-repo"
 gradle_user_home="$WST_PRIVATE/gradle-user-home"
 project_work="$WST_PRIVATE/gradle-project"
@@ -19,7 +19,7 @@ mkdir -p "$repository"
 gradle_bin=""
 plugin_jar=""
 init_script=""
-for prefix in "$dependency_prefixes"/*; do
+for prefix in "$dependency_prefixes"/* "$dependency_prefixes"/*/*; do
   [ -d "$prefix" ] || continue
   [ "$prefix" = "$WST_PREFIX" ] && continue
   if [ -d "$prefix/share/maven-repo" ]; then

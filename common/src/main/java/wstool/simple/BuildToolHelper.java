@@ -3,11 +3,14 @@ package wstool.simple;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.tool.RunBuildToolInput;
 
 public class BuildToolHelper {
+    private static final Logger LOGGER = LogManager.getLogger(BuildToolHelper.class);
+
     private final PathHelper pathHelper;
     private final WorkspaceHelper workspaceHelper;
 
@@ -28,21 +31,33 @@ public class BuildToolHelper {
         Path builddir = workspaceHelper.workspaceBuildFolder(workspace.path(), input.name().name());
 
         configureWstEnvironment(pb.environment(), builddir, target);
-        configureBuildToolPath(pb.environment(), input.workspace(), input.name());
+        String path = createBuildToolPath(pb.environment(), workspace, input.name());
+        configureBuildToolPath(pb.environment(), path);
 
-        return pb.start().waitFor();
+        try {
+            return pb.start().waitFor();
+        } catch (Exception e) {
+            LOGGER.warn("Executing {} on ({}) failed", input.arguments(), path, e);
+            throw e;
+        }
     }
 
-    private void configureWstEnvironment(Map<String, String> env, Path builddir, LocalPackage target) {
+    private void configureWstEnvironment(
+            Map<String, String> env, Path builddir, LocalPackage target) {
         env.put("WST_PRIVATE", builddir.toAbsolutePath().toString());
         env.put("WST_SRCDIR", target.source().toAbsolutePath().toString());
         env.put("WST_PREFIX", target.prefix().toAbsolutePath().toString());
     }
 
-    private void configureBuildToolPath(Map<String, String> env, Workspace workspace, PackageMajorVersion name) throws Exception {
+    private void configureBuildToolPath(Map<String, String> env, String path) throws Exception {
+        env.put("PATH", path);
+    }
+
+    private String createBuildToolPath(
+            Map<String, String> env, Workspace workspace, PackageMajorVersion name)
+            throws Exception {
         String path = Objects.requireNonNull(env.get("PATH"));
         String closure = pathHelper.buildClosurePath(workspace, name);
-        String buildToolPath = closure + ":" + path;
-        env.put("PATH", buildToolPath);
+        return closure + ":" + path;
     }
 }

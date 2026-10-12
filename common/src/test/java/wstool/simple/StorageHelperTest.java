@@ -29,7 +29,7 @@ public class StorageHelperTest {
         helper.createWorkspaceStorage(database);
 
         assertTrue(Files.exists(database));
-        helper.addPackageToWorkspaceStorage(database, "foo", "1.x", "src", "prefix", "build", true);
+        helper.addPackageToWorkspaceStorage(database, "foo", "1.x", "src", true);
     }
 
     @Test

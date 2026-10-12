@@ -30,21 +30,22 @@ public class WorkspaceHelper {
     private final StorageHelper storage;
     private final DistributionHelper distribution;
     private final PackageHelper packages;
-    private final ExternalPackageSourceHelper externalSources = new ExternalPackageSourceHelper();
-
-    public WorkspaceHelper(GitHelper git, StorageHelper storage, DistributionHelper distribution) {
-        this(git, storage, distribution, null);
-    }
+    private final PackageSourceHelper sources;
+    private final ExternalPackageSourceHelper externalSources;
 
     public WorkspaceHelper(
             GitHelper git,
             StorageHelper storage,
             DistributionHelper distribution,
-            PackageHelper packages) {
+            PackageHelper packages,
+            PackageSourceHelper sources,
+            ExternalPackageSourceHelper externalSources) {
         this.git = git;
         this.storage = storage;
         this.distribution = distribution;
         this.packages = packages;
+        this.sources = sources;
+        this.externalSources = externalSources;
     }
 
     public Path workspaceSourceFolder(Path workspace) {
@@ -124,6 +125,12 @@ public class WorkspaceHelper {
         git.clone(clone);
     }
 
+    public void refresh(Workspace workspace) throws Exception {
+        Distribution config =
+                distribution.getDistributionConfig(workspaceDistributionConfig(workspace.path()));
+        workspace.refresh(config);
+    }
+
     public Distribution refreshDistribution(Path workspace) throws Exception {
         if (!Files.exists(workspaceConfig(workspace))) {
             throw new IllegalArgumentException("Not a workspace: " + workspace);
@@ -151,8 +158,7 @@ public class WorkspaceHelper {
         switch (source) {
             case GitRepository repo -> cloneGitPackage(repo, input.workspace());
             case Folder nested -> {
-                PackageSourceHelper sources = new PackageSourceHelper();
-                Path sourceDirectory = sources.materialize(nested, input.workspace(), git);
+                Path sourceDirectory = sources.materialize(nested, input.workspace());
                 sources.copy(
                         sourceDirectory, workspacePackageFolder(input.workspace(), input.name()));
             }
@@ -174,14 +180,12 @@ public class WorkspaceHelper {
                                 importOptions.getSource(),
                                 source.getName(),
                                 source.getVersion(),
-                                input.workspace(),
-                                git);
+                                input.workspace());
                 Path localOverlay =
                         input.workspace()
                                 .resolve("private/cache/import-overlays")
                                 .resolve(source.getName())
                                 .resolve(source.getVersion());
-                PackageSourceHelper sources = new PackageSourceHelper();
                 sources.copy(packageDirectory, localOverlay);
                 try {
                     externalSources.mergeAndPatch(
@@ -200,8 +204,6 @@ public class WorkspaceHelper {
                 source.getName(),
                 source.getVersion(),
                 workspacePackageFolder(input.workspace(), input.name()).toString(),
-                workspacePrefixFolder(input.workspace(), input.name()).toString(),
-                workspaceBuildFolder(input.workspace(), input.name()).toString(),
                 true);
     }
 
@@ -241,7 +243,8 @@ public class WorkspaceHelper {
     }
 
     private List<LocalPackage> packages(Path workspace, boolean cloned) {
-        try (WorkspaceStorage workspaceStorage = new WorkspaceStorage(workspaceConfig(workspace))) {
+        try (WorkspaceStorage workspaceStorage =
+                new WorkspaceStorage(workspace, workspaceConfig(workspace))) {
             return workspaceStorage.getPackages(cloned);
         } catch (Exception e) {
             throw new IllegalStateException(

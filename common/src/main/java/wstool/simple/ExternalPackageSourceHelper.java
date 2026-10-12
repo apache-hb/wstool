@@ -16,12 +16,24 @@ import wstool.simple.git.ImmutableGitRepositoryLocation;
 
 /** Materializes third-party package sources and applies their configured patches. */
 public class ExternalPackageSourceHelper {
-    private final DistributionArchiveHelper archives = new DistributionArchiveHelper();
-    private final PackageSourceHelper sources = new PackageSourceHelper();
-    private final ExternalFilesHelper files = new ExternalFilesHelper();
+    private final DistributionArchiveHelper archives;
+    private final PackageSourceHelper sources;
+    private final ExternalFilesHelper files;
+    private final GitHelper git;
 
-    public Path materialize(
-            ExternalPackage source, String name, String version, Path workspace, GitHelper git)
+    public ExternalPackageSourceHelper(
+            DistributionArchiveHelper archives,
+            PackageSourceHelper sources,
+            ExternalFilesHelper files,
+            GitHelper git) {
+
+        this.archives = archives;
+        this.sources = sources;
+        this.files = files;
+        this.git = git;
+    }
+
+    public Path materialize(ExternalPackage source, String name, String version, Path workspace)
             throws Exception {
         Path destination =
                 workspace.resolve("private/cache/external-sources").resolve(name).resolve(version);

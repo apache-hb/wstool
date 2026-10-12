@@ -8,38 +8,30 @@ import wstool.simple.storage.ImmutableAddPackageInput;
 
 public class StorageHelper {
     public void createWorkspaceStorage(Path path) throws Exception {
-        try (var connection = new WorkspaceStorage(path)) {
+        try (var connection = new WorkspaceStorage(workspace(path), path)) {
             connection.setup();
         }
     }
 
     public void addPackageToWorkspaceStorage(
-            Path path,
-            String name,
-            String version,
-            String source,
-            String prefix,
-            String build,
-            boolean cloned)
+            Path path, String name, String version, String source, boolean cloned)
             throws Exception {
 
         AddPackageInput input =
                 ImmutableAddPackageInput.builder()
                         .name(new PackageMajorVersion(name, version))
                         .source(Path.of(source))
-                        .prefix(Path.of(prefix))
-                        .build(Path.of(build))
                         .cloned(cloned)
                         .build();
 
-        try (var connection = new WorkspaceStorage(path)) {
+        try (var connection = new WorkspaceStorage(workspace(path), path)) {
             connection.addPackage(input);
         }
     }
 
     public List<PackageMajorVersion> removeClonedPackagesFromWorkspaceStorage(
             Path path, String name) throws Exception {
-        try (var connection = new WorkspaceStorage(path)) {
+        try (var connection = new WorkspaceStorage(workspace(path), path)) {
             return connection.removeClonedPackages(name);
         }
     }
@@ -47,8 +39,12 @@ public class StorageHelper {
     public void refreshDistributionPackages(
             Path path, Path workspace, List<PackageMajorVersion> distributionPackages)
             throws Exception {
-        try (var connection = new WorkspaceStorage(path)) {
-            connection.replaceDistributionPackages(workspace, distributionPackages);
+        try (var connection = new WorkspaceStorage(workspace, path)) {
+            connection.refresh(workspace, distributionPackages);
         }
+    }
+
+    private Path workspace(Path database) {
+        return database.toAbsolutePath().getParent();
     }
 }

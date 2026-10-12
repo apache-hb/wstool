@@ -6,7 +6,7 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
-import wstool.simple.DistributionHelper;
+import wstool.cli.commands.CommandHelpers;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
@@ -42,8 +42,7 @@ public class CreateWorkspaceCommand implements Callable<Integer> {
         try (PklHelper pkl = new PklHelper(null)) {
             GitHelper git = new GitHelper(interactive);
             StorageHelper storage = new StorageHelper();
-            DistributionHelper dist = new DistributionHelper(pkl);
-            WorkspaceHelper workspace = new WorkspaceHelper(git, storage, dist);
+            WorkspaceHelper workspace = CommandHelpers.workspace(git, storage, pkl);
 
             var input =
                     ImmutableCreateWorkspaceInput.builder()

@@ -41,9 +41,7 @@ class PackageSourceHelperTest {
         Archive parent = new Archive("maven-import", "1.0.0", archive.toUri(), sha256(archive));
         Folder source = new Folder("example", "1.0", parent, "packages/example/1.0");
 
-        Path resolved =
-                new PackageSourceHelper()
-                        .materialize(source, tempDir.resolve("workspace"), new GitHelper(false));
+        Path resolved = packageSourceHelper().materialize(source, tempDir.resolve("workspace"));
 
         assertEquals(
                 "fixture = \"package config\"\n", Files.readString(resolved.resolve("wstool.pkl")));
@@ -66,17 +64,19 @@ class PackageSourceHelperTest {
 
         assertThrows(
                 java.io.IOException.class,
-                () ->
-                        new PackageSourceHelper()
-                                .materialize(
-                                        source,
-                                        tempDir.resolve("workspace"),
-                                        new GitHelper(false)));
+                () -> packageSourceHelper().materialize(source, tempDir.resolve("workspace")));
     }
 
     private String sha256(Path file) throws Exception {
         return HexFormat.of()
                 .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
+    }
+
+    private PackageSourceHelper packageSourceHelper() {
+        return new PackageSourceHelper(
+                new DistributionArchiveHelper(new ArchiveHelper()),
+                new GitHelper(false),
+                new PackageMapper());
     }
 
     private void copyResource(String name, Path destination) throws Exception {

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -16,20 +17,16 @@ import java.util.List;
 import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
-
 import javax.tools.ToolProvider;
-
 import org.junit.jupiter.api.AutoClose;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.test.components.PackageGitManager;
 import wstool.test.components.StorageServerManager;
@@ -40,15 +37,12 @@ class GradleBuildEndToEndTest {
     private static final String BUCKET = "wstool-gradle-e2e";
     private static final String BUILD_IMAGE = "wstool-gradle-e2e:latest";
 
-    @Container
-    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    @Container private static final GenericContainer<?> GARAGE = StorageServerManager.container();
     private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
 
-    @Container
-    private static final GiteaContainer GITEA = PackageGitManager.container();
+    @Container private static final GiteaContainer GITEA = PackageGitManager.container();
 
-    @AutoClose
-    private static S3Client s3;
+    @AutoClose private static S3Client s3;
 
     @TempDir Path tempDir;
     private Path artifactRepository;
@@ -105,23 +99,23 @@ class GradleBuildEndToEndTest {
         assertTrue(
                 Files.isRegularFile(
                         workspace.resolve(
-                                "private/prefix/gradle-smoke/gradle-build/classes/java/main/smoke/App.class")),
+                                "private/prefix/gradle-smoke/1.0.0/gradle-build/classes/java/main/smoke/App.class")),
                 "Gradle did not compile the project using the Maven artifact from wstool");
 
         runCli(workspace, "workspace", "remove", "-p", "local-artifact");
         assertFalse(Files.exists(workspace.resolve("src/local-artifact")));
-        assertFalse(Files.exists(workspace.resolve("private/prefix/local-artifact")));
+        assertFalse(Files.exists(workspace.resolve("private/prefix/local-artifact/1.0.0")));
 
         runCli(workspace, "build", "gradle-smoke@1.0.0");
         assertTrue(
                 Files.isRegularFile(
                         workspace.resolve(
-                                "private/prefix/local-artifact/share/maven-repo/test/local-artifact/1.0.0/local-artifact-1.0.0.jar")),
+                                "private/prefix/local-artifact/1.0.0/share/maven-repo/test/local-artifact/1.0.0/local-artifact-1.0.0.jar")),
                 "Build did not restore the removed package from its prebuilt artifact");
         assertTrue(
                 Files.isRegularFile(
                         workspace.resolve(
-                                "private/prefix/gradle-smoke/gradle-build/classes/java/main/smoke/App.class")),
+                                "private/prefix/gradle-smoke/1.0.0/gradle-build/classes/java/main/smoke/App.class")),
                 "Gradle did not rebuild using the restored prebuilt artifact");
     }
 
@@ -207,10 +201,7 @@ class GradleBuildEndToEndTest {
         builder.environment().put("AWS_ACCESS_KEY_ID", credentials.accessKeyId());
         builder.environment().put("AWS_SECRET_ACCESS_KEY", credentials.secretAccessKey());
         builder.environment().put("AWS_REGION", "us-east-1");
-        builder.environment()
-                .put(
-                        "AWS_S3_ENDPOINT",
-                        STORAGE.endpoint().toString());
+        builder.environment().put("AWS_S3_ENDPOINT", STORAGE.endpoint().toString());
         builder.environment().put("WST_BUILD_IMAGE", BUILD_IMAGE);
         builder.environment().put("WSTOOL_CLI_ARCHIVE", requiredEnv("WSTOOL_CLI_ARCHIVE"));
         builder.environment().put("WSTOOL_GRADLE_PACKAGE_URI", packageUri("WSTOOL_GRADLE_PACKAGE"));
@@ -285,5 +276,4 @@ class GradleBuildEndToEndTest {
         }
         return Path.of(resource.toURI());
     }
-
 }

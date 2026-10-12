@@ -14,7 +14,6 @@ import wstool.cli.VersionProvider;
 import wstool.simple.ArchiveHelper;
 import wstool.simple.CacheHelper;
 import wstool.simple.ContainerBuildHelper;
-import wstool.simple.DependencyResolver;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.PackageArtifactCache;
@@ -36,11 +35,11 @@ public class BuildCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         try (PklHelper pkl = new PklHelper(null)) {
-            DistributionHelper distributionHelper = new DistributionHelper(pkl);
             GitHelper git = new GitHelper(false);
             StorageHelper storage = new StorageHelper();
-            WorkspaceHelper workspace = new WorkspaceHelper(git, storage, distributionHelper);
+            WorkspaceHelper workspace = CommandHelpers.workspace(git, storage, pkl);
             Path root = workspace.findWorkspaceUp(Path.of(""));
+            DistributionHelper distributionHelper = new DistributionHelper(pkl);
             Distribution distribution =
                     distributionHelper.getDistributionConfig(
                             workspace.workspaceDistributionConfig(root));
@@ -67,10 +66,9 @@ public class BuildCommand implements Callable<Integer> {
                                         distribution.getStorage().getBucket(),
                                         distribution.getName()),
                                 workspace,
-                                new DependencyResolver(),
+                                CommandHelpers.dependencies(git, pkl),
                                 pkl,
                                 distribution,
-                                git,
                                 storage);
                 build.runContainerBuild(
                         ImmutableRunContainerBuildInput.builder()

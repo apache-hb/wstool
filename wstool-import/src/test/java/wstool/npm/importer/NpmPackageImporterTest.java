@@ -22,6 +22,7 @@ import wstool.simple.PklHelper;
 
 class NpmPackageImporterTest {
     @TempDir Path tempDir;
+
     @Test
     void importsAwsMdaaSftpServerAsMajorVersionPackagesForInspection() throws Exception {
         Path output =

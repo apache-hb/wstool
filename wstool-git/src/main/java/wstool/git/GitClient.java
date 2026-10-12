@@ -9,13 +9,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import wstool.git.model.GitCloneInput;
 import wstool.git.model.GitRepositoryLocation;
 import wstool.git.model.GitRunInput;
 
 public class GitClient {
-    private static final String CREDENTIAL_HELPER = resourceAsString(GitClient.class, "/credential-helper.sh").trim();
+    private static final String CREDENTIAL_HELPER =
+            resourceAsString(GitClient.class, "/credential-helper.sh").trim();
 
     private final boolean interactive;
 
@@ -89,12 +89,14 @@ public class GitClient {
         }
     }
 
-    private void putAuthenticationOptions(Map<String, String> env, String username, String password) {
+    private void putAuthenticationOptions(
+            Map<String, String> env, String username, String password) {
         if (username != null || password != null) {
             env.put("WSTOOL_GIT_USERNAME", username != null ? username : "");
             env.put("WSTOOL_GIT_PASSWORD", password != null ? password : "");
 
-            Map<String, String> options = Map.of("credential.helper", CREDENTIAL_HELPER, "core.askPass", "");
+            Map<String, String> options =
+                    Map.of("credential.helper", CREDENTIAL_HELPER, "core.askPass", "");
             env.putAll(buildGitOptions(options));
         }
     }

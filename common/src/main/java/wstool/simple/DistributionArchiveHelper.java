@@ -21,7 +21,11 @@ import wstool.simple.archive.ImmutableExtractArchiveInput;
 
 /** Downloads and extracts immutable package archives into the workspace metadata cache. */
 public class DistributionArchiveHelper {
-    private final ArchiveHelper archives = new ArchiveHelper();
+    private final ArchiveHelper archives;
+
+    public DistributionArchiveHelper(ArchiveHelper archives) {
+        this.archives = archives;
+    }
 
     public void extract(Archive archive, Path workspace, Path destination) throws Exception {
         extract(

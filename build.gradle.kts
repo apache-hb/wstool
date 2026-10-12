@@ -92,6 +92,7 @@ spotless {
   java {
     target("**/src/**/*.java")
     googleJavaFormat("1.30.0").aosp()
+    shortenFullyQualifiedTypes()
     removeUnusedImports()
     endWithNewline()
   }

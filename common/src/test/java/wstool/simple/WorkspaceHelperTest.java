@@ -6,14 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
-import dev.parsick.testcontainers.gitserver.gitea.GiteaVersions;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,8 +26,7 @@ import wstool.test.components.PackageGitManager;
 
 @Testcontainers(disabledWithoutDocker = true)
 public class WorkspaceHelperTest {
-    @Container
-    private static final GiteaContainer gitServer = PackageGitManager.container();
+    @Container private static final GiteaContainer gitServer = PackageGitManager.container();
 
     @TempDir Path tempDir;
 
@@ -44,11 +41,10 @@ public class WorkspaceHelperTest {
     void createsWorkspaceDirectoriesClonesDistributionAndInitializesStorage() throws Exception {
         URI distribution = uploadRepository("simple/distribution", "workspace-distribution");
         Path parent = tempDir.resolve("workspaces");
-        WorkspaceHelper helper =
-                new WorkspaceHelper(
-                        new GitHelper(false),
-                        new StorageHelper(),
-                        new DistributionHelper(new PklHelper(null)));
+        GitHelper git = new GitHelper(false);
+        StorageHelper storage = new StorageHelper();
+        PklHelper pkl = new PklHelper(null);
+        WorkspaceHelper helper = workspaceHelper(git, storage, pkl);
 
         helper.createWorkspace(
                 ImmutableCreateWorkspaceInput.builder()
@@ -74,10 +70,7 @@ public class WorkspaceHelperTest {
     @Test
     void findWorkspaceUpThrowsWhenNoWorkspaceExists() {
         WorkspaceHelper helper =
-                new WorkspaceHelper(
-                        new GitHelper(false),
-                        new StorageHelper(),
-                        new DistributionHelper(new PklHelper(null)));
+                workspaceHelper(new GitHelper(false), new StorageHelper(), new PklHelper(null));
 
         IllegalArgumentException error =
                 assertThrows(IllegalArgumentException.class, () -> helper.findWorkspaceUp(tempDir));
@@ -95,8 +88,7 @@ public class WorkspaceHelperTest {
         StorageHelper storage = new StorageHelper();
         try (PklHelper pkl =
                 new PklHelper(Map.of("PACKAGE_GIT_REPOSITORY", packageRepository.toString()))) {
-            WorkspaceHelper helper =
-                    new WorkspaceHelper(new GitHelper(false), storage, new DistributionHelper(pkl));
+            WorkspaceHelper helper = workspaceHelper(new GitHelper(false), storage, pkl);
             helper.createWorkspace(
                     ImmutableCreateWorkspaceInput.builder()
                             .parent(parent)
@@ -124,19 +116,29 @@ public class WorkspaceHelperTest {
                         DriverManager.getConnection(
                                 "jdbc:sqlite:" + workspace.resolve("wstool.db"));
                 var statement = connection.createStatement();
-                ResultSet result = statement.executeQuery("SELECT * FROM packages")) {
+                ResultSet result =
+                        statement.executeQuery(
+                                "SELECT name, version, source, cloned FROM packages")) {
             assertTrue(result.next());
             assertEquals("root", result.getString("name"));
             assertEquals("1.0", result.getString("version"));
             assertEquals(workspace.resolve("src/root").toString(), result.getString("source"));
-            assertEquals(
-                    workspace.resolve("private/prefix/root").toString(),
-                    result.getString("prefix"));
-            assertEquals(
-                    workspace.resolve("private/build/root").toString(), result.getString("build"));
             assertEquals("1", result.getString("cloned"));
             assertFalse(result.next(), "Expected exactly one stored package");
         }
+    }
+
+    private WorkspaceHelper workspaceHelper(GitHelper git, StorageHelper storage, PklHelper pkl) {
+        DistributionArchiveHelper archives = new DistributionArchiveHelper(new ArchiveHelper());
+        PackageMapper mapper = new PackageMapper();
+        PackageSourceHelper sources = new PackageSourceHelper(archives, git, mapper);
+        return new WorkspaceHelper(
+                git,
+                storage,
+                new DistributionHelper(pkl),
+                new PackageHelper(pkl),
+                sources,
+                new ExternalPackageSourceHelper(archives, sources, new ExternalFilesHelper(), git));
     }
 
     private URI uploadRepository(String fixture, String name) throws Exception {
@@ -144,5 +146,4 @@ public class WorkspaceHelperTest {
         gitManager.uploadResources(name, fixture);
         return repository;
     }
-
 }

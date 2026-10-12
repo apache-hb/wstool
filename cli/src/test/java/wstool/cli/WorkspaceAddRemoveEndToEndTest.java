@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -21,13 +22,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import wstool.test.components.PackageGitManager;
 
 @Testcontainers(disabledWithoutDocker = true)
 class WorkspaceAddRemoveEndToEndTest {
-    @Container
-    private static final GiteaContainer gitea = PackageGitManager.container();
+    @Container private static final GiteaContainer gitea = PackageGitManager.container();
 
     @TempDir Path tempDir;
     private PackageGitManager gitManager;
@@ -169,13 +168,10 @@ class WorkspaceAddRemoveEndToEndTest {
         command.addAll(List.of(arguments));
         ProcessBuilder processBuilder =
                 new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
-        processBuilder
-                .environment()
-                .put("PACKAGE_REPOSITORY", packageRepository.toString());
+        processBuilder.environment().put("PACKAGE_REPOSITORY", packageRepository.toString());
         Process process = processBuilder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int exit = process.waitFor();
         assertEquals(0, exit, "CLI failed: " + String.join(" ", arguments) + "\n" + output);
     }
-
 }

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,15 +20,12 @@ import wstool.test.components.StorageServerManager;
 public class CacheHelperTest {
     private static final String BUCKET = "cache-helper-test";
 
-    @Container
-    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
-    private static final StorageServerManager STORAGE =
-            new StorageServerManager(GARAGE);
+    @Container private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
 
     @TempDir Path tempDir;
 
-    @AutoClose
-    private static S3Client s3;
+    @AutoClose private static S3Client s3;
     private CacheHelper cache;
 
     @BeforeAll

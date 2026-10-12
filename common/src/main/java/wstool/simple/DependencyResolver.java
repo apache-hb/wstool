@@ -30,6 +30,25 @@ public class DependencyResolver {
     private static final String CONFIG_FILE = "wstool.pkl";
     private static final String SYSROOT_DIRECTORY = ".wstool/sysroots";
 
+    private final GitHelper git;
+    private final PklHelper pklHelper;
+    private final PackageSourceHelper packageSourceHelper;
+    private final DistributionArchiveHelper distributionArchiveHelper;
+    private final PackageMapper packageMapper;
+
+    public DependencyResolver(
+            GitHelper gitHelper,
+            PklHelper pklHelper,
+            PackageSourceHelper packageSourceHelper,
+            DistributionArchiveHelper distributionArchiveHelper,
+            PackageMapper packageMapper) {
+        this.git = gitHelper;
+        this.pklHelper = pklHelper;
+        this.packageSourceHelper = packageSourceHelper;
+        this.distributionArchiveHelper = distributionArchiveHelper;
+        this.packageMapper = packageMapper;
+    }
+
     public Path createClosure(
             WorkspaceHelper workspace, Path workspaceRoot, String packageName, String closure) {
         return createClosure(workspace, workspaceRoot, packageName, closure, null);
@@ -69,7 +88,7 @@ public class DependencyResolver {
     /** Returns the package prefixes required by a closure, in dependency order. */
     public LinkedHashMap<PackageMajorVersion, LocalPackage> resolvePackages(
             WorkspaceHelper workspace, Path workspaceRoot, String packageName, String closure) {
-        return resolvePackages(workspace, workspaceRoot, packageName, closure, null, null);
+        return resolvePackages(workspace, workspaceRoot, packageName, closure, null);
     }
 
     /**
@@ -80,19 +99,18 @@ public class DependencyResolver {
             Path workspaceRoot,
             String packageName,
             String closure,
-            Distribution distribution,
-            GitHelper git) {
+            Distribution distribution) {
         Objects.requireNonNull(workspace, "workspace");
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
         Map<PackageMajorVersion, LocalPackage> packages = indexPackages(workspace, workspaceRoot);
         LocalPackage root = findRoot(packages, selector.root());
-        try (PklHelper pkl = new PklHelper(null)) {
-            Package rootConfig = readConfig(pkl, root.source().resolve(CONFIG_FILE));
+        try {
+            Package rootConfig = readConfig(root.config());
             Map<PackageMajorVersion, Package> configs = new LinkedHashMap<>();
             configs.put(root.version(), rootConfig);
             return resolveDependencies(
-                    selector, rootConfig, packages, configs, pkl, workspaceRoot, distribution, git);
+                    selector, rootConfig, packages, configs, workspaceRoot, distribution);
         } catch (Exception e) {
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
@@ -150,15 +168,13 @@ public class DependencyResolver {
             Package rootConfig,
             Map<PackageMajorVersion, LocalPackage> packages,
             Map<PackageMajorVersion, Package> configs,
-            PklHelper pkl,
             Path workspaceRoot,
-            Distribution distribution,
-            GitHelper git)
+            Distribution distribution)
             throws Exception {
         LinkedHashMap<PackageMajorVersion, LocalPackage> selected = new LinkedHashMap<>();
         ArrayDeque<LocalPackage> pending = new ArrayDeque<>();
         for (PackageMajorVersion dependency : roots(rootConfig, selector.closure())) {
-            pending.addLast(requirePackage(dependency, packages, workspaceRoot, distribution, git));
+            pending.addLast(requirePackage(dependency, packages, workspaceRoot, distribution));
         }
 
         Set<PackageMajorVersion> visited = new LinkedHashSet<>();
@@ -170,12 +186,10 @@ public class DependencyResolver {
             selected.put(dependency.version(), dependency);
             Package config =
                     configs.computeIfAbsent(
-                            dependency.version(),
-                            ignored -> readConfig(pkl, dependency.source().resolve(CONFIG_FILE)));
+                            dependency.version(), ignored -> readConfig(dependency.config()));
             for (PackageMajorVersion transitive :
                     transitiveDependencies(config, selector.closure())) {
-                pending.addLast(
-                        requirePackage(transitive, packages, workspaceRoot, distribution, git));
+                pending.addLast(requirePackage(transitive, packages, workspaceRoot, distribution));
             }
         }
         return selected;
@@ -265,16 +279,15 @@ public class DependencyResolver {
             PackageMajorVersion requested,
             Map<PackageMajorVersion, LocalPackage> packages,
             Path workspaceRoot,
-            Distribution distribution,
-            GitHelper git)
+            Distribution distribution)
             throws Exception {
+
         LocalPackage existing = packages.get(requested);
         if (existing != null) {
             return existing;
         }
-        if (distribution == null || git == null) {
-            return requirePackage(requested, packages);
-        }
+
+        Objects.requireNonNull(distribution);
 
         PackageSource source =
                 distribution.getPackages().stream()
@@ -289,32 +302,26 @@ public class DependencyResolver {
                                                         + "' and version '"
                                                         + requested.version()
                                                         + "' found in distribution."));
+
+        LocalPackage resolved = packageMapper.toLocalPackage(source, workspaceRoot);
+
         if (source instanceof Archive archive) {
-            Path metadataSource =
-                    workspaceRoot
-                            .resolve("private/cache/package-sources")
-                            .resolve(requested.name())
-                            .resolve(requested.version());
-            new DistributionArchiveHelper().extract(archive, workspaceRoot, metadataSource);
-            if (!Files.isRegularFile(metadataSource.resolve(CONFIG_FILE))) {
+            distributionArchiveHelper.extract(archive, workspaceRoot, resolved.source());
+            packageSourceHelper.copy(resolved.source(), resolved.prefix());
+
+            if (!Files.isRegularFile(resolved.config())) {
                 throw new IOException(
                         "Package configuration not found in archive for " + requested);
             }
-            LocalPackage resolved = new LocalPackage(requested, metadataSource, metadataSource);
             packages.put(requested, resolved);
             return resolved;
         }
         if (source instanceof Folder nested) {
-            Path metadataSource = new PackageSourceHelper().materialize(nested, workspaceRoot, git);
+            Path metadataSource = packageSourceHelper.materialize(nested, workspaceRoot);
             if (!Files.isRegularFile(metadataSource.resolve(CONFIG_FILE))) {
                 throw new IOException(
                         "Package configuration not found in source bundle for " + requested);
             }
-            LocalPackage resolved =
-                    new LocalPackage(
-                            requested,
-                            metadataSource,
-                            workspaceRoot.resolve("private/prefix").resolve(requested.name()));
             packages.put(requested, resolved);
             return resolved;
         }
@@ -350,20 +357,15 @@ public class DependencyResolver {
             }
         }
 
-        LocalPackage resolved =
-                new LocalPackage(
-                        requested,
-                        metadataSource,
-                        workspaceRoot.resolve("private/prefix").resolve(requested.name()));
         packages.put(requested, resolved);
         return resolved;
     }
 
-    private Package readConfig(PklHelper pkl, Path path) {
+    private Package readConfig(Path path) {
         if (!Files.isRegularFile(path)) {
             throw new IllegalArgumentException("Package configuration not found: " + path);
         }
-        return pkl.evaluate(path).as(Package.class);
+        return pklHelper.evaluate(path).as(Package.class);
     }
 
     private Selector parseSelector(String packageName, String closure) {

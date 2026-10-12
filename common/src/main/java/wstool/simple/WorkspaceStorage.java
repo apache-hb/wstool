@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
-
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.AddDependencyInput;
 import wstool.simple.storage.AddPackageInput;
@@ -32,8 +31,6 @@ public class WorkspaceStorage implements AutoCloseable {
                 name TEXT NOT NULL,
                 version TEXT NOT NULL,
                 source TEXT NOT NULL,
-                prefix TEXT NOT NULL,
-                build TEXT NOT NULL,
                 cloned TEXT NOT NULL CHECK (cloned IN ('0', '1')),
                 PRIMARY KEY (name, version)
             )
@@ -55,12 +52,10 @@ public class WorkspaceStorage implements AutoCloseable {
 
     private static final String ADD_PACKAGE =
             """
-            INSERT INTO packages (name, version, source, prefix, build, cloned)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO packages (name, version, source, cloned)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT (name, version) DO UPDATE SET
                 source = excluded.source,
-                prefix = excluded.prefix,
-                build = excluded.build,
                 cloned = excluded.cloned
             """;
 
@@ -81,7 +76,7 @@ public class WorkspaceStorage implements AutoCloseable {
 
     private static final String GET_PACKAGES =
             """
-            SELECT name, version, source, prefix
+            SELECT name, version, source
             FROM packages
             WHERE cloned = ?
             ORDER BY name, version
@@ -95,8 +90,8 @@ public class WorkspaceStorage implements AutoCloseable {
 
     private static final String INSERT_DISTRIBUTION_PACKAGE =
             """
-            INSERT INTO packages (name, version, source, prefix, build, cloned)
-            VALUES (?, ?, ?, ?, ?, '0')
+            INSERT INTO packages (name, version, source, cloned)
+            VALUES (?, ?, ?, '0')
             ON CONFLICT (name, version) DO NOTHING
             """;
 
@@ -156,10 +151,12 @@ public class WorkspaceStorage implements AutoCloseable {
             ORDER BY dependency_name, dependency_version
             """;
 
+    private final Path workspace;
     private final Connection connection;
 
-    public WorkspaceStorage(Path path) throws Exception {
-        this.connection = DriverManager.getConnection("jdbc:sqlite:" + path);
+    public WorkspaceStorage(Path workspace, Path database) throws Exception {
+        this.workspace = workspace;
+        this.connection = DriverManager.getConnection("jdbc:sqlite:" + database);
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
         }
@@ -173,8 +170,7 @@ public class WorkspaceStorage implements AutoCloseable {
         }
     }
 
-    public void replaceDistributionPackages(Path workspace, List<PackageMajorVersion> packages)
-            throws Exception {
+    public void refresh(Path workspace, List<PackageMajorVersion> packages) throws Exception {
         boolean autoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try {
@@ -196,10 +192,6 @@ public class WorkspaceStorage implements AutoCloseable {
                                     .resolve(pkg.name())
                                     .resolve(pkg.version())
                                     .toString());
-                    insert.setString(
-                            4, workspace.resolve("private/prefix").resolve(pkg.name()).toString());
-                    insert.setString(
-                            5, workspace.resolve("private/build").resolve(pkg.name()).toString());
                     insert.addBatch();
                 }
                 insert.executeBatch();
@@ -218,9 +210,7 @@ public class WorkspaceStorage implements AutoCloseable {
             statement.setString(1, input.name().name());
             statement.setString(2, input.name().version());
             statement.setString(3, input.source().toString());
-            statement.setString(4, input.prefix().toString());
-            statement.setString(5, input.build().toString());
-            statement.setString(6, input.cloned() ? "1" : "0");
+            statement.setString(4, input.cloned() ? "1" : "0");
             statement.executeUpdate();
         }
     }
@@ -231,12 +221,11 @@ public class WorkspaceStorage implements AutoCloseable {
             try (var result = statement.executeQuery()) {
                 List<LocalPackage> packages = new ArrayList<>();
                 while (result.next()) {
+                    PackageMajorVersion pmv =
+                            new PackageMajorVersion(
+                                    result.getString("name"), result.getString("version"));
                     packages.add(
-                            new LocalPackage(
-                                    new PackageMajorVersion(
-                                            result.getString("name"), result.getString("version")),
-                                    Path.of(result.getString("source")),
-                                    Path.of(result.getString("prefix"))));
+                            new LocalPackage(pmv, workspace, Path.of(result.getString("source"))));
                 }
                 return packages;
             }
@@ -293,8 +282,10 @@ public class WorkspaceStorage implements AutoCloseable {
         }
     }
 
-    public List<PackageMajorVersion> directDependenciesOf(PackageMajorVersion name, DependencyType type) throws Exception {
-        String sql = """
+    public List<PackageMajorVersion> directDependenciesOf(
+            PackageMajorVersion name, DependencyType type) throws Exception {
+        String sql =
+                """
                 SELECT dependency_name, dependency_version
                 FROM dependencies
                 WHERE package_name = ? AND package_version = ? AND dependency_type = ?
@@ -307,7 +298,10 @@ public class WorkspaceStorage implements AutoCloseable {
             try (var result = statement.executeQuery()) {
                 List<PackageMajorVersion> dependencies = new ArrayList<>();
                 while (result.next()) {
-                    dependencies.add(new PackageMajorVersion(result.getString("dependency_name"), result.getString("dependency_version")));
+                    dependencies.add(
+                            new PackageMajorVersion(
+                                    result.getString("dependency_name"),
+                                    result.getString("dependency_version")));
                 }
                 return dependencies;
             }
@@ -315,7 +309,8 @@ public class WorkspaceStorage implements AutoCloseable {
     }
 
     public LocalPackage find(PackageMajorVersion name) throws Exception {
-        String sql = """
+        String sql =
+                """
                 SELECT *
                 FROM packages
                 WHERE name = ? AND version = ?
@@ -326,10 +321,11 @@ public class WorkspaceStorage implements AutoCloseable {
             statement.setString(2, name.version());
             try (var result = statement.executeQuery()) {
                 while (result.next()) {
-                    PackageMajorVersion pmv = new PackageMajorVersion(result.getString("name"), result.getString("version"));
+                    PackageMajorVersion pmv =
+                            new PackageMajorVersion(
+                                    result.getString("name"), result.getString("version"));
                     Path source = Path.of(result.getString("source"));
-                    Path prefix = Path.of(result.getString("prefix"));
-                    return new LocalPackage(pmv, source, prefix);
+                    return new LocalPackage(pmv, workspace, source);
                 }
 
                 throw new NoSuchElementException("Package not found: " + name);

@@ -6,12 +6,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -21,10 +19,12 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 
 public class StorageServerManager {
     public static GenericContainer<?> container() {
-        GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("dxflrs/garage:v2.4.1"));
+        GenericContainer<?> container =
+                new GenericContainer<>(DockerImageName.parse("dxflrs/garage:v2.4.1"));
         container.withExposedPorts(3900);
         container.withTmpFs(Map.of("/meta", "rw", "/data", "rw"));
-        container.withCopyToContainer(MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml");
+        container.withCopyToContainer(
+                MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml");
         container.withCommand("/garage", "-c", "/etc/garage.toml", "server");
         container.waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
         container.withStartupTimeout(Duration.ofMinutes(2));
@@ -45,25 +45,28 @@ public class StorageServerManager {
 
     public S3Client createBucket(String name) throws Exception {
         String accessKey = randomString(20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-        String secretKey = randomString(40, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+        String secretKey =
+                randomString(40, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
 
         run("key", "import", "--yes", "-n", "cli-toolchain", accessKey, secretKey);
         run("bucket", "create", name);
         run("bucket", "allow", "--read", "--write", "--owner", "--key", accessKey, name);
 
-        AwsCredentialsProvider credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
+        AwsCredentialsProvider credentials =
+                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
 
-        S3Configuration configuration = S3Configuration.builder()
-                .pathStyleAccessEnabled(true)
-                .chunkedEncodingEnabled(false)
-                .build();
+        S3Configuration configuration =
+                S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .chunkedEncodingEnabled(false)
+                        .build();
 
         return S3Client.builder()
-            .endpointOverride(endpoint())
-            .region(Region.US_EAST_1)
-            .credentialsProvider(credentials)
-            .serviceConfiguration(configuration)
-            .build();
+                .endpointOverride(endpoint())
+                .region(Region.US_EAST_1)
+                .credentialsProvider(credentials)
+                .serviceConfiguration(configuration)
+                .build();
     }
 
     public URI endpoint() {

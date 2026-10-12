@@ -10,9 +10,5 @@ public interface AddPackageInput {
 
     Path source();
 
-    Path prefix();
-
-    Path build();
-
     boolean cloned();
 }

@@ -3,6 +3,7 @@ package wstool.integration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +25,10 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
-import wstool.test.components.StorageServerManager;
-import wstool.test.components.PackageGitManager;
 import wstool.npm.importer.CachedNpmProxy;
+import wstool.test.components.PackageGitManager;
+import wstool.test.components.StorageServerManager;
 
 /** Exercises npm import and CDKTN synthesis through the published command-line interfaces. */
 @Testcontainers(disabledWithoutDocker = true)
@@ -37,14 +36,11 @@ class NpmCdktnWstoolEndToEndTest {
     private static final String BUILD_IMAGE = "wstool-npm-integration:latest";
     private static final String ARTIFACT_DIRECTORY = "build/integration-cdktn-s3-e2e";
 
-    @Container
-    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
-    private static final StorageServerManager STORAGE =
-            new StorageServerManager(GARAGE);
+    @Container private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
     private static S3Client storageClient;
 
-    @Container
-    private static final GiteaContainer GITEA = PackageGitManager.container();
+    @Container private static final GiteaContainer GITEA = PackageGitManager.container();
 
     private Path artifacts;
     private PackageGitManager gitManager;
@@ -56,7 +52,6 @@ class NpmCdktnWstoolEndToEndTest {
         gitManager = new PackageGitManager(artifacts, GITEA);
         resetDirectory(artifacts);
         Files.createDirectories(artifacts);
-
     }
 
     @BeforeAll
@@ -169,11 +164,7 @@ class NpmCdktnWstoolEndToEndTest {
                                 "--cache",
                                 npmCache.toString()));
         command.addAll(List.of(packages));
-        runCommand(
-                artifacts,
-                command,
-                "npm importer failed",
-                Map.of());
+        runCommand(artifacts, command, "npm importer failed", Map.of());
     }
 
     private void runWstool(Path directory, String... arguments) throws Exception {
@@ -213,9 +204,7 @@ class NpmCdktnWstoolEndToEndTest {
                         Map.entry(
                                 "WSTOOL_NPM_IMPORT_PACKAGE_CHECKSUM",
                                 sha256(archivePath("WSTOOL_NPM_IMPORT_PACKAGE"))),
-                        Map.entry(
-                                "WSTOOL_NPM_PROJECT_REPO",
-                                currentProjectRepository.toString()));
+                        Map.entry("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toString()));
         runCommand(directory, command, "wstool failed", environment);
     }
 
@@ -327,7 +316,11 @@ class NpmCdktnWstoolEndToEndTest {
     }
 
     private static software.amazon.awssdk.identity.spi.AwsCredentialsIdentity storageCredentials() {
-        return storageClient.serviceClientConfiguration().credentialsProvider().resolveIdentity().join();
+        return storageClient
+                .serviceClientConfiguration()
+                .credentialsProvider()
+                .resolveIdentity()
+                .join();
     }
 
     private record ImportedPackage(String name, String version) {}

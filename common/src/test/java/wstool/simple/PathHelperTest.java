@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-
+import java.util.Map;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,9 +20,15 @@ class PathHelperTest {
 
     PathHelper helper;
 
+    @AutoClose PklHelper pkl;
+
+    WorkspaceFactory workspaceFactory;
+
     @BeforeEach
     void beforeEach() {
         helper = new PathHelper();
+        pkl = new PklHelper(Map.of());
+        workspaceFactory = new WorkspaceFactory(pkl);
     }
 
     @Test
@@ -32,25 +39,23 @@ class PathHelperTest {
         Path database = tempDir.resolve("wstool.db");
         Path appSource = tempDir.resolve("app-source");
         Path appLocalTools = appSource.resolve("wstool/bin");
-        Path compilerPrefix = tempDir.resolve("compiler-prefix");
-        Path runtimePrefix = tempDir.resolve("runtime-prefix");
+        Path compilerPrefix = tempDir.resolve("private/prefix/compiler/2.x");
         Files.createDirectories(appLocalTools);
 
-        try (var storage = new WorkspaceStorage(database)) {
+        try (var storage = new WorkspaceStorage(tempDir, database)) {
             storage.setup();
-            storage.addPackage(packageInput(app, appSource, tempDir.resolve("app-prefix")));
-            storage.addPackage(packageInput(compiler, tempDir.resolve("compiler-source"), compilerPrefix));
-            storage.addPackage(
-                    packageInput(
-                            runtimeLibrary,
-                            tempDir.resolve("runtime-source"),
-                            runtimePrefix));
+            storage.addPackage(packageInput(app, appSource));
+            storage.addPackage(packageInput(compiler, tempDir.resolve("compiler-source")));
+            storage.addPackage(packageInput(runtimeLibrary, tempDir.resolve("runtime-source")));
             storage.addDependency(dependency(app, compiler, DependencyType.BUILD));
             storage.addDependency(dependency(app, runtimeLibrary, DependencyType.RUNTIME));
         }
 
-        try (var workspace = new Workspace(tempDir)) {
-            String expected = appLocalTools.toAbsolutePath() + ":" + compilerPrefix.resolve("bin").toAbsolutePath();
+        try (var workspace = workspaceFactory.open(tempDir)) {
+            String expected =
+                    appLocalTools.toAbsolutePath()
+                            + ":"
+                            + compilerPrefix.resolve("bin").toAbsolutePath();
             assertEquals(expected, helper.buildClosurePath(workspace, app));
         }
     }
@@ -61,26 +66,19 @@ class PathHelperTest {
         Path database = tempDir.resolve("wstool.db");
         Path appSource = tempDir.resolve("app-source");
 
-        try (var storage = new WorkspaceStorage(database)) {
+        try (var storage = new WorkspaceStorage(tempDir, database)) {
             storage.setup();
-            storage.addPackage(packageInput(app, appSource, tempDir.resolve("app-prefix")));
+            storage.addPackage(packageInput(app, appSource));
         }
 
-        try (var workspace = new Workspace(tempDir)) {
+        try (var workspace = workspaceFactory.open(tempDir)) {
             assertThrows(
                     IllegalStateException.class, () -> helper.buildClosurePath(workspace, app));
         }
     }
 
-    private static ImmutableAddPackageInput packageInput(
-            PackageMajorVersion name, Path source, Path prefix) {
-        return ImmutableAddPackageInput.builder()
-                .name(name)
-                .source(source)
-                .prefix(prefix)
-                .build(Path.of("build"))
-                .cloned(false)
-                .build();
+    private static ImmutableAddPackageInput packageInput(PackageMajorVersion name, Path source) {
+        return ImmutableAddPackageInput.builder().name(name).source(source).cloned(false).build();
     }
 
     private static ImmutableAddDependencyInput dependency(

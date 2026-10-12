@@ -5,7 +5,7 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
-import wstool.simple.DistributionHelper;
+import wstool.cli.commands.CommandHelpers;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
@@ -27,8 +27,7 @@ public class RemovePackageCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         try (PklHelper pkl = new PklHelper(null)) {
             WorkspaceHelper workspace =
-                    new WorkspaceHelper(
-                            new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));
+                    CommandHelpers.workspace(new GitHelper(false), new StorageHelper(), pkl);
             workspace.removePackageFromWorkspace(
                     workspace.findWorkspaceUp(Path.of("")), packageName);
             return 0;

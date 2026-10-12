@@ -1,7 +1,6 @@
 package wstool.git.model;
 
 import java.net.URI;
-
 import org.immutables.value.Value;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

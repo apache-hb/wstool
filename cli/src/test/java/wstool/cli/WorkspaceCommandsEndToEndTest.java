@@ -3,6 +3,7 @@ package wstool.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -24,7 +25,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
-
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,8 +34,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.test.components.PackageGitManager;
 import wstool.test.components.StorageServerManager;
@@ -91,15 +89,12 @@ class WorkspaceCommandsEndToEndTest {
                     Map.entry("gcc", "14.2.0"),
                     Map.entry("c-smoke", "1.0.0"));
 
-    @Container
-    private static final GiteaContainer GITEA = PackageGitManager.container();
+    @Container private static final GiteaContainer GITEA = PackageGitManager.container();
 
-    @Container
-    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    @Container private static final GenericContainer<?> GARAGE = StorageServerManager.container();
     private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
 
-    @AutoClose
-    private static S3Client s3;
+    @AutoClose private static S3Client s3;
 
     @TempDir Path tempDir;
 
@@ -161,9 +156,9 @@ class WorkspaceCommandsEndToEndTest {
             assertArtifactInS3(name);
         }
 
-        assertTrue(Files.isExecutable(workspace.resolve("private/prefix/cmake/bin/cmake")));
-        assertTrue(Files.isExecutable(workspace.resolve("private/prefix/ninja/bin/ninja")));
-        assertTrue(!Files.exists(workspace.resolve("private/build/cmake/sysroot")));
+        assertTrue(Files.isExecutable(workspace.resolve("private/prefix/cmake/3.30.5/bin/cmake")));
+        assertTrue(Files.isExecutable(workspace.resolve("private/prefix/ninja/1.12.1/bin/ninja")));
+        assertTrue(!Files.exists(workspace.resolve("private/build/cmake/3.30.5/sysroot")));
 
         Path consumerParent = tempDir.resolve("workspaces");
         runCli(consumerParent, "workspace", "create", "--name", "consumer");
@@ -192,17 +187,18 @@ class WorkspaceCommandsEndToEndTest {
         runCli(consumer, "build", "c-smoke@" + PACKAGE_VERSIONS.get("c-smoke"));
         assertArtifactInS3("c-smoke");
 
-        Path gccPrefix = consumer.resolve("private/prefix/gcc");
+        Path gccPrefix = consumer.resolve("private/prefix/gcc/14.2.0");
         Path compiler = gccPrefix.resolve("bin/x86_64-linux-gnu-gcc");
         assertTrue(Files.isExecutable(compiler), "GCC source build did not install its compiler");
-        Path smokeObject = consumer.resolve("private/prefix/c-smoke/program.o");
+        Path smokeObject = consumer.resolve("private/prefix/c-smoke/1.0.0/program.o");
         assertTrue(Files.isRegularFile(smokeObject), "C smoke package did not install program.o");
         assertTrue(Files.size(smokeObject) > 0, "GCC produced an empty object file");
 
-        assertTrue(Files.isRegularFile(consumer.resolve("private/prefix/gmp/include/gmp.h")));
-        assertTrue(Files.isRegularFile(consumer.resolve("private/prefix/mpfr/include/mpfr.h")));
+        assertTrue(Files.isRegularFile(consumer.resolve("private/prefix/gmp/6.3.0/include/gmp.h")));
+        assertTrue(
+                Files.isRegularFile(consumer.resolve("private/prefix/mpfr/4.2.1/include/mpfr.h")));
 
-        assertTrue(!Files.exists(consumer.resolve("private/build/gcc/sysroot")));
+        assertTrue(!Files.exists(consumer.resolve("private/build/gcc/14.2.0/sysroot")));
     }
 
     private void assertArtifactInS3(String name) {
@@ -235,8 +231,7 @@ class WorkspaceCommandsEndToEndTest {
                     name.toUpperCase(Locale.ROOT).replace('-', '_') + "_REPO",
                     packages.get(name).toString());
         }
-        environment.put(
-                "AWS_S3_ENDPOINT", STORAGE.endpoint().toString());
+        environment.put("AWS_S3_ENDPOINT", STORAGE.endpoint().toString());
         environment.put("WST_BUILD_IMAGE", buildImage);
         URI cliArchive = URI.create(System.getenv("WSTOOL_CLI_ARCHIVE"));
         environment.put("WSTOOL_CLI_ARCHIVE", cliArchive.toString());
@@ -252,8 +247,7 @@ class WorkspaceCommandsEndToEndTest {
     }
 
     private URI uploadPackageRepository(String name) throws Exception {
-        return uploadRepositoryFromResources(
-                name + "-" + suffix, "workspace-e2e/packages/" + name);
+        return uploadRepositoryFromResources(name + "-" + suffix, "workspace-e2e/packages/" + name);
     }
 
     private URI uploadRepositoryFromResources(String repositoryName, String resourceFolder)
@@ -378,5 +372,4 @@ class WorkspaceCommandsEndToEndTest {
         int exit = process.waitFor();
         assertEquals(0, exit, "CLI failed: " + String.join(" ", arguments) + "\n" + output);
     }
-
 }

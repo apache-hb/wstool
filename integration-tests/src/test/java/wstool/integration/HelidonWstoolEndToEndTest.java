@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -30,15 +31,14 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.Distribution.PackageSource;
 import wstool.Package.ExternalFiles;
 import wstool.importer.CachedMavenProxy;
 import wstool.npm.importer.CachedNpmProxy;
 import wstool.simple.PklHelper;
-import wstool.test.components.StorageServerManager;
 import wstool.test.components.PackageGitManager;
+import wstool.test.components.StorageServerManager;
 
 /** Verifies imported Helidon artifacts and a REST application build offline through wstool. */
 @Testcontainers(disabledWithoutDocker = true)
@@ -49,19 +49,14 @@ class HelidonWstoolEndToEndTest {
     private static final String NPM_BUILD_IMAGE = "wstool-npm-integration:latest";
     private static final String HELIDON_COORDINATE = "io.helidon.webserver:helidon-webserver:4.5.4";
 
-    @Container
-    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    @Container private static final GenericContainer<?> GARAGE = StorageServerManager.container();
 
-    @Container
-    private static final GiteaContainer GITEA = PackageGitManager.container();
-    private static final StorageServerManager STORAGE =
-            new StorageServerManager(GARAGE);
+    @Container private static final GiteaContainer GITEA = PackageGitManager.container();
+    private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
 
-    @AutoClose
-    private static S3Client helidonStorageClient;
+    @AutoClose private static S3Client helidonStorageClient;
 
-    @AutoClose
-    private static S3Client npmStorageClient;
+    @AutoClose private static S3Client npmStorageClient;
 
     @TempDir Path tempDir;
     private S3Client activeStorageClient;
@@ -117,8 +112,7 @@ class HelidonWstoolEndToEndTest {
                             "package-tree/packages/io_helidon_webserver_helidon-webserver/4.x/wstool.pkl");
             try (var pkl = new PklHelper(Map.of())) {
                 var packageConfig = pkl.evaluate(helidonPackage).as(wstool.Package.class);
-                var externalFiles =
-                        (ExternalFiles) packageConfig.getImportOptions().getSource();
+                var externalFiles = (ExternalFiles) packageConfig.getImportOptions().getSource();
                 assertTrue(
                         externalFiles
                                 .getFiles()
@@ -399,7 +393,11 @@ class HelidonWstoolEndToEndTest {
         ProcessBuilder builder =
                 new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
         var credentials =
-                activeStorageClient.serviceClientConfiguration().credentialsProvider().resolveIdentity().join();
+                activeStorageClient
+                        .serviceClientConfiguration()
+                        .credentialsProvider()
+                        .resolveIdentity()
+                        .join();
         builder.environment().put("AWS_ACCESS_KEY_ID", credentials.accessKeyId());
         builder.environment().put("AWS_SECRET_ACCESS_KEY", credentials.secretAccessKey());
         builder.environment().put("AWS_REGION", "us-east-1");
@@ -407,9 +405,7 @@ class HelidonWstoolEndToEndTest {
         builder.environment().put("WST_BUILD_IMAGE", BUILD_IMAGE);
         if (thirdPartyLocalRepository != null) {
             builder.environment()
-                    .put(
-                            "WSTOOL_THIRD_PARTY_LOCAL_REPO",
-                            thirdPartyLocalRepository.toString());
+                    .put("WSTOOL_THIRD_PARTY_LOCAL_REPO", thirdPartyLocalRepository.toString());
         }
         if (thirdPartyUpstreamRepository != null) {
             builder.environment()
@@ -453,8 +449,7 @@ class HelidonWstoolEndToEndTest {
                         sha256(archivePath("WSTOOL_MAVEN_TOOL_PACKAGE")));
         builder.environment()
                 .put("WSTOOL_HELIDON_PROJECT_REPO", currentProjectRepository.toString());
-        builder.environment()
-                .put("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toString());
+        builder.environment().put("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toString());
         builder.environment()
                 .put(
                         "WSTOOL_NPM_IMPORT_PACKAGE_URI",
@@ -604,5 +599,4 @@ class HelidonWstoolEndToEndTest {
     }
 
     private record ImportedPackage(String name, String version) {}
-
 }
