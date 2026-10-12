@@ -16,8 +16,7 @@ public class PathHelper {
     @Inject
     public PathHelper() {}
 
-    public String buildClosurePath(Workspace workspace, PackageMajorVersion target)
-            throws Exception {
+    public String buildClosurePath(Workspace workspace, PackageMajorVersion target) throws Exception {
         var storage = workspace.storage();
         List<Path> paths = new ArrayList<>();
 

@@ -178,6 +178,11 @@ public class WorkspaceStorage implements AutoCloseable {
             Path packageSourceCache =
                     workspace.resolve("private/cache/package-catalog").toAbsolutePath().normalize();
             String sourcePrefix = packageSourceCache + File.separator;
+            try (var clear = connection.createStatement()) {
+                clear.execute("DELETE FROM dependencies");
+                clear.execute("DELETE FROM packages");
+            }
+
             try (var delete = connection.prepareStatement(REMOVE_DISTRIBUTION_PACKAGES)) {
                 delete.setString(1, sourcePrefix);
                 delete.setString(2, sourcePrefix);
@@ -374,7 +379,7 @@ public class WorkspaceStorage implements AutoCloseable {
                             new PackageMajorVersion(
                                     result.getString("name"), result.getString("version"));
                     Path source = Path.of(result.getString("source"));
-                    packages.add(new LocalPackage(pmv, workspace, source, ""));
+                    packages.add(new LocalPackage(pmv, workspace, source, result.getString("build_tool")));
                 }
                 return packages;
             }
