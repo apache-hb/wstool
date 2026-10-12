@@ -334,6 +334,52 @@ public class WorkspaceStorage implements AutoCloseable {
         }
     }
 
+    public LocalPackage find(String name) throws Exception {
+        String sql =
+                """
+                SELECT *
+                FROM packages
+                WHERE name = ?
+                """;
+
+        try (var statement = connection.prepareStatement(sql)) {
+            statement.setString(1, name);
+            try (var result = statement.executeQuery()) {
+                while (result.next()) {
+                    PackageMajorVersion pmv =
+                            new PackageMajorVersion(
+                                    result.getString("name"), result.getString("version"));
+                    Path source = Path.of(result.getString("source"));
+                    return new LocalPackage(pmv, workspace, source, "");
+                }
+
+                throw new NoSuchElementException("Package not found: " + name);
+            }
+        }
+    }
+
+    public List<MaterializedPackage> packages() throws Exception {
+        String sql =
+                """
+                SELECT *
+                FROM packages
+                """;
+
+        try (var statement = connection.prepareStatement(sql)) {
+            try (var result = statement.executeQuery()) {
+                List<MaterializedPackage> packages = new ArrayList<>();
+                while (result.next()) {
+                    PackageMajorVersion pmv =
+                            new PackageMajorVersion(
+                                    result.getString("name"), result.getString("version"));
+                    Path source = Path.of(result.getString("source"));
+                    packages.add(new LocalPackage(pmv, workspace, source, ""));
+                }
+                return packages;
+            }
+        }
+    }
+
     public List<AddDependencyInput> getDirectDependencies(PackageMajorVersion name)
             throws Exception {
         try (var statement = connection.prepareStatement(GET_DIRECT_DEPENDENCIES)) {

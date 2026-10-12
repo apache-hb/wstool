@@ -2,6 +2,8 @@ package wstool.simple.distribution;
 
 import java.util.List;
 
-public record LocalDistribution(String name, List<String> platforms) implements AnyDistribution {
+import wstool.simple.model.PackageMajorVersion;
+
+public record LocalDistribution(String name, List<PackageMajorVersion> packages, List<String> platforms) implements AnyDistribution {
 
 }

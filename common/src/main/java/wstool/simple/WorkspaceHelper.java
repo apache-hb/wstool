@@ -76,10 +76,6 @@ public class WorkspaceHelper {
         return workspaceDistributionFolder(workspace).resolve("distribution.pkl");
     }
 
-    public boolean hasDistributionConfig(Path workspace) {
-        return Files.exists(workspaceDistributionConfig(workspace));
-    }
-
     public void createWorkspace(CreateWorkspaceInput input) throws Exception {
         Path workspace = input.parent().resolve(input.name());
 

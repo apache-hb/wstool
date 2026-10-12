@@ -28,7 +28,7 @@ import wstool.simple.model.PackageMajorVersion;
         description = "Build a workspace package in a container.",
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
-public class BuildCommand implements Callable<Integer> {
+public class BuildCommand extends CommonCommand {
     @Parameters(index = "0", paramLabel = "target", description = "Package name or name@version.")
     private String target;
 
@@ -38,7 +38,7 @@ public class BuildCommand implements Callable<Integer> {
             GitHelper git = new GitHelper(false);
             StorageHelper storage = new StorageHelper();
             WorkspaceHelper workspace = CommandHelpers.workspace(git, storage, pkl);
-            Path root = workspace.findWorkspaceUp(Path.of(""));
+            Path root = workspace.findWorkspaceUp(cwd);
             DistributionHelper distributionHelper = new DistributionHelper(pkl);
             Distribution distribution =
                     distributionHelper.getDistributionConfig(

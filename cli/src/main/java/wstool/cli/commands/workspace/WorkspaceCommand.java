@@ -1,8 +1,8 @@
 package wstool.cli.commands.workspace;
 
-import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import wstool.cli.VersionProvider;
+import wstool.cli.commands.CommonCommand;
 
 @Command(
         name = "workspace",
@@ -15,7 +15,7 @@ import wstool.cli.VersionProvider;
             AddPackageCommand.class,
             RemovePackageCommand.class
         })
-public class WorkspaceCommand implements Callable<Integer> {
+public class WorkspaceCommand extends CommonCommand {
     @Override
     public Integer call() {
         return 0;

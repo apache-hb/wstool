@@ -7,6 +7,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
 import wstool.cli.commands.CommandHelpers;
+import wstool.cli.commands.CommonCommand;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
@@ -20,7 +21,7 @@ import wstool.simple.workspace.ImmutableCreateWorkspaceInput;
         description = "Create a workspace.",
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
-public class CreateWorkspaceCommand implements Callable<Integer> {
+public class CreateWorkspaceCommand extends CommonCommand {
     @Option(
             names = {"--name"},
             required = true)
@@ -46,8 +47,9 @@ public class CreateWorkspaceCommand implements Callable<Integer> {
 
             var input =
                     ImmutableCreateWorkspaceInput.builder()
-                            .parent(Path.of("").toAbsolutePath())
+                            .parent(cwd.toAbsolutePath())
                             .name(name);
+
             if (distribution != null) {
                 URI source =
                         distribution.getScheme() == null

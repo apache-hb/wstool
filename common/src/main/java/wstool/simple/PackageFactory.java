@@ -7,16 +7,13 @@ import wstool.Package;
 import wstool.simple.model.PackageMajorVersion;
 
 public class PackageFactory {
-    private final WorkspaceFactory workspaceFactory;
     private final PklHelper pklHelper;
 
-    public PackageFactory(WorkspaceFactory workspaceFactory, PklHelper pklHelper) {
-        this.workspaceFactory = workspaceFactory;
+    public PackageFactory(PklHelper pklHelper) {
         this.pklHelper = pklHelper;
     }
 
-    public MaterializedPackage findUp(Path path) throws Exception {
-        Workspace workspace = workspaceFactory.findUp(path);
+    public MaterializedPackage findUp(Workspace workspace, Path path) throws Exception {
         Path current = path.toAbsolutePath();
 
         while (current != null && !Files.exists(current.resolve(LocalPackage.CONFIG))) {
@@ -28,7 +25,11 @@ public class PackageFactory {
                     "No workspace found in current directory or any parent directories.");
         }
 
-        Package config = pklHelper.evaluate(path).as(Package.class);
+        return open(workspace, current);
+    }
+
+    public MaterializedPackage open(Workspace workspace, Path path) throws Exception {
+        Package config = pklHelper.evaluate(path.resolve(LocalPackage.CONFIG)).as(Package.class);
         PackageMajorVersion pmv = new PackageMajorVersion(config.getPackage().getName(), config.getPackage().getVersion());
         return workspace.find(pmv);
     }

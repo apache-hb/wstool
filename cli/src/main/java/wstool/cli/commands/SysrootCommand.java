@@ -9,6 +9,7 @@ import wstool.Package;
 import wstool.cli.VersionProvider;
 import wstool.simple.DependencyResolver;
 import wstool.simple.GitHelper;
+import wstool.simple.PackageFactory;
 import wstool.simple.PackageHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
@@ -16,6 +17,7 @@ import wstool.simple.SysrootManager;
 import wstool.simple.Workspace;
 import wstool.simple.WorkspaceFactory;
 import wstool.simple.SysrootManager.SysrootTarget;
+import wstool.simple.distribution.DistributionFactory;
 import wstool.simple.WorkspaceHelper;
 
 @Command(
@@ -23,7 +25,7 @@ import wstool.simple.WorkspaceHelper;
         description = "Create a sysroot from workspace package artifacts.",
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
-public class SysrootCommand implements Callable<Integer> {
+public class SysrootCommand extends CommonCommand {
     @Parameters(index = "0", description = "Selector, optionally prefixed by package@version/")
     private String selector;
 
@@ -34,16 +36,17 @@ public class SysrootCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(null)) {
             GitHelper git = new GitHelper(false);
             PackageHelper packageHelper = new PackageHelper(pkl);
             WorkspaceHelper workspaceHelper = CommandHelpers.workspace(git, new StorageHelper(), pkl);
             DependencyResolver dependencies = CommandHelpers.dependencies(git, pkl);
-            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl);
-            Workspace workspace = workspaceFactory.findUp(Path.of(""));
+            DistributionFactory distributionFactory = new DistributionFactory(pkl);
+            PackageFactory packageFactory = new PackageFactory(pkl);
+            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl, distributionFactory, packageFactory);
+            Workspace workspace = workspaceFactory.findUp(cwd);
             String privateDirectory = System.getenv("WST_PRIVATE");
-            Package config = packageHelper.getPackageConfig(source.resolve("wstool.pkl"));
+            Package config = packageHelper.getPackageConfig(cwd.resolve("wstool.pkl"));
             if (privateDirectory != null && !privateDirectory.isBlank()) {
                 Path sysroot =
                         output == null ? Path.of(privateDirectory).resolve("sysroot") : output;
