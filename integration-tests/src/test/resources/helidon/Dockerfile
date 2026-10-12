@@ -1,1 +1,0 @@
-FROM eclipse-temurin:25-jdk-noble

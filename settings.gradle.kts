@@ -12,13 +12,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "wstool-platform"
 
-include(
-  ":cli",
-  ":common",
-  ":config",
-  ":wstool-import",
-  ":wstool-git",
-  ":wstool-gradle-plugin",
-  ":wstool-test-components",
-  ":integration-tests",
-)
+include(":cli", ":common", ":config", ":wstool-git", ":wstool-test-components")

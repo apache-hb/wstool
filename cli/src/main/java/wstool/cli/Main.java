@@ -11,7 +11,7 @@ import wstool.cli.commands.packages.PackageCommand;
 import wstool.cli.commands.workspace.WorkspaceCommand;
 import wstool.cli.inject.GuiceCommandFactory;
 import wstool.cli.inject.WstoolModule;
-import wstool.simple.PklHelper;
+import wstool.common.pkl.PklHelper;
 
 @Command(
         name = "wstool",

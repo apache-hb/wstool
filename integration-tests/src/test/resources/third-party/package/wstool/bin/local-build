@@ -1,6 +1,0 @@
-#!/bin/sh
-set -eu
-test "$1" = release
-test -f "$WST_SRCDIR/src/local-overlay.txt"
-grep -q "patched upstream source" "$WST_SRCDIR/src/value.txt"
-printf '%s\n' "built by the local package script" > "$WST_PREFIX/result.txt"

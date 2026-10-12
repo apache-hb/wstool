@@ -2,7 +2,6 @@ package wstool.common.workspace;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.helpers.Asserts;
@@ -27,7 +26,8 @@ public class LocalWorkspace {
     private final DistributionFactory distributionFactory;
     private final GitClient git;
 
-    public LocalWorkspace(Path path, DistributionFactory distributionFactory, GitClient git) throws Exception {
+    public LocalWorkspace(Path path, DistributionFactory distributionFactory, GitClient git)
+            throws Exception {
         this.path = path;
         this.storage = new WorkspaceStorage(path.resolve(MANIFEST));
         this.distributionFactory = distributionFactory;
