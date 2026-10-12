@@ -76,6 +76,7 @@ public class NpmPackageBundleWriter {
                         .append("    checksum = \"")
                         .append(escape(pkg.integrity()))
                         .append("\"\n")
+                        .append("    stripPrefix = \"package\"\n")
                         .append("  }\n")
                         .append("  license = \"NOASSERTION\"\n}\n");
         if (!pkg.dependencies().isEmpty()) {

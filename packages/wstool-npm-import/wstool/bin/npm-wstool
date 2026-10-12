@@ -36,8 +36,16 @@ function installImportedPackage(metadata) {
     metadata.wstoolName,
     metadata.wstoolVersion || metadata.version,
   );
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  fs.cpSync(source, destination, { recursive: true, dereference: true });
+  fs.mkdirSync(destination, { recursive: true });
+  fs.copyFileSync(metadataFile, path.join(destination, 'wstool-npm.json'));
+  const packageFiles = path.join(destination, 'package');
+  fs.mkdirSync(packageFiles, { recursive: true });
+  fs.cpSync(source, packageFiles, {
+    recursive: true,
+    dereference: true,
+    filter: (entry) =>
+      path.dirname(entry) !== source || !['wstool-npm.json', 'wstool.pkl'].includes(path.basename(entry)),
+  });
 }
 
 function buildProject() {

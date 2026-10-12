@@ -32,10 +32,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-import picocli.CommandLine;
 import wstool.Distribution.PackageSource;
 import wstool.importer.CachedMavenProxy;
-import wstool.importer.Main;
 import wstool.npm.importer.CachedNpmProxy;
 import wstool.simple.PklHelper;
 
@@ -118,23 +116,22 @@ class HelidonWstoolEndToEndTest {
         int importedPackages;
         try (var proxy = new CachedMavenProxy(proxyCache)) {
             int status =
-                    new CommandLine(Main.class)
-                            .execute(
-                                    "maven",
-                                    "--output",
-                                    imported.toString(),
-                                    "--repository",
-                                    proxy.url(),
-                                    "--external-files-url",
-                                    Path.of("build/integration-maven-local-repository")
-                                            .toAbsolutePath()
-                                            .toUri()
-                                            .toString(),
-                                    "--local-repository",
-                                    Path.of("build/integration-maven-local-repository")
-                                            .toAbsolutePath()
-                                            .toString(),
-                                    HELIDON_COORDINATE);
+                    runImporterCli(
+                            "maven",
+                            "--output",
+                            imported.toString(),
+                            "--repository",
+                            proxy.url(),
+                            "--external-files-url",
+                            Path.of("build/integration-maven-local-repository")
+                                    .toAbsolutePath()
+                                    .toUri()
+                                    .toString(),
+                            "--local-repository",
+                            Path.of("build/integration-maven-local-repository")
+                                    .toAbsolutePath()
+                                    .toString(),
+                            HELIDON_COORDINATE);
             assertEquals(0, status, "wstool-import failed to resolve Helidon");
             importedPackages = readPackageSources(imported.resolve("packages.pkl")).size();
             assertTrue(
@@ -225,18 +222,17 @@ class HelidonWstoolEndToEndTest {
         Path proxyCache = Path.of("build/integration-npm-registry-cache").toAbsolutePath();
         try (var proxy = new CachedNpmProxy(proxyCache)) {
             int status =
-                    new CommandLine(Main.class)
-                            .execute(
-                                    "npm",
-                                    "--output",
-                                    imported.toString(),
-                                    "--registry",
-                                    proxy.url(),
-                                    "--cache",
-                                    Path.of("build/integration-npm-local-cache")
-                                            .toAbsolutePath()
-                                            .toString(),
-                                    "is-number@7.0.0");
+                    runImporterCli(
+                            "npm",
+                            "--output",
+                            imported.toString(),
+                            "--registry",
+                            proxy.url(),
+                            "--cache",
+                            Path.of("build/integration-npm-local-cache")
+                                    .toAbsolutePath()
+                                    .toString(),
+                            "is-number@7.0.0");
             assertEquals(0, status, "wstool-import npm failed to resolve package dependencies");
             assertEquals(0, proxy.tarballRequests(), "npm import should resolve metadata only");
 
@@ -281,6 +277,19 @@ class HelidonWstoolEndToEndTest {
             addArguments.add("--package");
             addArguments.add("npm-demo");
             runCli(workspace, addArguments.toArray(String[]::new));
+
+            ImportedPackage isNumber =
+                    npmPackages.stream()
+                            .filter(pkg -> pkg.name().equals("npm_is-number"))
+                            .findFirst()
+                            .orElseThrow();
+            Path importedIsNumber = workspace.resolve("src").resolve(isNumber.name());
+            assertTrue(
+                    Files.isRegularFile(importedIsNumber.resolve("package.json")),
+                    "npm tarball contents should be placed at the imported package source root");
+            assertFalse(
+                    Files.exists(importedIsNumber.resolve("package/package.json")),
+                    "npm tarball's package/ wrapper directory should be stripped");
 
             runCli(workspace, "build", "wstool-npm-import@1.0.0");
             for (ImportedPackage dependency : npmPackages) {
@@ -486,6 +495,25 @@ class HelidonWstoolEndToEndTest {
                 0,
                 process.waitFor(),
                 "wstool failed: " + String.join(" ", arguments) + "\n" + output);
+    }
+
+    private int runImporterCli(String subcommand, String... arguments) throws Exception {
+        List<String> command = new java.util.ArrayList<>();
+        command.add(requiredEnv("WSTOOL_IMPORT_LAUNCHER"));
+        command.add(subcommand);
+        command.addAll(List.of(arguments));
+        ProcessBuilder builder =
+                new ProcessBuilder(command).directory(tempDir.toFile()).redirectErrorStream(true);
+        if (pklHomeOverride != null) {
+            builder.environment().put("HOME", pklHomeOverride.toString());
+            builder.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + pklHomeOverride);
+        }
+        Process process = builder.start();
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        int status = process.waitFor();
+        assertEquals(
+                0, status, "wstool-import failed: " + String.join(" ", arguments) + "\n" + output);
+        return status;
     }
 
     private Path currentProjectRepository;

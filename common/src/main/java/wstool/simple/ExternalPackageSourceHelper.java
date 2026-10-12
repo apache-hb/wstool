@@ -26,8 +26,32 @@ public class ExternalPackageSourceHelper {
         Path destination =
                 workspace.resolve("private/cache/external-sources").resolve(name).resolve(version);
         if (source instanceof ExternalArchive archive) {
-            if (!Files.isDirectory(destination)) {
-                archives.extract(archive, name, version, workspace, destination);
+            Path metadata = destination.resolveSibling(destination.getFileName() + ".metadata");
+            String signature = archiveSignature(archive);
+            if (!Files.isDirectory(destination)
+                    || !Files.isRegularFile(metadata)
+                    || !signature.equals(Files.readString(metadata))) {
+                deleteTree(destination);
+                if (archive.getStripPrefix() == null || archive.getStripPrefix().isBlank()) {
+                    archives.extract(archive, name, version, workspace, destination);
+                } else {
+                    Path extracted =
+                            destination.resolveSibling(destination.getFileName() + "-archive");
+                    deleteTree(extracted);
+                    try {
+                        archives.extract(archive, name, version, workspace, extracted);
+                        Path prefix = extracted.resolve(archive.getStripPrefix()).normalize();
+                        if (!prefix.startsWith(extracted.normalize())
+                                || !Files.isDirectory(prefix)) {
+                            throw new IOException(
+                                    "Archive prefix does not exist: " + archive.getStripPrefix());
+                        }
+                        sources.copy(prefix, destination);
+                    } finally {
+                        deleteTree(extracted);
+                    }
+                }
+                Files.writeString(metadata, signature);
             }
             return destination;
         }
@@ -54,6 +78,14 @@ public class ExternalPackageSourceHelper {
         }
         throw new IllegalArgumentException(
                 "Unsupported external package source type: " + source.getClass().getSimpleName());
+    }
+
+    private String archiveSignature(ExternalArchive archive) {
+        return archive.getArchive()
+                + "\n"
+                + archive.getChecksum()
+                + "\n"
+                + (archive.getStripPrefix() == null ? "" : archive.getStripPrefix());
     }
 
     public void mergeAndPatch(

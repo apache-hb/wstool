@@ -60,6 +60,9 @@ class ExternalArchive extends ExternalPackage {
 
   // SHA-256 hex checksum or an SRI integrity value for the compressed archive
   checksum: String
+
+  /// A directory to use as the package source root after extraction
+  stripPrefix: String?
 }
 
 class ExternalGitRepository extends ExternalPackage {

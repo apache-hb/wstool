@@ -1,0 +1,23 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+import "npm-dependencies.pkl" as importedNpmDependencies
+
+package {
+  name = "cdktn-s3-project"
+  version = "1.0.0"
+}
+
+buildOptions {
+  tool = "npm-wstool"
+  networkIsolation = "isolated"
+  sourceMount = "readonly"
+}
+
+buildDependencies {
+  ["wstool-npm-import"] = "1.0.0"
+  ...importedNpmDependencies.buildDependencies
+}
+
+dependencies {
+  ...importedNpmDependencies.dependencies
+}

@@ -1,6 +1,7 @@
 package wstool.npm.importer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -112,6 +113,10 @@ class NpmPackageImporterTest {
             assertEquals(2, packageEntries.size());
             assertEquals("4.x", findPackage(packageEntries, "npm_debug").getVersion());
             assertEquals("2.x", findPackage(packageEntries, "npm_ms").getVersion());
+            String distributionEntries = Files.readString(output.resolve("packages.pkl"));
+            assertTrue(distributionEntries.contains("pkl/wstool@1.0.2#/distribution.pkl"));
+            assertTrue(distributionEntries.contains("new wstoolDistribution.Folder"));
+            assertFalse(distributionEntries.contains("new wstoolDistribution.SourceCode"));
             Map<String, String> directDependencies =
                     readStringMap(output.resolve("npm-dependencies.pkl"), "dependencies");
             assertEquals(Map.of("npm_debug", "4.x"), directDependencies);
