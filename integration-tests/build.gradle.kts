@@ -10,6 +10,7 @@ dependencies {
   testImplementation("info.picocli:picocli:4.7.6")
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+  testImplementation("software.amazon.awssdk:s3")
   testImplementation("org.pkl-lang:pkl-config-java:0.32.1")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 }

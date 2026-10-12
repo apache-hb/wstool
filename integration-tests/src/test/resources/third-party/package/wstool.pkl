@@ -13,7 +13,7 @@ buildOptions {
 importOptions {
   source = new ExternalGitRepository {
     repo = read("env:WSTOOL_THIRD_PARTY_UPSTREAM_REPO")
-    branch = "main"
+    branch = "master"
   }
   license = "MIT"
   patches {

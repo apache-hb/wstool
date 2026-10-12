@@ -13,6 +13,6 @@ packages {
     name = "sample"
     version = "1.0.0"
     repo = read("env:PACKAGE_REPOSITORY")
-    branch = "main"
+    branch = "master"
   }
 }

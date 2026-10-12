@@ -45,7 +45,7 @@ packages {
     name = "helidon-rest"
     version = "1.0.0"
     repo = read("env:WSTOOL_HELIDON_PROJECT_REPO")
-    branch = "main"
+    branch = "master"
   }
   ...importedMavenPackages.packages
 }

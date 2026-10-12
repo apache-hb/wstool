@@ -29,7 +29,7 @@ packages {
     name = "npm-demo"
     version = "1.0.0"
     repo = read("env:WSTOOL_NPM_PROJECT_REPO")
-    branch = "main"
+    branch = "master"
   }
   ...importedNpmPackages.packages
 }

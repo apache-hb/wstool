@@ -31,85 +31,85 @@ packages {
     name = "cmake"
     version = "3.30.5"
     repo = cmake
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "ninja"
     version = "1.12.1"
     repo = ninja
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "zlib"
     version = "1.3.1"
     repo = zlib
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "expat"
     version = "2.6.4"
     repo = expat
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "m4"
     version = "1.4.19"
     repo = m4
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "bison"
     version = "3.8.2"
     repo = bison
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "flex"
     version = "2.6.4"
     repo = flex
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "binutils"
     version = "2.43.1"
     repo = binutils
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "gmp"
     version = "6.3.0"
     repo = gmp
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "mpfr"
     version = "4.2.1"
     repo = mpfr
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "mpc"
     version = "1.3.1"
     repo = mpc
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "isl"
     version = "0.26"
     repo = isl
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "gcc"
     version = "14.2.0"
     repo = gcc
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "c-smoke"
     version = "1.0.0"
     repo = cSmoke
-    branch = "main"
+    branch = "master"
   }
   new Archive {
     name = "wstool-cli"

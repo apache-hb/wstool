@@ -47,12 +47,12 @@ packages {
     name = "local-artifact"
     version = "1.0.0"
     repo = read("env:WSTOOL_GRADLE_E2E_ARTIFACT_REPO")
-    branch = "main"
+    branch = "master"
   }
   new GitRepository {
     name = "gradle-smoke"
     version = "1.0.0"
     repo = read("env:WSTOOL_GRADLE_E2E_PROJECT_REPO")
-    branch = "main"
+    branch = "master"
   }
 }

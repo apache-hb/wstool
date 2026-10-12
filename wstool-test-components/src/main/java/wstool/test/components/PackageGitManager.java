@@ -3,6 +3,7 @@ package wstool.test.components;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 
 import org.apache.logging.log4j.LogManager;
@@ -41,20 +42,45 @@ public class PackageGitManager {
     }
 
     public URI create(String name, String folder) throws Exception {
-        URI uri = setup(name);
+        URI uri = create(name);
         init(name, folder);
         return uri;
     }
 
     public void init(String name, String folder) throws Exception {
+        uploadResources(name, folder);
+    }
+
+    public void uploadFiles(String name, Path folder) throws Exception {
         String branch = "master";
 
         Path tmp = tmpdir.resolve("git").resolve(name);
         Files.createDirectories(tmp);
 
-        run(tmp, "init", "--initial-branch=" + branch);
-        run(tmp, "config", "user.name", username());
-        run(tmp, "config", "user.email", username() + "@example.com");
+        configure(tmp, branch);
+
+        Files.walk(folder).filter(Files::isRegularFile).forEach(file -> {
+            Path path = folder.relativize(file);
+            try {
+                Path dst = tmp.resolve(path).toAbsolutePath();
+                LOGGER.info("Copying file {} to {}", file, dst);
+                Files.createDirectories(dst.getParent());
+                Files.copy(file, dst, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        initialCommit(tmp, name, branch);
+    }
+
+    public void uploadResources(String name, String folder) throws Exception {
+        String branch = "master";
+
+        Path tmp = tmpdir.resolve("git").resolve(name);
+        Files.createDirectories(tmp);
+
+        configure(tmp, branch);
 
         ClassGraph graph = new ClassGraph();
         ScanResult result = graph.acceptPaths(folder).scan();
@@ -69,19 +95,20 @@ public class PackageGitManager {
             }
         }
 
-        run(tmp, "add", "--all");
-        run(tmp, "commit", "--message", "Initial commit");
-        run(tmp, "remote", "add", "origin", repositoryUri(name).toString());
-        run(tmp, "push", "--set-upstream", "origin", branch);
+        initialCommit(tmp, name, branch);
     }
 
-    public URI setup(String name) throws Exception {
+    public URI create(String name) throws Exception {
         CreateRepoOption input = new CreateRepoOption();
         input.setName(name);
         input.setPrivate(false);
         api.createCurrentUserRepo(input);
 
         return repositoryUri(name);
+    }
+
+    public URI endpoint() {
+        return URI.create("http://" + host());
     }
 
     public URI repositoryUri(String repository) {
@@ -106,6 +133,19 @@ public class PackageGitManager {
             .build();
 
         git.run(input);
+    }
+
+    private void configure(Path directory, String branch) throws Exception {
+        run(directory, "init", "--initial-branch=" + branch);
+        run(directory, "config", "user.name", username());
+        run(directory, "config", "user.email", username() + "@example.com");
+    }
+
+    public void initialCommit(Path directory, String name, String branch) throws Exception {
+        run(directory, "add", "--all");
+        run(directory, "commit", "--message", "Initial commit");
+        run(directory, "remote", "add", "origin", repositoryUri(name).toString());
+        run(directory, "push", "--set-upstream", "origin", branch);
     }
 
     private String host() {

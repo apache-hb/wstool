@@ -13,54 +13,44 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+
 import javax.tools.ToolProvider;
+
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
+
+import software.amazon.awssdk.services.s3.S3Client;
+import wstool.test.components.StorageServerManager;
 
 /** Builds a real Gradle package using only wstool CLI workspace and build commands. */
 @Testcontainers(disabledWithoutDocker = true)
 class GradleBuildEndToEndTest {
-    private static final String ACCESS_KEY = "GK0123456789abcdef01234567";
-    private static final String SECRET_KEY =
-            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     private static final String BUCKET = "wstool-gradle-e2e";
     private static final String BUILD_IMAGE = "wstool-gradle-e2e:latest";
 
     @Container
-    private static final GenericContainer<?> garage =
-            new GenericContainer<>(DockerImageName.parse("dxflrs/garage:v2.4.1"))
-                    .withExposedPorts(3900)
-                    .withTmpFs(Map.of("/meta", "rw", "/data", "rw"))
-                    .withCopyToContainer(
-                            MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml")
-                    .withCommand("/garage", "-c", "/etc/garage.toml", "server")
-                    .waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
+    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
+
+    @AutoClose
+    private static S3Client s3;
 
     @TempDir Path tempDir;
     private Path artifactRepository;
     private Path projectRepository;
 
     @BeforeAll
-    static void initializeGarage() throws Exception {
-        String nodeId =
-                garageCommand("node", "id").lines().findFirst().orElseThrow().split("@", 2)[0];
-        garageCommand("layout", "assign", "-z", "test-zone", "-c", "1G", nodeId);
-        garageCommand("layout", "apply", "--version", "1");
-        garageCommand("key", "import", "--yes", "-n", "wstool-gradle-e2e", ACCESS_KEY, SECRET_KEY);
-        garageCommand("bucket", "create", BUCKET);
-        garageCommand(
-                "bucket", "allow", "--read", "--write", "--owner", "--key", ACCESS_KEY, BUCKET);
+    static void initializeStorageServer() throws Exception {
+        STORAGE.setup();
+        s3 = STORAGE.createBucket(BUCKET);
     }
 
     @Test
@@ -84,7 +74,7 @@ class GradleBuildEndToEndTest {
                 "--from",
                 distributionRepository.toString(),
                 "--branch",
-                "main");
+                "master");
         runCli(
                 workspace,
                 "workspace",
@@ -169,7 +159,7 @@ class GradleBuildEndToEndTest {
     }
 
     private void initializeGitRepository(Path repository) throws Exception {
-        run(repository, "git", "init", "--initial-branch=main");
+        run(repository, "git", "init", "--initial-branch=master");
         run(repository, "git", "config", "user.name", "wstool test");
         run(repository, "git", "config", "user.email", "wstool-test@example.invalid");
         run(repository, "git", "add", ".");
@@ -199,13 +189,15 @@ class GradleBuildEndToEndTest {
         command.addAll(List.of(arguments));
         ProcessBuilder builder =
                 new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
-        builder.environment().put("AWS_ACCESS_KEY_ID", ACCESS_KEY);
-        builder.environment().put("AWS_SECRET_ACCESS_KEY", SECRET_KEY);
+        var credentials =
+                s3.serviceClientConfiguration().credentialsProvider().resolveIdentity().join();
+        builder.environment().put("AWS_ACCESS_KEY_ID", credentials.accessKeyId());
+        builder.environment().put("AWS_SECRET_ACCESS_KEY", credentials.secretAccessKey());
         builder.environment().put("AWS_REGION", "us-east-1");
         builder.environment()
                 .put(
                         "AWS_S3_ENDPOINT",
-                        "http://" + garage.getHost() + ":" + garage.getMappedPort(3900));
+                        STORAGE.endpoint().toString());
         builder.environment().put("WST_BUILD_IMAGE", BUILD_IMAGE);
         builder.environment().put("WSTOOL_CLI_ARCHIVE", requiredEnv("WSTOOL_CLI_ARCHIVE"));
         builder.environment().put("WSTOOL_GRADLE_PACKAGE_URI", packageUri("WSTOOL_GRADLE_PACKAGE"));
@@ -291,15 +283,4 @@ class GradleBuildEndToEndTest {
         return Path.of(resource.toURI());
     }
 
-    private static String garageCommand(String... arguments) throws Exception {
-        List<String> command =
-                new java.util.ArrayList<>(List.of("/garage", "-c", "/etc/garage.toml"));
-        command.addAll(List.of(arguments));
-        var result = garage.execInContainer(command.toArray(String[]::new));
-        if (result.getExitCode() != 0) {
-            throw new IOException(
-                    "Garage command failed: " + result.getStdout() + result.getStderr());
-        }
-        return result.getStdout();
-    }
 }

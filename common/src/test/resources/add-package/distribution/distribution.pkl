@@ -13,6 +13,6 @@ packages {
     name = "root"
     version = "1.0"
     repo = read("env:PACKAGE_GIT_REPOSITORY")
-    branch = "main"
+    branch = "master"
   }
 }

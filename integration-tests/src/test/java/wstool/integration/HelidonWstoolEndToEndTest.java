@@ -20,46 +20,47 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.pkl.config.java.JavaType;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
+import software.amazon.awssdk.services.s3.S3Client;
 import wstool.Distribution.PackageSource;
+import wstool.Package.ExternalFiles;
 import wstool.importer.CachedMavenProxy;
 import wstool.npm.importer.CachedNpmProxy;
 import wstool.simple.PklHelper;
+import wstool.test.components.StorageServerManager;
 
 /** Verifies imported Helidon artifacts and a REST application build offline through wstool. */
 @Testcontainers(disabledWithoutDocker = true)
 class HelidonWstoolEndToEndTest {
-    private static final String ACCESS_KEY = "GK0123456789abcdef01234567";
-    private static final String SECRET_KEY =
-            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     private static final String BUCKET = "wstool-helidon-integration";
+    private static final String NPM_BUCKET = "wstool-npm-integration";
     private static final String BUILD_IMAGE = "wstool-helidon-integration:latest";
     private static final String NPM_BUILD_IMAGE = "wstool-npm-integration:latest";
     private static final String HELIDON_COORDINATE = "io.helidon.webserver:helidon-webserver:4.5.4";
 
     @Container
-    private static final GenericContainer<?> garage =
-            new GenericContainer<>(DockerImageName.parse("dxflrs/garage:v2.4.1"))
-                    .withExposedPorts(3900)
-                    .withTmpFs(Map.of("/meta", "rw", "/data", "rw"))
-                    .withCopyToContainer(
-                            MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml")
-                    .withCommand("/garage", "-c", "/etc/garage.toml", "server")
-                    .waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
+    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    private static final StorageServerManager STORAGE =
+            new StorageServerManager(GARAGE);
+
+    @AutoClose
+    private static S3Client helidonStorageClient;
+
+    @AutoClose
+    private static S3Client npmStorageClient;
 
     @TempDir Path tempDir;
     private String originalUserHome;
+    private S3Client activeStorageClient;
 
     @BeforeEach
     void useLocallyGeneratedPklPackage() throws Exception {
@@ -84,29 +85,15 @@ class HelidonWstoolEndToEndTest {
     }
 
     @BeforeAll
-    static void initializeGarage() throws Exception {
-        String nodeId =
-                garageCommand("node", "id").lines().findFirst().orElseThrow().split("@", 2)[0];
-        garageCommand("layout", "assign", "-z", "test-zone", "-c", "1G", nodeId);
-        garageCommand("layout", "apply", "--version", "1");
-        garageCommand("key", "import", "--yes", "-n", "wstool-helidon", ACCESS_KEY, SECRET_KEY);
-        garageCommand("bucket", "create", BUCKET);
-        garageCommand(
-                "bucket", "allow", "--read", "--write", "--owner", "--key", ACCESS_KEY, BUCKET);
-        garageCommand("bucket", "create", "wstool-npm-integration");
-        garageCommand(
-                "bucket",
-                "allow",
-                "--read",
-                "--write",
-                "--owner",
-                "--key",
-                ACCESS_KEY,
-                "wstool-npm-integration");
+    static void initializeStorageServer() throws Exception {
+        STORAGE.setup();
+        helidonStorageClient = STORAGE.createBucket(BUCKET);
+        npmStorageClient = STORAGE.createBucket(NPM_BUCKET);
     }
 
     @Test
     void importsHelidonAndBuildsAndRunsRestApiWithoutBuildContainerNetwork() throws Exception {
+        activeStorageClient = helidonStorageClient;
         new ImageFromDockerfile(BUILD_IMAGE, false)
                 .withFileFromPath("Dockerfile", resourcePath("helidon/Dockerfile"))
                 .get();
@@ -143,7 +130,7 @@ class HelidonWstoolEndToEndTest {
             try (var pkl = new PklHelper(Map.of())) {
                 var packageConfig = pkl.evaluate(helidonPackage).as(wstool.Package.class);
                 var externalFiles =
-                        (wstool.Package.ExternalFiles) packageConfig.getImportOptions().getSource();
+                        (ExternalFiles) packageConfig.getImportOptions().getSource();
                 assertTrue(
                         externalFiles
                                 .getFiles()
@@ -179,7 +166,7 @@ class HelidonWstoolEndToEndTest {
                 "--from",
                 distribution.toString(),
                 "--branch",
-                "main");
+                "master");
         List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
         List<ImportedPackage> mavenPackages =
                 importedPackages(imported.resolve("package-tree/packages"));
@@ -215,6 +202,7 @@ class HelidonWstoolEndToEndTest {
 
     @Test
     void importsNpmPackagesAndBuildsProjectWithoutNpmRegistryAccess() throws Exception {
+        activeStorageClient = npmStorageClient;
         new ImageFromDockerfile(NPM_BUILD_IMAGE, false)
                 .withFileFromPath("Dockerfile", resourcePath("npm/Dockerfile"))
                 .get();
@@ -266,7 +254,7 @@ class HelidonWstoolEndToEndTest {
                     "--from",
                     distribution.toString(),
                     "--branch",
-                    "main");
+                    "master");
             List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
             List<ImportedPackage> npmPackages =
                     importedNpmPackages(imported.resolve("package-tree/packages"));
@@ -309,6 +297,7 @@ class HelidonWstoolEndToEndTest {
 
     @Test
     void overlaysAndPatchesThirdPartySourceThenBuildsWithLocalPackageScript() throws Exception {
+        activeStorageClient = helidonStorageClient;
         Path packageRepository = tempDir.resolve("third-party-package");
         copyTree(resourcePath("third-party/package"), packageRepository);
         assertTrue(
@@ -342,7 +331,7 @@ class HelidonWstoolEndToEndTest {
                 "--from",
                 distribution.toUri().toString(),
                 "--branch",
-                "main");
+                "master");
         runCli(workspace, "workspace", "add", "--package", "third-party");
 
         Path importedSource = workspace.resolve("src/third-party");
@@ -424,8 +413,10 @@ class HelidonWstoolEndToEndTest {
         command.addAll(List.of(arguments));
         ProcessBuilder builder =
                 new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
-        builder.environment().put("AWS_ACCESS_KEY_ID", ACCESS_KEY);
-        builder.environment().put("AWS_SECRET_ACCESS_KEY", SECRET_KEY);
+        var credentials =
+                activeStorageClient.serviceClientConfiguration().credentialsProvider().resolveIdentity().join();
+        builder.environment().put("AWS_ACCESS_KEY_ID", credentials.accessKeyId());
+        builder.environment().put("AWS_SECRET_ACCESS_KEY", credentials.secretAccessKey());
         builder.environment().put("AWS_REGION", "us-east-1");
         builder.environment().put("AWS_S3_ENDPOINT", s3Endpoint());
         builder.environment().put("WST_BUILD_IMAGE", BUILD_IMAGE);
@@ -525,7 +516,7 @@ class HelidonWstoolEndToEndTest {
     private Path pklHomeOverride;
 
     private void initializeGitRepository(Path repository) throws Exception {
-        run(repository, "git", "init", "--initial-branch=main");
+        run(repository, "git", "init", "--initial-branch=master");
         run(repository, "git", "config", "user.name", "wstool integration test");
         run(repository, "git", "config", "user.email", "wstool-test@example.invalid");
         run(repository, "git", "add", ".");
@@ -568,7 +559,7 @@ class HelidonWstoolEndToEndTest {
     }
 
     private static String s3Endpoint() {
-        return "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
+        return STORAGE.endpoint().toString();
     }
 
     private static Path resourcePath(String name) throws Exception {
@@ -649,15 +640,4 @@ class HelidonWstoolEndToEndTest {
 
     private record ImportedPackage(String name, String version) {}
 
-    private static String garageCommand(String... arguments) throws Exception {
-        List<String> command =
-                new java.util.ArrayList<>(List.of("/garage", "-c", "/etc/garage.toml"));
-        command.addAll(List.of(arguments));
-        var result = garage.execInContainer(command.toArray(String[]::new));
-        if (result.getExitCode() != 0) {
-            throw new IOException(
-                    "Garage command failed: " + result.getStdout() + result.getStderr());
-        }
-        return result.getStdout();
-    }
 }

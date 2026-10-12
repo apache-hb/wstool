@@ -78,7 +78,7 @@ class WorkspaceAddRemoveEndToEndTest {
                 "--from",
                 distributionRepository.toUri().toString(),
                 "--branch",
-                "main");
+                "master");
 
         Files.copy(
                 resourcePath(
@@ -114,7 +114,7 @@ class WorkspaceAddRemoveEndToEndTest {
     }
 
     private void initializeRepository(Path repository) throws Exception {
-        run(repository, "git", "init", "--initial-branch=main");
+        run(repository, "git", "init", "--initial-branch=master");
         run(repository, "git", "config", "user.name", "wstool test");
         run(repository, "git", "config", "user.email", "wstool-test@example.invalid");
         run(repository, "git", "add", ".");

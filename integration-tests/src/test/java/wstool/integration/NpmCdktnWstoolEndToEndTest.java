@@ -15,37 +15,30 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
+import software.amazon.awssdk.services.s3.S3Client;
+import wstool.test.components.StorageServerManager;
 import wstool.npm.importer.CachedNpmProxy;
 
 /** Exercises npm import and CDKTN synthesis through the published command-line interfaces. */
 @Testcontainers(disabledWithoutDocker = true)
 class NpmCdktnWstoolEndToEndTest {
-    private static final String ACCESS_KEY = "GK0123456789abcdef01234567";
-    private static final String SECRET_KEY =
-            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     private static final String BUILD_IMAGE = "wstool-npm-integration:latest";
     private static final String ARTIFACT_DIRECTORY = "build/integration-cdktn-s3-e2e";
 
     @Container
-    private static final GenericContainer<?> garage =
-            new GenericContainer<>(DockerImageName.parse("dxflrs/garage:v2.4.1"))
-                    .withExposedPorts(3900)
-                    .withTmpFs(Map.of("/meta", "rw", "/data", "rw"))
-                    .withCopyToContainer(
-                            MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml")
-                    .withCommand("/garage", "-c", "/etc/garage.toml", "server")
-                    .waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
+    private static final GenericContainer<?> storageContainer = StorageServerManager.container();
+    private static final StorageServerManager storageServer =
+            new StorageServerManager(storageContainer);
+    private static S3Client storageClient;
 
     private Path artifacts;
     private String originalUserHome;
@@ -77,22 +70,14 @@ class NpmCdktnWstoolEndToEndTest {
     }
 
     @BeforeAll
-    static void initializeGarage() throws Exception {
-        String nodeId =
-                garageCommand("node", "id").lines().findFirst().orElseThrow().split("@", 2)[0];
-        garageCommand("layout", "assign", "-z", "test-zone", "-c", "1G", nodeId);
-        garageCommand("layout", "apply", "--version", "1");
-        garageCommand("key", "import", "--yes", "-n", "wstool-cdktn", ACCESS_KEY, SECRET_KEY);
-        garageCommand("bucket", "create", "wstool-npm-integration");
-        garageCommand(
-                "bucket",
-                "allow",
-                "--read",
-                "--write",
-                "--owner",
-                "--key",
-                ACCESS_KEY,
-                "wstool-npm-integration");
+    static void initializeStorageServer() throws Exception {
+        storageServer.setup();
+        storageClient = storageServer.createBucket("wstool-npm-integration");
+    }
+
+    @AfterAll
+    static void closeStorageClient() {
+        storageClient.close();
     }
 
     @Test
@@ -133,7 +118,7 @@ class NpmCdktnWstoolEndToEndTest {
                     "--from",
                     distribution.toString(),
                     "--branch",
-                    "main");
+                    "master");
 
             List<ImportedPackage> npmPackages =
                     importedNpmPackages(imported.resolve("package-tree/packages"));
@@ -215,8 +200,8 @@ class NpmCdktnWstoolEndToEndTest {
                         Map.entry(
                                 "JAVA_TOOL_OPTIONS",
                                 "-Duser.home=" + artifacts.resolve("pkl-home")),
-                        Map.entry("AWS_ACCESS_KEY_ID", ACCESS_KEY),
-                        Map.entry("AWS_SECRET_ACCESS_KEY", SECRET_KEY),
+                        Map.entry("AWS_ACCESS_KEY_ID", storageCredentials().accessKeyId()),
+                        Map.entry("AWS_SECRET_ACCESS_KEY", storageCredentials().secretAccessKey()),
                         Map.entry("AWS_REGION", "us-east-1"),
                         Map.entry("AWS_S3_ENDPOINT", s3Endpoint()),
                         Map.entry("WST_BUILD_IMAGE", BUILD_IMAGE),
@@ -272,7 +257,7 @@ class NpmCdktnWstoolEndToEndTest {
     private void initializeGitRepository(Path repository) throws Exception {
         runCommand(
                 repository,
-                List.of("git", "init", "--initial-branch=main"),
+                List.of("git", "init", "--initial-branch=master"),
                 "git init failed",
                 Map.of());
         runCommand(
@@ -373,18 +358,11 @@ class NpmCdktnWstoolEndToEndTest {
     }
 
     private static String s3Endpoint() {
-        return "http://" + garage.getHost() + ":" + garage.getMappedPort(3900);
+        return storageServer.endpoint().toString();
     }
 
-    private static String garageCommand(String... arguments) throws Exception {
-        List<String> command = new ArrayList<>(List.of("/garage", "-c", "/etc/garage.toml"));
-        command.addAll(List.of(arguments));
-        var result = garage.execInContainer(command.toArray(String[]::new));
-        if (result.getExitCode() != 0) {
-            throw new IOException(
-                    "Garage command failed: " + result.getStdout() + result.getStderr());
-        }
-        return result.getStdout();
+    private static software.amazon.awssdk.identity.spi.AwsCredentialsIdentity storageCredentials() {
+        return storageClient.serviceClientConfiguration().credentialsProvider().resolveIdentity().join();
     }
 
     private record ImportedPackage(String name, String version) {}

@@ -16,105 +16,105 @@ packages {
   new GitRepository {
     name = "app"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/app-\(suffix)"
   }
 
   new GitRepository {
     name = "compiler"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/compiler-\(suffix)"
   }
 
   new GitRepository {
     name = "compiler-common"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/compiler-common-\(suffix)"
   }
 
   new GitRepository {
     name = "compiler-runtime"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/compiler-runtime-\(suffix)"
   }
 
   new GitRepository {
     name = "compiler-build-only"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/compiler-build-only-\(suffix)"
   }
 
   new GitRepository {
     name = "builder-script"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/builder-script-\(suffix)"
   }
 
   new GitRepository {
     name = "builder-helper"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/builder-helper-\(suffix)"
   }
 
   new GitRepository {
     name = "public-api"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/public-api-\(suffix)"
   }
 
   new GitRepository {
     name = "shared"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/shared-\(suffix)"
   }
 
   new GitRepository {
     name = "runtime-lib"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/runtime-lib-\(suffix)"
   }
 
   new GitRepository {
     name = "test-framework"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/test-framework-\(suffix)"
   }
 
   new GitRepository {
     name = "test-support"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/test-support-\(suffix)"
   }
 
   new GitRepository {
     name = "not-selected"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/not-selected-\(suffix)"
   }
 
   new GitRepository {
     name = "alternate"
     version = "2.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/alternate-\(suffix)"
   }
 
   new GitRepository {
     name = "alternate-runtime"
     version = "1.0"
-    branch = "main"
+    branch = "master"
     repo = "\(git)/\(user)/alternate-runtime-\(suffix)"
   }
 }
