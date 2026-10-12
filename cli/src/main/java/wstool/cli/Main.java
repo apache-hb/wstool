@@ -1,9 +1,8 @@
 package wstool.cli;
 
-import java.util.Map;
-
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import java.util.Map;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import wstool.cli.commands.BuildCommand;

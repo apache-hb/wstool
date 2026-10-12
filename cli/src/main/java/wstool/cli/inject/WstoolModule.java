@@ -1,10 +1,8 @@
 package wstool.cli.inject;
 
-import java.util.Map;
-
 import com.google.inject.Binder;
 import com.google.inject.Module;
-
+import java.util.Map;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
