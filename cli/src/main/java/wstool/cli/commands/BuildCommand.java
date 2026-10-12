@@ -89,7 +89,7 @@ public class BuildCommand implements Callable<Integer> {
         }
         var matches =
                 workspace.sourcePackages(root).stream()
-                        .map(pkg -> pkg.version())
+                        .map(pkg -> pkg.name())
                         .filter(pkg -> pkg.name().equals(name))
                         .filter(pkg -> version.isEmpty() || pkg.version().equals(version))
                         .toList();

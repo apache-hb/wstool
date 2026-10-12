@@ -134,7 +134,7 @@ class DependencyResolverTest {
         assertTrue(Files.isSymbolicLink(compilerLink));
         assertEquals(
                 workspaceHelper.artifactPackages(workspace).stream()
-                        .filter(pkg -> pkg.version().name().equals("compiler"))
+                        .filter(pkg -> pkg.name().name().equals("compiler"))
                         .findFirst()
                         .orElseThrow()
                         .prefix()
@@ -144,7 +144,7 @@ class DependencyResolverTest {
         Path localPackageLink = sysroot.resolve("include/public-api.h");
         assertEquals(
                 workspaceHelper.sourcePackages(workspace).stream()
-                        .filter(pkg -> pkg.version().name().equals("public-api"))
+                        .filter(pkg -> pkg.name().name().equals("public-api"))
                         .findFirst()
                         .orElseThrow()
                         .prefix()

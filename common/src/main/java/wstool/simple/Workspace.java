@@ -12,12 +12,15 @@ import wstool.simple.storage.DependencyType;
 import wstool.simple.storage.ImmutableAddDependencyInput;
 
 public class Workspace implements AutoCloseable {
+    public static final String DATABASE = "wstool.db";
+    public static final String DISTRIBUTION = "distribution";
+
     private final Path path;
     private final WorkspaceStorage storage;
     private final PklHelper pklHelper;
 
     public Workspace(Path path, PklHelper pklHelper) throws Exception {
-        Path db = path.resolve("wstool.db");
+        Path db = path.resolve(DATABASE);
         if (Files.notExists(db)) {
             throw new IllegalStateException(
                     "No workspace storage found at: " + db.toAbsolutePath());
@@ -52,6 +55,10 @@ public class Workspace implements AutoCloseable {
                 // ignore
             }
         }
+    }
+
+    public MaterializedPackage find(PackageMajorVersion name) throws Exception {
+        return storage.find(name);
     }
 
     public Path path() {

@@ -1,5 +1,6 @@
 package wstool.simple;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
@@ -12,25 +13,22 @@ public class BuildToolHelper {
     private static final Logger LOGGER = LogManager.getLogger(BuildToolHelper.class);
 
     private final PathHelper pathHelper;
-    private final WorkspaceHelper workspaceHelper;
 
-    public BuildToolHelper(PathHelper pathHelper, WorkspaceHelper workspaceHelper) {
+    public BuildToolHelper(PathHelper pathHelper) {
         this.pathHelper = pathHelper;
-        this.workspaceHelper = workspaceHelper;
     }
 
     public int run(RunBuildToolInput input) throws Exception {
         Workspace workspace = input.workspace();
 
-        LocalPackage target = workspace.storage().find(input.name());
+        MaterializedPackage target = workspace.find(input.name());
+        Files.createDirectories(target.builddir());
 
         ProcessBuilder pb = new ProcessBuilder(input.arguments());
         pb.directory(target.source().toFile());
         pb.inheritIO();
 
-        Path builddir = workspaceHelper.workspaceBuildFolder(workspace.path(), input.name().name());
-
-        configureWstEnvironment(pb.environment(), builddir, target);
+        configureWstEnvironment(pb.environment(), target.builddir(), target);
         String path = createBuildToolPath(pb.environment(), workspace, input.name());
         configureBuildToolPath(pb.environment(), path);
 
@@ -43,7 +41,7 @@ public class BuildToolHelper {
     }
 
     private void configureWstEnvironment(
-            Map<String, String> env, Path builddir, LocalPackage target) {
+            Map<String, String> env, Path builddir, MaterializedPackage target) {
         env.put("WST_PRIVATE", builddir.toAbsolutePath().toString());
         env.put("WST_SRCDIR", target.source().toAbsolutePath().toString());
         env.put("WST_PREFIX", target.prefix().toAbsolutePath().toString());

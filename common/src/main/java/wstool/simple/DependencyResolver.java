@@ -56,18 +56,15 @@ public class DependencyResolver {
         this.packageMapper = packageMapper;
     }
 
-    public Path createClosure(
-            WorkspaceHelper workspace, Path workspaceRoot, String packageName, String closure) {
-        return createClosure(workspace, workspaceRoot, packageName, closure, null);
+    public Path createClosure(Path workspaceRoot, String packageName, String closure) {
+        return createClosure(workspaceRoot, packageName, closure, null);
     }
 
     public Path createClosure(
-            WorkspaceHelper workspace,
             Path workspaceRoot,
             String packageName,
             String closure,
             Path output) {
-        Objects.requireNonNull(workspace, "workspace");
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
         LocalPackage root = findRoot(indexPackages(workspaceRoot), selector.root());
@@ -77,7 +74,7 @@ public class DependencyResolver {
                 output == null
                         ? workspaceRoot
                                 .resolve(SYSROOT_DIRECTORY)
-                                .resolve(root.version().name() + "@" + root.version().version())
+                                .resolve(root.name().name() + "@" + root.name().version())
                                 .resolve(selector.closure())
                         : output.toAbsolutePath().normalize();
         try {
@@ -88,7 +85,7 @@ public class DependencyResolver {
                 throw runtimeException;
             }
             throw new IllegalStateException(
-                    "Unable to create " + selector.closure() + " sysroot for " + root.version(), e);
+                    "Unable to create " + selector.closure() + " sysroot for " + root.name(), e);
         }
     }
 
@@ -113,7 +110,7 @@ public class DependencyResolver {
         try {
             Package rootConfig = readConfig(root.config());
             Map<PackageMajorVersion, Package> configs = new LinkedHashMap<>();
-            configs.put(root.version(), rootConfig);
+            configs.put(root.name(), rootConfig);
             return resolveDependencies(
                     selector, rootConfig, packages, configs, workspaceRoot, distribution);
         } catch (Exception e) {
@@ -121,7 +118,7 @@ public class DependencyResolver {
                 throw runtimeException;
             }
             throw new IllegalStateException(
-                    "Unable to resolve dependencies for " + root.version(), e);
+                    "Unable to resolve dependencies for " + root.name(), e);
         }
     }
 
@@ -134,7 +131,7 @@ public class DependencyResolver {
             if (!Files.isDirectory(pkg.prefix())) {
                 throw new IOException(
                         "Package artifacts are missing for "
-                                + pkg.version()
+                                + pkg.name()
                                 + " at "
                                 + pkg.prefix());
             }
@@ -185,13 +182,13 @@ public class DependencyResolver {
         Set<PackageMajorVersion> visited = new LinkedHashSet<>();
         while (!pending.isEmpty()) {
             LocalPackage dependency = pending.removeFirst();
-            if (!visited.add(dependency.version())) {
+            if (!visited.add(dependency.name())) {
                 continue;
             }
-            selected.put(dependency.version(), dependency);
+            selected.put(dependency.name(), dependency);
             Package config =
                     configs.computeIfAbsent(
-                            dependency.version(), ignored -> readConfig(dependency.config()));
+                            dependency.name(), ignored -> readConfig(dependency.config()));
             for (PackageMajorVersion transitive :
                     transitiveDependencies(config, selector.closure())) {
                 pending.addLast(requirePackage(transitive, packages, workspaceRoot, distribution));
@@ -239,10 +236,10 @@ public class DependencyResolver {
         Map<PackageMajorVersion, LocalPackage> result = new LinkedHashMap<>();
         // Local checkouts win if the workspace contains both a checkout and a cached artifact.
         for (LocalPackage pkg : workspaceHelper.artifactPackages(workspaceRoot)) {
-            result.put(pkg.version(), pkg);
+            result.put(pkg.name(), pkg);
         }
         for (LocalPackage pkg : workspaceHelper.sourcePackages(workspaceRoot)) {
-            result.put(pkg.version(), pkg);
+            result.put(pkg.name(), pkg);
         }
         return result;
     }
@@ -254,7 +251,7 @@ public class DependencyResolver {
         }
         List<LocalPackage> matches =
                 packages.values().stream()
-                        .filter(pkg -> pkg.version().name().equals(requested.name()))
+                        .filter(pkg -> pkg.name().name().equals(requested.name()))
                         .toList();
         if (matches.isEmpty()) {
             throw new IllegalArgumentException(
@@ -405,7 +402,7 @@ public class DependencyResolver {
             if (!Files.isDirectory(pkg.prefix())) {
                 throw new IOException(
                         "Package artifacts are missing for "
-                                + pkg.version()
+                                + pkg.name()
                                 + " at "
                                 + pkg.prefix());
             }

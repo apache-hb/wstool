@@ -42,7 +42,7 @@ public class ContainerBuildHelper {
         PackageMajorVersion version = input.name();
         LocalPackage target =
                 workspace.sourcePackages(root).stream()
-                        .filter(pkg -> pkg.version().equals(version))
+                        .filter(pkg -> pkg.name().equals(version))
                         .findFirst()
                         .orElseThrow(
                                 () ->
@@ -66,8 +66,8 @@ public class ContainerBuildHelper {
                                             distribution)
                                     .values());
             for (LocalPackage dependency : buildPackages) {
-                if (!isArchivePackage(dependency.version())) {
-                    artifacts.download(dependency.version(), dependency.prefix());
+                if (!isArchivePackage(dependency.name())) {
+                    artifacts.download(dependency.name(), dependency.prefix());
                 }
             }
             deleteTree(output);
@@ -120,9 +120,9 @@ public class ContainerBuildHelper {
                                 "--volume",
                                 dependency.prefix()
                                         + ":/wstool/workspace/private/prefix/"
-                                        + dependency.version().name()
+                                        + dependency.name().name()
                                         + "/"
-                                        + dependency.version().version()
+                                        + dependency.name().version()
                                         + ":ro"));
             }
             command.addAll(
@@ -153,9 +153,9 @@ public class ContainerBuildHelper {
                                     .map(
                                             dependency ->
                                                     "/wstool/workspace/private/prefix/"
-                                                            + dependency.version().name()
+                                                            + dependency.name().name()
                                                             + "/"
-                                                            + dependency.version().version()
+                                                            + dependency.name().version()
                                                             + "/bin")
                                     .toList());
             dependencyBins.addAll(
@@ -221,26 +221,26 @@ public class ContainerBuildHelper {
             Path containerWorkspace, LocalPackage target, List<LocalPackage> buildPackages)
             throws Exception {
         deleteTree(containerWorkspace);
-        Files.createDirectories(containerWorkspace.resolve("src").resolve(target.version().name()));
+        Files.createDirectories(containerWorkspace.resolve("src").resolve(target.name().name()));
         Files.createDirectories(
                 containerWorkspace
                         .resolve("private/prefix")
-                        .resolve(target.version().name())
-                        .resolve(target.version().version()));
+                        .resolve(target.name().name())
+                        .resolve(target.name().version()));
         Files.createDirectories(containerWorkspace.resolve("private/build"));
 
         Path database = containerWorkspace.resolve("wstool.db");
         storage.createWorkspaceStorage(database);
         storage.addPackageToWorkspaceStorage(
                 database,
-                target.version().name(),
-                target.version().version(),
-                "/wstool/workspace/src/" + target.version().name(),
+                target.name().name(),
+                target.name().version(),
+                "/wstool/workspace/src/" + target.name().name(),
                 true);
 
         for (LocalPackage dependency : buildPackages) {
-            String name = dependency.version().name();
-            String version = dependency.version().version();
+            String name = dependency.name().name();
+            String version = dependency.name().version();
             Files.createDirectories(
                     containerWorkspace.resolve("private/prefix").resolve(name).resolve(version));
             storage.addPackageToWorkspaceStorage(

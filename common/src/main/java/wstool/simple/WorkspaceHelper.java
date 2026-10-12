@@ -56,10 +56,6 @@ public class WorkspaceHelper {
         return workspaceSourceFolder(workspace).resolve(packageName);
     }
 
-    public Path workspacePrefixFolder(Path workspace, String packageName) {
-        return workspace.resolve("private/prefix").resolve(packageName);
-    }
-
     public Path workspaceBuildFolder(Path workspace, String packageName) {
         return workspace.resolve("private/build").resolve(packageName);
     }
@@ -108,6 +104,16 @@ public class WorkspaceHelper {
         if (input.distribution() != null) {
             setupDistribution(workspace, input.distribution());
         }
+    }
+
+    public void setup(Workspace workspace, GitRepositoryLocation repository) throws Exception {
+        GitCloneInput clone =
+                ImmutableGitCloneInput.builder()
+                        .parent(workspace.path())
+                        .name(DISTRIBUTION)
+                        .repository(repository)
+                        .build();
+        git.clone(clone);
     }
 
     public void setupDistribution(Path workspace, GitRepositoryLocation repository)

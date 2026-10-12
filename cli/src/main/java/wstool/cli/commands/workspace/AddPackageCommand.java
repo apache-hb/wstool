@@ -11,6 +11,8 @@ import wstool.cli.commands.CommandHelpers;
 import wstool.simple.GitHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
+import wstool.simple.Workspace;
+import wstool.simple.WorkspaceFactory;
 import wstool.simple.WorkspaceHelper;
 import wstool.simple.workspace.AddPackageToWorkspaceInput;
 import wstool.simple.workspace.ImmutableAddPackageToWorkspaceInput;
@@ -49,20 +51,21 @@ public class AddPackageCommand implements Callable<Integer> {
         try (PklHelper pkl = new PklHelper(null)) {
             GitHelper git = new GitHelper(interactive);
             StorageHelper storage = new StorageHelper();
-            WorkspaceHelper workspace = CommandHelpers.workspace(git, storage, pkl);
+            WorkspaceHelper workspaceHelper = CommandHelpers.workspace(git, storage, pkl);
+            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl);
+            Workspace workspace = workspaceFactory.findUp(Path.of(""));
 
-            Path workspaceFolder = workspace.findWorkspaceUp(Path.of(""));
-            var distributionConfig = workspace.refreshDistribution(workspaceFolder);
+            workspaceHelper.refresh(workspace);
 
             for (String packageName : packageNames) {
                 AddPackageToWorkspaceInput input =
                         ImmutableAddPackageToWorkspaceInput.builder()
-                                .workspace(workspaceFolder)
+                                .workspace(workspace.path())
                                 .name(packageName)
                                 .version(packageVersion)
                                 .build();
 
-                workspace.addPackageToWorkspace(input, distributionConfig);
+                workspaceHelper.addPackageToWorkspace(input);
             }
 
             return 0;

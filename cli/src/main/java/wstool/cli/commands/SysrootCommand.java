@@ -13,6 +13,8 @@ import wstool.simple.PackageHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
 import wstool.simple.SysrootManager;
+import wstool.simple.Workspace;
+import wstool.simple.WorkspaceFactory;
 import wstool.simple.SysrootManager.SysrootTarget;
 import wstool.simple.WorkspaceHelper;
 
@@ -34,16 +36,18 @@ public class SysrootCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(null)) {
-            Package config = new PackageHelper(pkl).getPackageConfig(source.resolve("wstool.pkl"));
             GitHelper git = new GitHelper(false);
-            WorkspaceHelper workspace = CommandHelpers.workspace(git, new StorageHelper(), pkl);
+            PackageHelper packageHelper = new PackageHelper(pkl);
+            WorkspaceHelper workspaceHelper = CommandHelpers.workspace(git, new StorageHelper(), pkl);
             DependencyResolver dependencies = CommandHelpers.dependencies(git, pkl);
-            Path workspaceRoot = workspace.findWorkspaceUp(source);
+            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl);
+            Workspace workspace = workspaceFactory.findUp(Path.of(""));
             String privateDirectory = System.getenv("WST_PRIVATE");
+            Package config = packageHelper.getPackageConfig(source.resolve("wstool.pkl"));
             if (privateDirectory != null && !privateDirectory.isBlank()) {
                 Path sysroot =
                         output == null ? Path.of(privateDirectory).resolve("sysroot") : output;
-                dependencies.materializeClosure(sysroot, workspace.artifactPackages(workspaceRoot));
+                dependencies.materializeClosure(sysroot, workspaceHelper.artifactPackages(workspace.path()));
                 return 0;
             }
             SysrootTarget target = parseTarget(selector);
@@ -51,8 +55,7 @@ public class SysrootCommand implements Callable<Integer> {
             new SysrootManager(dependencies)
                     .createSysroot(
                             sysroot,
-                            workspace,
-                            workspaceRoot,
+                            workspace.path(),
                             config.getPackage().getName(),
                             target);
             return 0;

@@ -10,8 +10,11 @@ import picocli.CommandLine.Unmatched;
 import wstool.Package;
 import wstool.cli.VersionProvider;
 import wstool.cli.commands.CommandHelpers;
+import wstool.simple.MaterializedPackage;
 import wstool.simple.BuildToolHelper;
 import wstool.simple.GitHelper;
+import wstool.simple.LocalPackage;
+import wstool.simple.PackageFactory;
 import wstool.simple.PackageHelper;
 import wstool.simple.PathHelper;
 import wstool.simple.PklHelper;
@@ -38,39 +41,28 @@ public class RunTargetCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(null)) {
             PathHelper pathHelper = new PathHelper();
             WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl);
-            WorkspaceHelper workspace =
-                    CommandHelpers.workspace(new GitHelper(false), new StorageHelper(), pkl);
-            Path workspaceRoot = workspace.findWorkspaceUp(source);
-            Package config = new PackageHelper(pkl).getPackageConfig(source.resolve("wstool.pkl"));
-            String name = config.getPackage().getName();
-            PackageMajorVersion version =
-                    new PackageMajorVersion(name, config.getPackage().getVersion());
-            BuildToolHelper buildToolHelper = new BuildToolHelper(pathHelper, workspace);
-
-            boolean isWorkspacePackage =
-                    workspace.sourcePackages(workspaceRoot).stream()
-                            .anyMatch(pkg -> pkg.version().equals(version));
-            if (!isWorkspacePackage) {
-                throw new IllegalArgumentException("Package is not in the workspace: " + version);
-            }
-
-            Path privateDirectory = workspace.workspaceBuildFolder(workspaceRoot, name);
-            Files.createDirectories(privateDirectory);
+            PackageFactory packageFactory = new PackageFactory(workspaceFactory, pkl);
+            WorkspaceHelper workspaceHelper = CommandHelpers.workspace(new GitHelper(false), new StorageHelper(), pkl);
+            Path workspaceRoot = workspaceHelper.findWorkspaceUp(Path.of(""));
+            MaterializedPackage current = packageFactory.findUp(Path.of(""));
+            BuildToolHelper buildToolHelper = new BuildToolHelper(pathHelper);
 
             List<String> command = new ArrayList<>();
-            command.add(config.getBuildOptions().getTool());
+            if (current instanceof LocalPackage local) {
+                command.add(local.buildTool());
+            }
             command.addAll(args);
+
             try (Workspace buildWorkspace = workspaceFactory.open(workspaceRoot)) {
-                workspace.refresh(buildWorkspace);
+                workspaceHelper.refresh(buildWorkspace);
 
                 return buildToolHelper.run(
                         ImmutableRunBuildToolInput.builder()
                                 .workspace(buildWorkspace)
-                                .name(version)
+                                .name(current.name())
                                 .arguments(command)
                                 .build());
             }

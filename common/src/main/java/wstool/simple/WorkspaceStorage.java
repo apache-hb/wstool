@@ -31,6 +31,7 @@ public class WorkspaceStorage implements AutoCloseable {
                 name TEXT NOT NULL,
                 version TEXT NOT NULL,
                 source TEXT NOT NULL,
+                build_tool TEXT NOT NULL,
                 cloned TEXT NOT NULL CHECK (cloned IN ('0', '1')),
                 PRIMARY KEY (name, version)
             )
@@ -225,7 +226,7 @@ public class WorkspaceStorage implements AutoCloseable {
                             new PackageMajorVersion(
                                     result.getString("name"), result.getString("version"));
                     packages.add(
-                            new LocalPackage(pmv, workspace, Path.of(result.getString("source"))));
+                            new LocalPackage(pmv, workspace, Path.of(result.getString("source")), ""));
                 }
                 return packages;
             }
@@ -325,7 +326,7 @@ public class WorkspaceStorage implements AutoCloseable {
                             new PackageMajorVersion(
                                     result.getString("name"), result.getString("version"));
                     Path source = Path.of(result.getString("source"));
-                    return new LocalPackage(pmv, workspace, source);
+                    return new LocalPackage(pmv, workspace, source, "");
                 }
 
                 throw new NoSuchElementException("Package not found: " + name);
