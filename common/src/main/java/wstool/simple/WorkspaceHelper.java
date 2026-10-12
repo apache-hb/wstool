@@ -1,6 +1,8 @@
 package wstool.simple;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -22,6 +24,7 @@ import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.workspace.AddPackageToWorkspaceInput;
 import wstool.simple.workspace.CreateWorkspaceInput;
 
+@Singleton
 public class WorkspaceHelper {
     private static final String CONFIG_FILE = "wstool.db";
     private static final String DISTRIBUTION = "distribution";
@@ -33,6 +36,7 @@ public class WorkspaceHelper {
     private final PackageSourceHelper sources;
     private final ExternalPackageSourceHelper externalSources;
 
+    @Inject
     public WorkspaceHelper(
             GitHelper git,
             StorageHelper storage,

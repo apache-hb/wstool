@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -27,6 +29,7 @@ import wstool.simple.git.ImmutableGitRepositoryLocation;
 import wstool.simple.model.PackageMajorVersion;
 
 /** Resolves package dependency selectors and assembles their installation prefixes as a sysroot. */
+@Singleton
 public class DependencyResolver {
     private static final String CONFIG_FILE = "wstool.pkl";
     private static final String SYSROOT_DIRECTORY = ".wstool/sysroots";
@@ -39,6 +42,7 @@ public class DependencyResolver {
     private final PackageHelper packageHelper;
     private final PackageMapper packageMapper;
 
+    @Inject
     public DependencyResolver(
             GitHelper gitHelper,
             PklHelper pklHelper,
@@ -60,11 +64,7 @@ public class DependencyResolver {
         return createClosure(workspaceRoot, packageName, closure, null);
     }
 
-    public Path createClosure(
-            Path workspaceRoot,
-            String packageName,
-            String closure,
-            Path output) {
+    public Path createClosure(Path workspaceRoot, String packageName, String closure, Path output) {
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
         LocalPackage root = findRoot(indexPackages(workspaceRoot), selector.root());
@@ -99,10 +99,7 @@ public class DependencyResolver {
      * Resolves missing dependency manifests from the distribution and caches them in the workspace.
      */
     public LinkedHashMap<PackageMajorVersion, LocalPackage> resolvePackages(
-            Path workspaceRoot,
-            String packageName,
-            String closure,
-            Distribution distribution) {
+            Path workspaceRoot, String packageName, String closure, Distribution distribution) {
         Objects.requireNonNull(workspaceRoot, "workspaceRoot");
         Selector selector = parseSelector(packageName, closure);
         Map<PackageMajorVersion, LocalPackage> packages = indexPackages(workspaceRoot);
@@ -117,8 +114,7 @@ public class DependencyResolver {
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
-            throw new IllegalStateException(
-                    "Unable to resolve dependencies for " + root.name(), e);
+            throw new IllegalStateException("Unable to resolve dependencies for " + root.name(), e);
         }
     }
 
@@ -130,10 +126,7 @@ public class DependencyResolver {
         for (LocalPackage pkg : packages) {
             if (!Files.isDirectory(pkg.prefix())) {
                 throw new IOException(
-                        "Package artifacts are missing for "
-                                + pkg.name()
-                                + " at "
-                                + pkg.prefix());
+                        "Package artifacts are missing for " + pkg.name() + " at " + pkg.prefix());
             }
             copyTree(pkg.prefix(), destination);
         }
@@ -401,10 +394,7 @@ public class DependencyResolver {
         for (LocalPackage pkg : selected) {
             if (!Files.isDirectory(pkg.prefix())) {
                 throw new IOException(
-                        "Package artifacts are missing for "
-                                + pkg.name()
-                                + " at "
-                                + pkg.prefix());
+                        "Package artifacts are missing for " + pkg.name() + " at " + pkg.prefix());
             }
         }
         deleteTree(sysroot);

@@ -12,13 +12,10 @@ dependencies {
   api(project(":config"))
   api("org.jspecify:jspecify:1.0.0")
 
-  implementation("com.google.dagger:dagger:2.60.1")
-  annotationProcessor("com.google.dagger:dagger-compiler:2.60.1")
-
   compileOnly("org.immutables:value-annotations:2.12.2")
   annotationProcessor("org.immutables:value:2.12.2")
 
-  implementation("com.google.inject:guice")
+  api("jakarta.inject:jakarta.inject-api:2.0.1")
   implementation("org.apache.commons:commons-compress:1.28.0")
   implementation("org.tukaani:xz:1.12")
   implementation("org.apache.logging.log4j:log4j-api")

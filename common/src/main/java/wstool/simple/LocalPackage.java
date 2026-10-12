@@ -2,11 +2,11 @@ package wstool.simple;
 
 import java.nio.file.Path;
 import java.util.Objects;
-
 import wstool.Package;
 import wstool.simple.model.PackageMajorVersion;
 
-public record LocalPackage(PackageMajorVersion name, Path workspace, Path source, String buildTool) implements MaterializedPackage {
+public record LocalPackage(PackageMajorVersion name, Path workspace, Path source, String buildTool)
+        implements MaterializedPackage {
     public static final String CONFIG = "wstool.pkl";
 
     public LocalPackage {
@@ -17,8 +17,14 @@ public record LocalPackage(PackageMajorVersion name, Path workspace, Path source
     }
 
     public static LocalPackage ofConfig(Workspace workspace, Package config) {
-        PackageMajorVersion pmv = new PackageMajorVersion(config.getPackage().getName(), config.getPackage().getVersion());
-        return new LocalPackage(pmv, workspace.path(), clonedSource(workspace, pmv), config.getBuildOptions().getTool());
+        PackageMajorVersion pmv =
+                new PackageMajorVersion(
+                        config.getPackage().getName(), config.getPackage().getVersion());
+        return new LocalPackage(
+                pmv,
+                workspace.path(),
+                clonedSource(workspace, pmv),
+                config.getBuildOptions().getTool());
     }
 
     public static LocalPackage ofCloned(PackageMajorVersion name, Path workspace) {
@@ -45,18 +51,12 @@ public record LocalPackage(PackageMajorVersion name, Path workspace, Path source
 
     @Override
     public Path builddir() {
-        return workspace
-                .resolve("private/build")
-                .resolve(name.name())
-                .resolve(name.version());
+        return workspace.resolve("private/build").resolve(name.name()).resolve(name.version());
     }
 
     @Override
     public Path prefix() {
-        return workspace
-                .resolve("private/prefix")
-                .resolve(name.name())
-                .resolve(name.version());
+        return workspace.resolve("private/prefix").resolve(name.name()).resolve(name.version());
     }
 
     private static Path clonedSource(Workspace workspace, PackageMajorVersion pmv) {

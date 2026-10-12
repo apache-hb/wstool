@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -9,11 +11,13 @@ import org.apache.logging.log4j.Logger;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.tool.RunBuildToolInput;
 
+@Singleton
 public class BuildToolHelper {
     private static final Logger LOGGER = LogManager.getLogger(BuildToolHelper.class);
 
     private final PathHelper pathHelper;
 
+    @Inject
     public BuildToolHelper(PathHelper pathHelper) {
         this.pathHelper = pathHelper;
     }

@@ -1,23 +1,18 @@
 package wstool.cli.commands;
 
+import jakarta.inject.Inject;
 import java.nio.file.Path;
-import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import wstool.Package;
 import wstool.cli.VersionProvider;
 import wstool.simple.DependencyResolver;
-import wstool.simple.GitHelper;
-import wstool.simple.PackageFactory;
 import wstool.simple.PackageHelper;
-import wstool.simple.PklHelper;
-import wstool.simple.StorageHelper;
 import wstool.simple.SysrootManager;
+import wstool.simple.SysrootManager.SysrootTarget;
 import wstool.simple.Workspace;
 import wstool.simple.WorkspaceFactory;
-import wstool.simple.SysrootManager.SysrootTarget;
-import wstool.simple.distribution.DistributionFactory;
 import wstool.simple.WorkspaceHelper;
 
 @Command(
@@ -34,33 +29,41 @@ public class SysrootCommand extends CommonCommand {
             description = "Sysroot directory (defaults to the workspace sysroot directory).")
     private Path output;
 
+    private final PackageHelper packageHelper;
+    private final WorkspaceHelper workspaceHelper;
+    private final WorkspaceFactory workspaceFactory;
+    private final SysrootManager sysrootManager;
+    private final DependencyResolver dependencies;
+
+    @Inject
+    public SysrootCommand(
+            PackageHelper packageHelper,
+            WorkspaceHelper workspaceHelper,
+            WorkspaceFactory workspaceFactory,
+            SysrootManager sysrootManager,
+            DependencyResolver dependencies) {
+        this.packageHelper = packageHelper;
+        this.workspaceHelper = workspaceHelper;
+        this.workspaceFactory = workspaceFactory;
+        this.sysrootManager = sysrootManager;
+        this.dependencies = dependencies;
+    }
+
     @Override
     public Integer call() throws Exception {
-        try (PklHelper pkl = new PklHelper(null)) {
-            GitHelper git = new GitHelper(false);
-            PackageHelper packageHelper = new PackageHelper(pkl);
-            WorkspaceHelper workspaceHelper = CommandHelpers.workspace(git, new StorageHelper(), pkl);
-            DependencyResolver dependencies = CommandHelpers.dependencies(git, pkl);
-            DistributionFactory distributionFactory = new DistributionFactory(pkl);
-            PackageFactory packageFactory = new PackageFactory(pkl);
-            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl, distributionFactory, packageFactory);
-            Workspace workspace = workspaceFactory.findUp(cwd);
+        try (Workspace workspace = workspaceFactory.findUp(cwd)) {
             String privateDirectory = System.getenv("WST_PRIVATE");
             Package config = packageHelper.getPackageConfig(cwd.resolve("wstool.pkl"));
             if (privateDirectory != null && !privateDirectory.isBlank()) {
                 Path sysroot =
                         output == null ? Path.of(privateDirectory).resolve("sysroot") : output;
-                dependencies.materializeClosure(sysroot, workspaceHelper.artifactPackages(workspace.path()));
+                dependencies.materializeClosure(
+                        sysroot, workspaceHelper.artifactPackages(workspace.path()));
                 return 0;
             }
             SysrootTarget target = parseTarget(selector);
-            Path sysroot = output;
-            new SysrootManager(dependencies)
-                    .createSysroot(
-                            sysroot,
-                            workspace.path(),
-                            config.getPackage().getName(),
-                            target);
+            sysrootManager.createSysroot(
+                    output, workspace.path(), config.getPackage().getName(), target);
             return 0;
         }
     }

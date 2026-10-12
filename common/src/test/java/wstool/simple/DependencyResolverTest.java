@@ -106,7 +106,7 @@ class DependencyResolverTest {
 
     @Test
     void assemblesDevelopmentSysrootFromLocallyClonedAndCachedPackages() throws Exception {
-        Path sysroot = resolver.createClosure(workspaceHelper, workspace, "app", "development");
+        Path sysroot = resolver.createClosure(workspace, "app", "development");
 
         for (String packageName :
                 List.of(
@@ -157,14 +157,14 @@ class DependencyResolverTest {
 
     @Test
     void buildAndRuntimeSelectorsCollectTheirDocumentedGraphs() throws Exception {
-        Path build = resolver.createClosure(workspaceHelper, workspace, "app", "build");
+        Path build = resolver.createClosure(workspace, "app", "build");
         assertTrue(Files.exists(build.resolve("bin/compiler")));
         assertTrue(Files.exists(build.resolve("include/compiler-runtime.h")));
         assertTrue(Files.exists(build.resolve("include/builder-helper.h")));
         assertFalse(Files.exists(build.resolve("include/public-api.h")));
         assertFalse(Files.exists(build.resolve("include/test-framework.h")));
 
-        Path runtime = resolver.createClosure(workspaceHelper, workspace, "app", "runtime");
+        Path runtime = resolver.createClosure(workspace, "app", "runtime");
         assertTrue(Files.exists(runtime.resolve("include/public-api.h")));
         assertTrue(Files.exists(runtime.resolve("include/runtime-lib.h")));
         assertTrue(Files.exists(runtime.resolve("include/shared.h")));
@@ -174,8 +174,7 @@ class DependencyResolverTest {
 
     @Test
     void qualifiedSelectorChangesTheTraversalRoot() throws Exception {
-        Path sysroot =
-                resolver.createClosure(workspaceHelper, workspace, "app", "alternate@2.0/runtime");
+        Path sysroot = resolver.createClosure(workspace, "app", "alternate@2.0/runtime");
 
         assertTrue(Files.exists(sysroot.resolve("include/alternate-runtime.h")));
         assertFalse(Files.exists(sysroot.resolve("include/public-api.h")));
@@ -189,9 +188,25 @@ class DependencyResolverTest {
         PackageMapper mapper = new PackageMapper();
         PackageSourceHelper packageSourceHelper = new PackageSourceHelper(archives, git, mapper);
         ExternalFilesHelper externalFilesHelper = new ExternalFilesHelper();
-        ExternalPackageSourceHelper externalPackageSourceHelper = new ExternalPackageSourceHelper(archives, packageSourceHelper, externalFilesHelper, git);
-        WorkspaceHelper workspaceHelper = new WorkspaceHelper(git, storage, new DistributionHelper(pkl), packageHelper, packageSourceHelper, externalPackageSourceHelper);
-        return new DependencyResolver(git, pkl, new PackageSourceHelper(archives, git, mapper), archives, workspaceHelper, packageHelper, mapper);
+        ExternalPackageSourceHelper externalPackageSourceHelper =
+                new ExternalPackageSourceHelper(
+                        archives, packageSourceHelper, externalFilesHelper, git);
+        WorkspaceHelper workspaceHelper =
+                new WorkspaceHelper(
+                        git,
+                        storage,
+                        new DistributionHelper(pkl),
+                        packageHelper,
+                        packageSourceHelper,
+                        externalPackageSourceHelper);
+        return new DependencyResolver(
+                git,
+                pkl,
+                new PackageSourceHelper(archives, git, mapper),
+                archives,
+                workspaceHelper,
+                packageHelper,
+                mapper);
     }
 
     private WorkspaceHelper workspaceHelper(GitHelper git, StorageHelper storage, PklHelper pkl) {

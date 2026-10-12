@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -18,8 +20,12 @@ import wstool.Package.ExternalFile;
 import wstool.Package.ExternalFiles;
 
 /** Downloads and verifies individual files that make up an external package source. */
+@Singleton
 public class ExternalFilesHelper {
     private final HttpClient client = HttpClient.newHttpClient();
+
+    @Inject
+    public ExternalFilesHelper() {}
 
     public void materialize(
             ExternalFiles source, String name, String version, Path workspace, Path destination)

@@ -152,7 +152,7 @@ class WorkspaceStorageTest {
         storage.addPackage(packageInput(second, secondSource));
 
         LocalPackage pkg = storage.find(second);
-        assertEquals(new LocalPackage(second, tempDir, secondSource), pkg);
+        assertEquals(new LocalPackage(second, tempDir, secondSource, ""), pkg);
         assertEquals(tempDir.resolve("private/prefix/library/2.x"), pkg.prefix());
         assertEquals(tempDir.resolve("private/build/library/2.x"), pkg.builddir());
     }

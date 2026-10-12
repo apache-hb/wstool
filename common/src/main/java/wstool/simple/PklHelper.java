@@ -4,11 +4,15 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+
 import org.pkl.config.java.Config;
 import org.pkl.config.java.ConfigEvaluator;
 import org.pkl.config.java.ConfigEvaluatorBuilder;
 import org.pkl.core.ModuleSource;
 
+import jakarta.inject.Singleton;
+
+@Singleton
 public class PklHelper implements AutoCloseable {
     private final ConfigEvaluator evaluator;
 

@@ -1,8 +1,8 @@
 package wstool.cli.commands.packages;
 
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
 import wstool.cli.VersionProvider;
@@ -11,11 +11,8 @@ import wstool.simple.BuildToolHelper;
 import wstool.simple.LocalPackage;
 import wstool.simple.MaterializedPackage;
 import wstool.simple.PackageFactory;
-import wstool.simple.PathHelper;
-import wstool.simple.PklHelper;
 import wstool.simple.Workspace;
 import wstool.simple.WorkspaceFactory;
-import wstool.simple.distribution.DistributionFactory;
 import wstool.simple.tool.ImmutableRunBuildToolInput;
 
 @Command(
@@ -26,38 +23,36 @@ import wstool.simple.tool.ImmutableRunBuildToolInput;
 public class RunTargetCommand extends CommonCommand {
     @Unmatched List<String> args = new ArrayList<>();
 
-    public RunTargetCommand() {}
+    private final BuildToolHelper buildToolHelper;
+    private final PackageFactory packageFactory;
+    private final WorkspaceFactory workspaceFactory;
 
-    RunTargetCommand(List<String> args) {
-        this.args = new ArrayList<>(args);
+    @Inject
+    public RunTargetCommand(
+            BuildToolHelper buildToolHelper,
+            PackageFactory packageFactory,
+            WorkspaceFactory workspaceFactory) {
+        this.buildToolHelper = buildToolHelper;
+        this.packageFactory = packageFactory;
+        this.workspaceFactory = workspaceFactory;
     }
 
     @Override
     public Integer call() throws Exception {
-        try (PklHelper pkl = new PklHelper(null)) {
-            PathHelper pathHelper = new PathHelper();
-            DistributionFactory distributionFactory = new DistributionFactory(pkl);
-            PackageFactory packageFactory = new PackageFactory(pkl);
-            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl, distributionFactory, packageFactory);
-            BuildToolHelper buildToolHelper = new BuildToolHelper(pathHelper);
+        try (Workspace workspace = workspaceFactory.findUp(cwd)) {
+            MaterializedPackage current = packageFactory.findUp(workspace, cwd);
 
-            try (Workspace workspace = workspaceFactory.findUp(cwd)) {
-                workspace.refresh();
-
-                MaterializedPackage current = packageFactory.findUp(workspace, cwd);
-
-                List<String> command = new ArrayList<>();
-                if (current instanceof LocalPackage local) {
-                    command.add(local.buildTool());
-                }
-                command.addAll(args);
-                return buildToolHelper.run(
-                        ImmutableRunBuildToolInput.builder()
-                                .workspace(workspace)
-                                .name(current.name())
-                                .arguments(command)
-                                .build());
+            List<String> command = new ArrayList<>();
+            if (current instanceof LocalPackage local) {
+                command.add(local.buildTool());
             }
+            command.addAll(args);
+            return buildToolHelper.run(
+                    ImmutableRunBuildToolInput.builder()
+                            .workspace(workspace)
+                            .name(current.name())
+                            .arguments(command)
+                            .build());
         }
     }
 }

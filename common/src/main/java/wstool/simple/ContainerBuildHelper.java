@@ -18,7 +18,7 @@ public class ContainerBuildHelper {
     private final S3ArtifactCache artifacts;
     private final WorkspaceHelper workspace;
     private final DependencyResolver dependencies;
-    private final PklHelper pkl;
+    private final PackageHelper packages;
     private final Distribution distribution;
     private final StorageHelper storage;
 
@@ -26,13 +26,13 @@ public class ContainerBuildHelper {
             S3ArtifactCache artifacts,
             WorkspaceHelper workspace,
             DependencyResolver dependencies,
-            PklHelper pkl,
             Distribution distribution,
-            StorageHelper storage) {
+            StorageHelper storage,
+            PackageHelper packages) {
         this.artifacts = artifacts;
         this.workspace = workspace;
         this.dependencies = dependencies;
-        this.pkl = pkl;
+        this.packages = packages;
         this.distribution = distribution;
         this.storage = storage;
     }
@@ -50,7 +50,7 @@ public class ContainerBuildHelper {
                                                 "Package is not in the workspace: " + version));
         Path source = target.source().toAbsolutePath().normalize();
         Path packageRoot = source;
-        Package config = new PackageHelper(pkl).getPackageConfig(packageRoot.resolve("wstool.pkl"));
+        Package config = packages.getPackageConfig(packageRoot.resolve("wstool.pkl"));
         Path output = target.prefix().toAbsolutePath().normalize();
         Path privateDirectory = target.builddir().toAbsolutePath().normalize();
         Path containerWorkspace = privateDirectory.resolve("container-workspace");

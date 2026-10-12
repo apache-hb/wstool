@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -15,12 +17,14 @@ import wstool.simple.git.ImmutableGitCloneInput;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
 
 /** Materializes third-party package sources and applies their configured patches. */
+@Singleton
 public class ExternalPackageSourceHelper {
     private final DistributionArchiveHelper archives;
     private final PackageSourceHelper sources;
     private final ExternalFilesHelper files;
     private final GitHelper git;
 
+    @Inject
     public ExternalPackageSourceHelper(
             DistributionArchiveHelper archives,
             PackageSourceHelper sources,

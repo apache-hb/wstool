@@ -1,16 +1,22 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import wstool.simple.distribution.DistributionFactory;
 
+@Singleton
 public class WorkspaceFactory {
     private final PklHelper pklHelper;
     private final DistributionFactory distributionFactory;
     private final PackageFactory packageFactory;
 
-    public WorkspaceFactory(PklHelper pklHelper, DistributionFactory distributionFactory, PackageFactory packageFactory) {
+    @Inject
+    public WorkspaceFactory(
+            PklHelper pklHelper,
+            DistributionFactory distributionFactory,
+            PackageFactory packageFactory) {
         this.pklHelper = pklHelper;
         this.distributionFactory = distributionFactory;
         this.packageFactory = packageFactory;

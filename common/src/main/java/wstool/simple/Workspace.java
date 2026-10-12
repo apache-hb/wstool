@@ -4,10 +4,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import wstool.Distribution;
 import wstool.Package;
 import wstool.simple.distribution.AnyDistribution;
@@ -29,7 +27,12 @@ public class Workspace implements AutoCloseable {
     private final PackageFactory packageFactory;
     private final PklHelper pklHelper;
 
-    public Workspace(Path path, DistributionFactory distributionFactory, PackageFactory packageFactory, PklHelper pklHelper) throws Exception {
+    public Workspace(
+            Path path,
+            DistributionFactory distributionFactory,
+            PackageFactory packageFactory,
+            PklHelper pklHelper)
+            throws Exception {
         Path db = path.resolve(DATABASE);
         if (Files.notExists(db)) {
             throw new IllegalStateException(
@@ -93,9 +96,7 @@ public class Workspace implements AutoCloseable {
         clone(storage.find(name));
     }
 
-    private void clone(MaterializedPackage pkg) throws Exception {
-
-    }
+    private void clone(MaterializedPackage pkg) throws Exception {}
 
     public Path path() {
         return path;

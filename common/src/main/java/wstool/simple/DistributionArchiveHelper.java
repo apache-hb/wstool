@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -23,9 +25,11 @@ import wstool.Package.ExternalArchive;
 import wstool.simple.archive.ImmutableExtractArchiveInput;
 
 /** Downloads and extracts immutable package archives into the workspace metadata cache. */
+@Singleton
 public class DistributionArchiveHelper {
     private final ArchiveHelper archives;
 
+    @Inject
     public DistributionArchiveHelper(ArchiveHelper archives) {
         this.archives = archives;
     }

@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -20,11 +22,13 @@ import wstool.simple.git.ImmutableGitRepositoryLocation;
 /**
  * Materializes package sources from archives, repositories, or a path in another package source.
  */
+@Singleton
 public class PackageSourceHelper {
     private final DistributionArchiveHelper archives;
     private final GitHelper git;
     private final PackageMapper packageMapper;
 
+    @Inject
     public PackageSourceHelper(
             DistributionArchiveHelper archives, GitHelper git, PackageMapper packageMapper) {
         this.archives = archives;

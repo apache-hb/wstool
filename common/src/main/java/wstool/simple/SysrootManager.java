@@ -1,10 +1,14 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Path;
 
+@Singleton
 public class SysrootManager {
     private final DependencyResolver dependencyResolver;
 
+    @Inject
     public SysrootManager(DependencyResolver dependencyResolver) {
         this.dependencyResolver = dependencyResolver;
     }
@@ -18,10 +22,7 @@ public class SysrootManager {
 
     /** Creates or updates a sysroot from the selected package closure. */
     public Path createSysroot(
-            Path output,
-            Path workspaceRoot,
-            String packageName,
-            SysrootTarget target) {
+            Path output, Path workspaceRoot, String packageName, SysrootTarget target) {
         return dependencyResolver.createClosure(
                 workspaceRoot,
                 packageName,

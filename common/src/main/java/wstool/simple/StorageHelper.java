@@ -1,12 +1,18 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Path;
 import java.util.List;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.AddPackageInput;
 import wstool.simple.storage.ImmutableAddPackageInput;
 
+@Singleton
 public class StorageHelper {
+    @Inject
+    public StorageHelper() {}
+
     public void createWorkspaceStorage(Path path) throws Exception {
         try (var connection = new WorkspaceStorage(workspace(path), path)) {
             connection.setup();

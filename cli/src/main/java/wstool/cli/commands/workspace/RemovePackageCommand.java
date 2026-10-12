@@ -1,13 +1,10 @@
 package wstool.cli.commands.workspace;
 
+import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
-import wstool.cli.commands.CommandHelpers;
 import wstool.cli.commands.CommonCommand;
-import wstool.simple.GitHelper;
-import wstool.simple.PklHelper;
-import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
 
 @Command(
@@ -22,14 +19,16 @@ public class RemovePackageCommand extends CommonCommand {
             description = "Package name to remove.")
     private String packageName;
 
+    private final WorkspaceHelper workspace;
+
+    @Inject
+    public RemovePackageCommand(WorkspaceHelper workspace) {
+        this.workspace = workspace;
+    }
+
     @Override
     public Integer call() throws Exception {
-        try (PklHelper pkl = new PklHelper(null)) {
-            WorkspaceHelper workspace =
-                    CommandHelpers.workspace(new GitHelper(false), new StorageHelper(), pkl);
-            workspace.removePackageFromWorkspace(
-                    workspace.findWorkspaceUp(cwd), packageName);
-            return 0;
-        }
+        workspace.removePackageFromWorkspace(workspace.findWorkspaceUp(cwd), packageName);
+        return 0;
     }
 }

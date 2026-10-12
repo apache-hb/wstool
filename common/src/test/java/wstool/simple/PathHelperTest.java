@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import wstool.simple.distribution.DistributionFactory;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.DependencyType;
 import wstool.simple.storage.ImmutableAddDependencyInput;
@@ -28,7 +29,8 @@ class PathHelperTest {
     void beforeEach() {
         helper = new PathHelper();
         pkl = new PklHelper(Map.of());
-        workspaceFactory = new WorkspaceFactory(pkl);
+        workspaceFactory =
+                new WorkspaceFactory(pkl, new DistributionFactory(pkl), new PackageFactory(pkl));
     }
 
     @Test

@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,9 +32,13 @@ import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import wstool.simple.archive.CreateArchiveInput;
 import wstool.simple.archive.ExtractArchiveInput;
 
+@Singleton
 public class ArchiveHelper {
     private static final int PERMISSIONS_EXTRA_FIELD = 0x5754;
     private static final int DATA_BUFFER_SIZE = 64 * 1024;
+
+    @Inject
+    public ArchiveHelper() {}
 
     public void extract(ExtractArchiveInput input) throws Exception {
         Path root = input.destination().toAbsolutePath().normalize();

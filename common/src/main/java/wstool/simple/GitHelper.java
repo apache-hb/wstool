@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -11,13 +13,23 @@ import wstool.simple.git.GitCloneInput;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.GitRunInput;
 
+@Singleton
 public class GitHelper {
     private static final String CREDENTIAL_HELPER =
             "!f() { if test \"$1\" = get; then printf 'username=%s\\npassword=%s\\n\\n' \"$WSTOOL_GIT_USERNAME\" \"$WSTOOL_GIT_PASSWORD\"; fi; }; f";
 
     private boolean interactive;
 
+    @Inject
+    public GitHelper() {
+        this(false);
+    }
+
     public GitHelper(boolean interactive) {
+        this.interactive = interactive;
+    }
+
+    public void setInteractive(boolean interactive) {
         this.interactive = interactive;
     }
 

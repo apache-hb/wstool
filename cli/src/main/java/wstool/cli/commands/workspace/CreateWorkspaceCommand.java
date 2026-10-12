@@ -1,16 +1,13 @@
 package wstool.cli.commands.workspace;
 
+import jakarta.inject.Inject;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
-import wstool.cli.commands.CommandHelpers;
 import wstool.cli.commands.CommonCommand;
 import wstool.simple.GitHelper;
-import wstool.simple.PklHelper;
-import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
 import wstool.simple.git.GitRepositoryLocation;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
@@ -38,40 +35,36 @@ public class CreateWorkspaceCommand extends CommonCommand {
             defaultValue = "true")
     boolean interactive;
 
+    private final GitHelper git;
+    private final WorkspaceHelper workspace;
+
+    @Inject
+    public CreateWorkspaceCommand(GitHelper git, WorkspaceHelper workspace) {
+        this.git = git;
+        this.workspace = workspace;
+    }
+
     @Override
-    public Integer call() {
-        try (PklHelper pkl = new PklHelper(null)) {
-            GitHelper git = new GitHelper(interactive);
-            StorageHelper storage = new StorageHelper();
-            WorkspaceHelper workspace = CommandHelpers.workspace(git, storage, pkl);
+    public Integer call() throws Exception {
+        git.setInteractive(interactive);
+        var input = ImmutableCreateWorkspaceInput.builder().parent(cwd.toAbsolutePath()).name(name);
 
-            var input =
-                    ImmutableCreateWorkspaceInput.builder()
-                            .parent(cwd.toAbsolutePath())
-                            .name(name);
-
-            if (distribution != null) {
-                URI source =
-                        distribution.getScheme() == null
-                                ? Path.of(distribution.getPath())
-                                        .toAbsolutePath()
-                                        .normalize()
-                                        .toUri()
-                                : distribution;
-                GitRepositoryLocation location =
-                        ImmutableGitRepositoryLocation.builder()
-                                .branch(branch)
-                                .repository(source)
-                                .build();
-                input.distribution(location);
-            } else if (branch != null) {
-                throw new IllegalArgumentException("--branch requires --distribution.");
-            }
-            workspace.createWorkspace(input.build());
-
-            return 0;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        if (distribution != null) {
+            URI source =
+                    distribution.getScheme() == null
+                            ? Path.of(distribution.getPath()).toAbsolutePath().normalize().toUri()
+                            : distribution;
+            GitRepositoryLocation location =
+                    ImmutableGitRepositoryLocation.builder()
+                            .branch(branch)
+                            .repository(source)
+                            .build();
+            input.distribution(location);
+        } else if (branch != null) {
+            throw new IllegalArgumentException("--branch requires --distribution.");
         }
+        workspace.createWorkspace(input.build());
+
+        return 0;
     }
 }

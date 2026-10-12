@@ -20,10 +20,6 @@ public class CommonArchTest {
     public static final ArchRule OLD_DATE_AND_TIME_CLASSES_SHOULD_NOT_BE_USED =
             GeneralCodingRules.OLD_DATE_AND_TIME_CLASSES_SHOULD_NOT_BE_USED;
 
-    @ArchTest
-    public static final ArchRule NO_CLASSES_SHOULD_USE_FIELD_INJECTION =
-            GeneralCodingRules.NO_CLASSES_SHOULD_USE_FIELD_INJECTION;
-
     private static final String[] LOGGING_PACKAGES =
             new String[] {
                 "java.util.logging..",

@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Path;
 import wstool.Distribution.Archive;
 import wstool.Distribution.Folder;
@@ -7,7 +9,9 @@ import wstool.Distribution.GitRepository;
 import wstool.Distribution.PackageSource;
 import wstool.simple.model.PackageMajorVersion;
 
+@Singleton
 public class PackageMapper {
+    @Inject
     public PackageMapper() {}
 
     public LocalPackage toLocalPackage(PackageSource source, Path workspace) {

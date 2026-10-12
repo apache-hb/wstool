@@ -53,8 +53,8 @@ public class WorkspaceStorage implements AutoCloseable {
 
     private static final String ADD_PACKAGE =
             """
-            INSERT INTO packages (name, version, source, cloned)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO packages (name, version, source, build_tool, cloned)
+            VALUES (?, ?, ?, '', ?)
             ON CONFLICT (name, version) DO UPDATE SET
                 source = excluded.source,
                 cloned = excluded.cloned
@@ -226,7 +226,8 @@ public class WorkspaceStorage implements AutoCloseable {
                             new PackageMajorVersion(
                                     result.getString("name"), result.getString("version"));
                     packages.add(
-                            new LocalPackage(pmv, workspace, Path.of(result.getString("source")), ""));
+                            new LocalPackage(
+                                    pmv, workspace, Path.of(result.getString("source")), ""));
                 }
                 return packages;
             }

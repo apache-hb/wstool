@@ -1,14 +1,18 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import wstool.Distribution;
 import wstool.Distribution.PackageSource;
 
+@Singleton
 public class DistributionHelper {
     private final PklHelper pkl;
 
+    @Inject
     public DistributionHelper(PklHelper pkl) {
         this.pkl = pkl;
     }

@@ -1,22 +1,16 @@
 package wstool.cli.commands.workspace;
 
-import java.nio.file.Path;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
-import wstool.cli.commands.CommandHelpers;
 import wstool.cli.commands.CommonCommand;
 import wstool.simple.GitHelper;
-import wstool.simple.PackageFactory;
-import wstool.simple.PklHelper;
-import wstool.simple.StorageHelper;
 import wstool.simple.Workspace;
 import wstool.simple.WorkspaceFactory;
 import wstool.simple.WorkspaceHelper;
-import wstool.simple.distribution.DistributionFactory;
 import wstool.simple.workspace.AddPackageToWorkspaceInput;
 import wstool.simple.workspace.ImmutableAddPackageToWorkspaceInput;
 
@@ -49,33 +43,37 @@ public class AddPackageCommand extends CommonCommand {
             defaultValue = "true")
     boolean interactive;
 
+    private final GitHelper git;
+    private final WorkspaceHelper workspaceHelper;
+    private final WorkspaceFactory workspaceFactory;
+
+    @Inject
+    public AddPackageCommand(
+            GitHelper git, WorkspaceHelper workspaceHelper, WorkspaceFactory workspaceFactory) {
+        this.git = git;
+        this.workspaceHelper = workspaceHelper;
+        this.workspaceFactory = workspaceFactory;
+    }
+
     @Override
     public Integer call() {
-        try (PklHelper pkl = new PklHelper(null)) {
-            GitHelper git = new GitHelper(interactive);
-            StorageHelper storage = new StorageHelper();
-            WorkspaceHelper workspaceHelper = CommandHelpers.workspace(git, storage, pkl);
-            DistributionFactory distributionFactory = new DistributionFactory(pkl);
-            PackageFactory packageFactory = new PackageFactory(pkl);
-            WorkspaceFactory workspaceFactory = new WorkspaceFactory(pkl, distributionFactory, packageFactory);
+        git.setInteractive(interactive);
+        try (Workspace workspace = workspaceFactory.findUp(cwd)) {
+            workspace.refresh();
 
-            try (Workspace workspace = workspaceFactory.findUp(cwd)) {
-                workspace.refresh();
+            for (String packageName : packageNames) {
+                AddPackageToWorkspaceInput input =
+                        ImmutableAddPackageToWorkspaceInput.builder()
+                                .workspace(workspace.path())
+                                .name(packageName)
+                                .version(packageVersion)
+                                .build();
 
-                for (String packageName : packageNames) {
-                    AddPackageToWorkspaceInput input =
-                            ImmutableAddPackageToWorkspaceInput.builder()
-                                    .workspace(workspace.path())
-                                    .name(packageName)
-                                    .version(packageVersion)
-                                    .build();
-
-                    workspaceHelper.addPackageToWorkspace(input);
-                }
+                workspaceHelper.addPackageToWorkspace(input);
             }
-            return 0;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        return 0;
     }
 }

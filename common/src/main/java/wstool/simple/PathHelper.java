@@ -1,5 +1,7 @@
 package wstool.simple;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -9,7 +11,9 @@ import java.util.stream.Collectors;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.DependencyType;
 
+@Singleton
 public class PathHelper {
+    @Inject
     public PathHelper() {}
 
     public String buildClosurePath(Workspace workspace, PackageMajorVersion target)
