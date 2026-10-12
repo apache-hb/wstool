@@ -27,7 +27,10 @@ public class PathHelper {
         }
 
         if (paths.isEmpty()) {
-            throw new IllegalStateException("Package " + target + " must have at least one build dependency or local tools directory");
+            throw new IllegalStateException(
+                    "Package "
+                            + target
+                            + " must have at least one build dependency or local tools directory");
         }
 
         return paths.stream()

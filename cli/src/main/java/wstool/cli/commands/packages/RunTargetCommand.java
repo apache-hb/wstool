@@ -1,11 +1,9 @@
 package wstool.cli.commands.packages;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
@@ -14,12 +12,13 @@ import wstool.cli.VersionProvider;
 import wstool.simple.BuildToolHelper;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
-import wstool.simple.LocalPackage;
 import wstool.simple.PackageHelper;
 import wstool.simple.PathHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
+import wstool.simple.Workspace;
 import wstool.simple.WorkspaceHelper;
+import wstool.simple.tool.ImmutableRunBuildToolInput;
 import wstool.simple.model.PackageMajorVersion;
 
 @Command(
@@ -41,7 +40,6 @@ public class RunTargetCommand implements Callable<Integer> {
         Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(null)) {
             PathHelper pathHelper = new PathHelper();
-            BuildToolHelper buildToolHelper = new BuildToolHelper(pathHelper);
             WorkspaceHelper workspace =
                     new WorkspaceHelper(
                             new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));
@@ -50,34 +48,29 @@ public class RunTargetCommand implements Callable<Integer> {
             String name = config.getPackage().getName();
             PackageMajorVersion version =
                     new PackageMajorVersion(name, config.getPackage().getVersion());
+            BuildToolHelper buildToolHelper = new BuildToolHelper(pathHelper, workspace);
 
-            LocalPackage localPackage =
+            boolean isWorkspacePackage =
                     workspace.sourcePackages(workspaceRoot).stream()
-                            .filter(pkg -> pkg.version().equals(version))
-                            .findFirst()
-                            .orElseThrow(
-                                    () ->
-                                            new IllegalArgumentException(
-                                                    "Package is not in the workspace: " + version));
-            Path prefix = localPackage.prefix();
+                            .anyMatch(pkg -> pkg.version().equals(version));
+            if (!isWorkspacePackage) {
+                throw new IllegalArgumentException("Package is not in the workspace: " + version);
+            }
+
             Path privateDirectory = workspace.workspaceBuildFolder(workspaceRoot, name);
             Files.createDirectories(privateDirectory);
-            String tool = config.getBuildOptions().getTool();
 
             List<String> command = new ArrayList<>();
-            command.add(tool);
+            command.add(config.getBuildOptions().getTool());
             command.addAll(args);
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.directory(source.toFile());
-            processBuilder.inheritIO();
-            Map<String, String> environment = processBuilder.environment();
-            environment.put("WST_SRCDIR", source.toString());
-            environment.put("WST_PRIVATE", privateDirectory.toString());
-            environment.put("WST_PREFIX", prefix.toString());
-
-            String path = environment.getOrDefault("PATH", "");
-            environment.put("PATH", prefix.resolve("bin") + File.pathSeparator + path);
-            return processBuilder.start().waitFor();
+            try (Workspace buildWorkspace = new Workspace(workspaceRoot)) {
+                return buildToolHelper.run(
+                        ImmutableRunBuildToolInput.builder()
+                                .workspace(buildWorkspace)
+                                .name(version)
+                                .arguments(command)
+                                .build());
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package wstool.simple;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,7 +67,8 @@ class PathHelperTest {
         }
 
         try (var workspace = new Workspace(tempDir)) {
-            assertEquals("", helper.buildClosurePath(workspace, app));
+            assertThrows(
+                    IllegalStateException.class, () -> helper.buildClosurePath(workspace, app));
         }
     }
 

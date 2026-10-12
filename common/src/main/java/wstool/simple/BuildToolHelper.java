@@ -1,5 +1,6 @@
 package wstool.simple;
 
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
 
@@ -8,9 +9,11 @@ import wstool.simple.tool.RunBuildToolInput;
 
 public class BuildToolHelper {
     private final PathHelper pathHelper;
+    private final WorkspaceHelper workspaceHelper;
 
-    public BuildToolHelper(PathHelper pathHelper) {
+    public BuildToolHelper(PathHelper pathHelper, WorkspaceHelper workspaceHelper) {
         this.pathHelper = pathHelper;
+        this.workspaceHelper = workspaceHelper;
     }
 
     public int run(RunBuildToolInput input) throws Exception {
@@ -20,14 +23,18 @@ public class BuildToolHelper {
 
         ProcessBuilder pb = new ProcessBuilder(input.arguments());
         pb.directory(target.source().toFile());
+        pb.inheritIO();
 
-        configureWstEnvironment(pb.environment(), input.workspace(), target);
+        Path builddir = workspaceHelper.workspaceBuildFolder(workspace.path(), input.name().name());
+
+        configureWstEnvironment(pb.environment(), builddir, target);
         configureBuildToolPath(pb.environment(), input.workspace(), input.name());
 
         return pb.start().waitFor();
     }
 
-    private void configureWstEnvironment(Map<String, String> env, Workspace workspace, LocalPackage target) throws Exception {
+    private void configureWstEnvironment(Map<String, String> env, Path builddir, LocalPackage target) {
+        env.put("WST_PRIVATE", builddir.toAbsolutePath().toString());
         env.put("WST_SRCDIR", target.source().toAbsolutePath().toString());
         env.put("WST_PREFIX", target.prefix().toAbsolutePath().toString());
     }
