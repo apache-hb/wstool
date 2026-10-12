@@ -3,15 +3,6 @@ import java.util.HexFormat
 
 plugins { `java-gradle-plugin` }
 
-group = rootProject.group
-
-version = rootProject.version
-
-java {
-  sourceCompatibility = JavaVersion.VERSION_25
-  targetCompatibility = JavaVersion.VERSION_25
-}
-
 gradlePlugin {
   plugins {
     create("wstoolRepositories") {
@@ -24,6 +15,7 @@ gradlePlugin {
 }
 
 dependencies {
+  testImplementation(project(":wstool-test-components"))
   testImplementation(gradleTestKit())
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")

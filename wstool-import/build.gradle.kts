@@ -6,16 +6,8 @@ plugins {
   `java-test-fixtures`
 }
 
-group = rootProject.group
-
-version = rootProject.version
-
-java {
-  sourceCompatibility = JavaVersion.VERSION_25
-  targetCompatibility = JavaVersion.VERSION_25
-}
-
 dependencies {
+  testImplementation(project(":wstool-test-components"))
   implementation(platform(project(":")))
   implementation("info.picocli:picocli:4.7.6")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.19.2")

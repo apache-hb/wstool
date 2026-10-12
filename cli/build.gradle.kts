@@ -3,16 +3,8 @@ import java.nio.file.StandardCopyOption
 
 plugins { application }
 
-group = rootProject.group
-
-version = rootProject.version
-
-java {
-  sourceCompatibility = JavaVersion.VERSION_25
-  targetCompatibility = JavaVersion.VERSION_25
-}
-
 dependencies {
+  testImplementation(project(":wstool-test-components"))
   implementation(platform(project(":")))
   implementation(project(":common"))
   implementation("info.picocli:picocli:4.7.6")

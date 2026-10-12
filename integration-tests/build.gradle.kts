@@ -1,15 +1,7 @@
 plugins { java }
 
-group = rootProject.group
-
-version = rootProject.version
-
-java {
-  sourceCompatibility = JavaVersion.VERSION_25
-  targetCompatibility = JavaVersion.VERSION_25
-}
-
 dependencies {
+  testImplementation(project(":wstool-test-components"))
   testImplementation(platform(project(":")))
   testImplementation(project(":cli"))
   testImplementation(project(":common"))

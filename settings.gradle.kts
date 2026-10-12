@@ -17,6 +17,8 @@ include(
   ":common",
   ":config",
   ":wstool-import",
+  ":wstool-git",
   ":wstool-gradle-plugin",
+  ":wstool-test-components",
   ":integration-tests",
 )

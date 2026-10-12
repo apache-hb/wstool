@@ -4,57 +4,44 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
-import dev.parsick.testcontainers.gitserver.gitea.GiteaVersions;
-import io.gitea.ApiClient;
-import io.gitea.api.RepositoryApi;
-import io.gitea.model.CreateRepoOption;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import wstool.simple.git.ImmutableGitCloneInput;
 import wstool.simple.git.ImmutableGitRepositoryLocation;
 import wstool.simple.git.ImmutableGitRunInput;
+import wstool.test.components.PackageGitManager;
 
 @Testcontainers(disabledWithoutDocker = true)
 public class GitHelperTest {
     @Container
-    private static final GiteaContainer gitServer =
-            new GiteaContainer(GiteaVersions.V1_25_4.getDockerImageName())
-                    .withStartupTimeout(Duration.ofMinutes(2));
+    private static final GiteaContainer gitea = PackageGitManager.container();
 
-    @TempDir Path tempDir;
+    @TempDir
+    Path tmp;
 
-    private RepositoryApi giteaApi;
+    private PackageGitManager gitManager;
 
     @BeforeEach
     void beforeEach() {
-        ApiClient apiClient =
-                new ApiClient()
-                        .setBasePath(
-                                "http://"
-                                        + gitServer.getHost()
-                                        + ":"
-                                        + gitServer.getMappedPort(3000)
-                                        + "/api/v1");
-        apiClient.setUsername(gitServer.getUserName());
-        apiClient.setPassword(gitServer.getUserPassword());
-        giteaApi = new RepositoryApi(apiClient);
+        gitManager = new PackageGitManager(tmp, gitea);
     }
 
     @Test
     void clonesRemoteRepositoryAtRequestedBranch() throws Exception {
         uploadRepository("package");
-        URI repository = gitRepoUri("package");
-        Path parent = tempDir.resolve("clones");
+        URI repository = gitManager.repositoryUri("package");
+        Path parent = tmp.resolve("clones");
 
         new GitHelper(false)
                 .clone(
@@ -65,8 +52,8 @@ public class GitHelperTest {
                                         ImmutableGitRepositoryLocation.builder()
                                                 .repository(repository)
                                                 .branch("main")
-                                                .username(gitServer.getUserName())
-                                                .password(gitServer.getUserPassword())
+                                                .username(gitea.getUserName())
+                                                .password(gitea.getUserPassword())
                                                 .build())
                                 .build());
 
@@ -97,23 +84,18 @@ public class GitHelperTest {
                         new GitHelper(false)
                                 .run(
                                         ImmutableGitRunInput.builder()
-                                                .directory(tempDir)
+                                                .directory(tmp)
                                                 .arguments(List.of("git", "not-a-real-command"))
                                                 .interactive(false)
                                                 .build()));
     }
 
-    private URI createRepository(String name) throws Exception {
-        giteaApi.createCurrentUserRepo(new CreateRepoOption().name(name)._private(false));
-        return gitRepoUri(name);
-    }
-
     private Path uploadRepository(String name) throws Exception {
-        URI repository = createRepository(name);
-        Path uploadDirectory = tempDir.resolve("uploads").resolve(name);
+        URI repository = gitManager.setup(name);
+        Path uploadDirectory = tmp.resolve("uploads").resolve(name);
         Files.createDirectories(uploadDirectory);
         runGit(uploadDirectory, "init", "--initial-branch=main");
-        runGit(uploadDirectory, "config", "user.name", gitServer.getUserName());
+        runGit(uploadDirectory, "config", "user.name", gitea.getUserName());
         runGit(uploadDirectory, "config", "user.email", "git-helper@example.test");
         copyResource("git-helper/repository/README.md", uploadDirectory.resolve("README.md"));
         runGit(uploadDirectory, "add", "--all");
@@ -142,17 +124,8 @@ public class GitHelperTest {
                                 .directory(directory)
                                 .arguments(command)
                                 .interactive(false)
-                                .username(gitServer.getUserName())
-                                .password(gitServer.getUserPassword())
+                                .username(gitea.getUserName())
+                                .password(gitea.getUserPassword())
                                 .build());
-    }
-
-    private String gitHost() {
-        return gitServer.getHost() + ":" + gitServer.getMappedPort(3000);
-    }
-
-    private URI gitRepoUri(String repository) {
-        return URI.create(
-                "http://" + gitHost() + "/" + gitServer.getUserName() + "/" + repository + ".git");
     }
 }

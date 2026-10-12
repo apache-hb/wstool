@@ -6,16 +6,8 @@ plugins {
   eclipse
 }
 
-group = rootProject.group
-
-version = rootProject.version
-
-java {
-  sourceCompatibility = JavaVersion.VERSION_25
-  targetCompatibility = JavaVersion.VERSION_25
-}
-
 dependencies {
+  testImplementation(project(":wstool-test-components"))
   implementation(platform(project(":")))
   api(project(":config"))
   api("org.jspecify:jspecify:1.0.0")

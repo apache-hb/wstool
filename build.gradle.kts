@@ -1,4 +1,5 @@
 import java.nio.file.Files
+import org.gradle.api.plugins.JavaPluginExtension
 
 plugins {
   id("java-platform")
@@ -8,6 +9,18 @@ plugins {
 group = "com.apachehb.wstool"
 
 version = providers.gradleProperty("releaseVersion").orElse("0.1.0").get()
+
+subprojects {
+  group = rootProject.group
+  version = rootProject.version
+
+  plugins.withId("java") {
+    extensions.configure<JavaPluginExtension> {
+      sourceCompatibility = JavaVersion.VERSION_25
+      targetCompatibility = JavaVersion.VERSION_25
+    }
+  }
+}
 
 javaPlatform { allowDependencies() }
 
