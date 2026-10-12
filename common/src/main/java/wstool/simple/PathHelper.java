@@ -26,6 +26,10 @@ public class PathHelper {
             paths.add(pkg.prefix().resolve("bin"));
         }
 
+        if (paths.isEmpty()) {
+            throw new IllegalStateException("Package " + target + " must have at least one build dependency or local tools directory");
+        }
+
         return paths.stream()
             .map(Path::toAbsolutePath)
             .map(Path::toString)

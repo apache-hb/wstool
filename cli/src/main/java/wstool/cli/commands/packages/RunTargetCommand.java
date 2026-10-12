@@ -11,10 +11,12 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
 import wstool.Package;
 import wstool.cli.VersionProvider;
+import wstool.simple.BuildToolHelper;
 import wstool.simple.DistributionHelper;
 import wstool.simple.GitHelper;
 import wstool.simple.LocalPackage;
 import wstool.simple.PackageHelper;
+import wstool.simple.PathHelper;
 import wstool.simple.PklHelper;
 import wstool.simple.StorageHelper;
 import wstool.simple.WorkspaceHelper;
@@ -38,6 +40,8 @@ public class RunTargetCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         Path source = Path.of("").toAbsolutePath().normalize();
         try (PklHelper pkl = new PklHelper(null)) {
+            PathHelper pathHelper = new PathHelper();
+            BuildToolHelper buildToolHelper = new BuildToolHelper(pathHelper);
             WorkspaceHelper workspace =
                     new WorkspaceHelper(
                             new GitHelper(false), new StorageHelper(), new DistributionHelper(pkl));

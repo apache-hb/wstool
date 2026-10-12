@@ -10,8 +10,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.pkl.config.java.JavaType;
@@ -24,21 +22,6 @@ import wstool.simple.PklHelper;
 
 class MavenDependencyResolverTest {
     @TempDir Path tempDir;
-    private String originalUserHome;
-
-    @BeforeEach
-    void useLocallyGeneratedPklPackage() throws Exception {
-        originalUserHome = System.getProperty("user.home");
-        Path userHome = tempDir.resolve("pkl-user-home");
-        PklPackageCache.install(userHome);
-        System.setProperty("user.home", userHome.toString());
-    }
-
-    @AfterEach
-    void restoreUserHome() {
-        System.setProperty("user.home", originalUserHome);
-    }
-
     private static final MavenCoordinate ROOT =
             new MavenCoordinate("org.hamcrest", "hamcrest-library", "1.3");
 

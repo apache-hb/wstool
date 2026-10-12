@@ -11,8 +11,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.pkl.config.java.JavaType;
@@ -20,26 +18,10 @@ import picocli.CommandLine;
 import wstool.Distribution.PackageSource;
 import wstool.Package;
 import wstool.importer.Main;
-import wstool.importer.PklPackageCache;
 import wstool.simple.PklHelper;
 
 class NpmPackageImporterTest {
     @TempDir Path tempDir;
-    private String originalUserHome;
-
-    @BeforeEach
-    void useLocallyGeneratedPklPackage() throws Exception {
-        originalUserHome = System.getProperty("user.home");
-        Path userHome = tempDir.resolve("pkl-user-home");
-        PklPackageCache.install(userHome);
-        System.setProperty("user.home", userHome.toString());
-    }
-
-    @AfterEach
-    void restoreUserHome() {
-        System.setProperty("user.home", originalUserHome);
-    }
-
     @Test
     void importsAwsMdaaSftpServerAsMajorVersionPackagesForInspection() throws Exception {
         Path output =

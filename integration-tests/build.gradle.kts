@@ -11,6 +11,8 @@ dependencies {
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:testcontainers-junit-jupiter")
   testImplementation("software.amazon.awssdk:s3")
+  testImplementation("io.github.le-shi:java-gitea-api:1.27.3")
+  testImplementation("dev.parsick.testcontainers.gitserver:testcontainers-gitea:0.16.0")
   testImplementation("org.pkl-lang:pkl-config-java:0.32.1")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 }

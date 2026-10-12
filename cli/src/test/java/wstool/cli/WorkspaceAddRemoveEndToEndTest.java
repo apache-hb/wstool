@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -14,11 +15,28 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
+import wstool.test.components.PackageGitManager;
 
+@Testcontainers(disabledWithoutDocker = true)
 class WorkspaceAddRemoveEndToEndTest {
+    @Container
+    private static final GiteaContainer gitea = PackageGitManager.container();
+
     @TempDir Path tempDir;
+    private PackageGitManager gitManager;
+    private URI packageRepository;
+
+    @BeforeEach
+    void createGitManager() {
+        gitManager = new PackageGitManager(tempDir, gitea);
+    }
 
     @Test
     void cliAddsPackageFromLocallyUpdatedDistributionAndRemovesIt() throws Exception {
@@ -58,11 +76,11 @@ class WorkspaceAddRemoveEndToEndTest {
             throws Exception {
         Path packageRepository = tempDir.resolve("sample-repository");
         copyTree(resourcePath("workspace-add-remove/packages/sample"), packageRepository);
-        initializeRepository(packageRepository);
+        this.packageRepository = uploadRepository("sample-package", packageRepository);
 
         Path distributionRepository = tempDir.resolve("distribution-repository");
         copyTree(resourcePath("workspace-add-remove/distribution/initial"), distributionRepository);
-        initializeRepository(distributionRepository);
+        URI distributionUri = uploadRepository("distribution", distributionRepository);
 
         Path workspaces = tempDir.resolve("workspaces");
         Files.createDirectories(workspaces);
@@ -76,7 +94,7 @@ class WorkspaceAddRemoveEndToEndTest {
                 "--distro",
                 "workspace-add-remove-test",
                 "--from",
-                distributionRepository.toUri().toString(),
+                distributionUri.toString(),
                 "--branch",
                 "master");
 
@@ -113,12 +131,11 @@ class WorkspaceAddRemoveEndToEndTest {
         }
     }
 
-    private void initializeRepository(Path repository) throws Exception {
-        run(repository, "git", "init", "--initial-branch=master");
-        run(repository, "git", "config", "user.name", "wstool test");
-        run(repository, "git", "config", "user.email", "wstool-test@example.invalid");
-        run(repository, "git", "add", ".");
-        run(repository, "git", "commit", "--message", "Add workspace test fixture");
+    private URI uploadRepository(String name, Path directory) throws Exception {
+        String repositoryName = name + "-" + UUID.randomUUID().toString().replace("-", "");
+        URI repository = gitManager.create(repositoryName);
+        gitManager.uploadFiles(repositoryName, directory);
+        return repository;
     }
 
     private void copyTree(Path source, Path destination) throws IOException {
@@ -154,17 +171,11 @@ class WorkspaceAddRemoveEndToEndTest {
                 new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true);
         processBuilder
                 .environment()
-                .put("PACKAGE_REPOSITORY", tempDir.resolve("sample-repository").toUri().toString());
+                .put("PACKAGE_REPOSITORY", packageRepository.toString());
         Process process = processBuilder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int exit = process.waitFor();
         assertEquals(0, exit, "CLI failed: " + String.join(" ", arguments) + "\n" + output);
     }
 
-    private void run(Path directory, String... arguments) throws Exception {
-        Process process = new ProcessBuilder(arguments).directory(directory.toFile()).start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int exit = process.waitFor();
-        assertEquals(0, exit, "Command failed: " + String.join(" ", arguments) + "\n" + output);
-    }
 }

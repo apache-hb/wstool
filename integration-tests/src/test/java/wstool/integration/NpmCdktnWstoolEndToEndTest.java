@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,8 +25,10 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.test.components.StorageServerManager;
+import wstool.test.components.PackageGitManager;
 import wstool.npm.importer.CachedNpmProxy;
 
 /** Exercises npm import and CDKTN synthesis through the published command-line interfaces. */
@@ -35,44 +38,31 @@ class NpmCdktnWstoolEndToEndTest {
     private static final String ARTIFACT_DIRECTORY = "build/integration-cdktn-s3-e2e";
 
     @Container
-    private static final GenericContainer<?> storageContainer = StorageServerManager.container();
-    private static final StorageServerManager storageServer =
-            new StorageServerManager(storageContainer);
+    private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+    private static final StorageServerManager STORAGE =
+            new StorageServerManager(GARAGE);
     private static S3Client storageClient;
 
+    @Container
+    private static final GiteaContainer GITEA = PackageGitManager.container();
+
     private Path artifacts;
-    private String originalUserHome;
+    private PackageGitManager gitManager;
+    private URI currentProjectRepository;
 
     @BeforeEach
-    void prepareInspectableArtifactsAndPklCache() throws Exception {
-        originalUserHome = System.getProperty("user.home");
+    void prepareInspectableArtifacts() throws Exception {
         artifacts = Path.of(ARTIFACT_DIRECTORY).toAbsolutePath();
+        gitManager = new PackageGitManager(artifacts, GITEA);
         resetDirectory(artifacts);
         Files.createDirectories(artifacts);
 
-        Path pklHome = artifacts.resolve("pkl-home");
-        Path packageCache =
-                pklHome.resolve(".pkl/cache/package-2/pkl.konna.cloud/pkl/wstool@1.0.2");
-        Files.createDirectories(packageCache);
-        Path generatedPackage = Path.of("../config/build/generated/pkl/packages");
-        Files.copy(
-                generatedPackage.resolve("wstool@1.0.2"),
-                packageCache.resolve("wstool@1.0.2.json"));
-        Files.copy(
-                generatedPackage.resolve("wstool@1.0.2.zip"),
-                packageCache.resolve("wstool@1.0.2.zip"));
-        System.setProperty("user.home", pklHome.toString());
-    }
-
-    @AfterEach
-    void restoreUserHome() {
-        System.setProperty("user.home", originalUserHome);
     }
 
     @BeforeAll
     static void initializeStorageServer() throws Exception {
-        storageServer.setup();
-        storageClient = storageServer.createBucket("wstool-npm-integration");
+        STORAGE.setup();
+        storageClient = STORAGE.createBucket("wstool-npm-integration");
     }
 
     @AfterAll
@@ -97,7 +87,7 @@ class NpmCdktnWstoolEndToEndTest {
             Files.copy(
                     imported.resolve("npm-dependencies.pkl"),
                     appRepository.resolve("npm-dependencies.pkl"));
-            initializeGitRepository(appRepository);
+            currentProjectRepository = uploadRepository("cdktn-project", appRepository);
 
             Path distribution = artifacts.resolve("distribution");
             Files.createDirectories(distribution);
@@ -105,7 +95,7 @@ class NpmCdktnWstoolEndToEndTest {
             Files.copy(
                     resourcePath("npm-cdktn/distribution/distribution.pkl"),
                     distribution.resolve("distribution.pkl"));
-            initializeGitRepository(distribution);
+            URI distributionRepository = uploadRepository("cdktn-distribution", distribution);
 
             runWstool(artifacts, "workspace", "create", "--name", "cdktn-s3");
             Path workspace = artifacts.resolve("cdktn-s3");
@@ -116,7 +106,7 @@ class NpmCdktnWstoolEndToEndTest {
                     "--distro",
                     "cdktn-s3-integration",
                     "--from",
-                    distribution.toString(),
+                    distributionRepository.toString(),
                     "--branch",
                     "master");
 
@@ -183,11 +173,7 @@ class NpmCdktnWstoolEndToEndTest {
                 artifacts,
                 command,
                 "npm importer failed",
-                Map.of(
-                        "HOME",
-                        artifacts.resolve("pkl-home").toString(),
-                        "JAVA_TOOL_OPTIONS",
-                        "-Duser.home=" + artifacts.resolve("pkl-home")));
+                Map.of());
     }
 
     private void runWstool(Path directory, String... arguments) throws Exception {
@@ -196,10 +182,6 @@ class NpmCdktnWstoolEndToEndTest {
         command.addAll(List.of(arguments));
         Map<String, String> environment =
                 Map.ofEntries(
-                        Map.entry("HOME", artifacts.resolve("pkl-home").toString()),
-                        Map.entry(
-                                "JAVA_TOOL_OPTIONS",
-                                "-Duser.home=" + artifacts.resolve("pkl-home")),
                         Map.entry("AWS_ACCESS_KEY_ID", storageCredentials().accessKeyId()),
                         Map.entry("AWS_SECRET_ACCESS_KEY", storageCredentials().secretAccessKey()),
                         Map.entry("AWS_REGION", "us-east-1"),
@@ -233,7 +215,7 @@ class NpmCdktnWstoolEndToEndTest {
                                 sha256(archivePath("WSTOOL_NPM_IMPORT_PACKAGE"))),
                         Map.entry(
                                 "WSTOOL_NPM_PROJECT_REPO",
-                                artifacts.resolve("project").toUri().toString()));
+                                currentProjectRepository.toString()));
         runCommand(directory, command, "wstool failed", environment);
     }
 
@@ -254,28 +236,11 @@ class NpmCdktnWstoolEndToEndTest {
                 failureMessage + ": " + String.join(" ", command) + "\n" + output);
     }
 
-    private void initializeGitRepository(Path repository) throws Exception {
-        runCommand(
-                repository,
-                List.of("git", "init", "--initial-branch=master"),
-                "git init failed",
-                Map.of());
-        runCommand(
-                repository,
-                List.of("git", "config", "user.name", "wstool integration test"),
-                "git config failed",
-                Map.of());
-        runCommand(
-                repository,
-                List.of("git", "config", "user.email", "wstool-test@example.invalid"),
-                "git config failed",
-                Map.of());
-        runCommand(repository, List.of("git", "add", "."), "git add failed", Map.of());
-        runCommand(
-                repository,
-                List.of("git", "commit", "--message", "CDKTN npm integration fixture"),
-                "git commit failed",
-                Map.of());
+    private URI uploadRepository(String name, Path directory) throws Exception {
+        String repositoryName = name + "-" + UUID.randomUUID().toString().replace("-", "");
+        URI repository = gitManager.create(repositoryName);
+        gitManager.uploadFiles(repositoryName, directory);
+        return repository;
     }
 
     private List<ImportedPackage> importedNpmPackages(Path packagesRoot) throws IOException {
@@ -358,7 +323,7 @@ class NpmCdktnWstoolEndToEndTest {
     }
 
     private static String s3Endpoint() {
-        return storageServer.endpoint().toString();
+        return STORAGE.endpoint().toString();
     }
 
     private static software.amazon.awssdk.identity.spi.AwsCredentialsIdentity storageCredentials() {

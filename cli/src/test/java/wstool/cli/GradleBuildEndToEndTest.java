@@ -13,12 +13,14 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import javax.tools.ToolProvider;
 
 import org.junit.jupiter.api.AutoClose;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,7 +29,9 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
+import wstool.test.components.PackageGitManager;
 import wstool.test.components.StorageServerManager;
 
 /** Builds a real Gradle package using only wstool CLI workspace and build commands. */
@@ -40,12 +44,23 @@ class GradleBuildEndToEndTest {
     private static final GenericContainer<?> GARAGE = StorageServerManager.container();
     private static final StorageServerManager STORAGE = new StorageServerManager(GARAGE);
 
+    @Container
+    private static final GiteaContainer GITEA = PackageGitManager.container();
+
     @AutoClose
     private static S3Client s3;
 
     @TempDir Path tempDir;
     private Path artifactRepository;
     private Path projectRepository;
+    private URI artifactRepositoryUri;
+    private URI projectRepositoryUri;
+    private PackageGitManager gitManager;
+
+    @BeforeEach
+    void createGitManager() {
+        gitManager = new PackageGitManager(tempDir, GITEA);
+    }
 
     @BeforeAll
     static void initializeStorageServer() throws Exception {
@@ -60,7 +75,7 @@ class GradleBuildEndToEndTest {
                 .withFileFromPath("Dockerfile", imageDockerfile)
                 .get();
 
-        Path distributionRepository = createDistributionRepository();
+        URI distributionRepository = createDistributionRepository();
         Path workspaces = tempDir.resolve("workspaces");
         Files.createDirectories(workspaces);
         runCli(workspaces, "workspace", "create", "--name", "gradle-project");
@@ -110,7 +125,7 @@ class GradleBuildEndToEndTest {
                 "Gradle did not rebuild using the restored prebuilt artifact");
     }
 
-    private Path createDistributionRepository() throws Exception {
+    private URI createDistributionRepository() throws Exception {
         Path packageRepositories = tempDir.resolve("package-repositories");
         artifactRepository = packageRepositories.resolve("local-artifact");
         projectRepository = packageRepositories.resolve("gradle-smoke");
@@ -120,15 +135,14 @@ class GradleBuildEndToEndTest {
         copyTree(resourcePath("gradle-e2e/packages/gradle-smoke"), projectPackage);
         writeMavenArtifact(artifactPackage);
 
-        initializeGitRepository(artifactPackage);
-        initializeGitRepository(projectPackage);
+        artifactRepositoryUri = uploadRepository("local-artifact", artifactPackage);
+        projectRepositoryUri = uploadRepository("gradle-smoke", projectPackage);
         Path localRepository = tempDir.resolve("distribution");
         Files.createDirectories(localRepository);
         Files.copy(
                 resourcePath("gradle-e2e/distribution/distribution.pkl"),
                 localRepository.resolve("distribution.pkl"));
-        initializeGitRepository(localRepository);
-        return localRepository;
+        return uploadRepository("gradle-e2e-distribution", localRepository);
     }
 
     private void writeMavenArtifact(Path artifactPackage) throws Exception {
@@ -158,12 +172,11 @@ class GradleBuildEndToEndTest {
         }
     }
 
-    private void initializeGitRepository(Path repository) throws Exception {
-        run(repository, "git", "init", "--initial-branch=master");
-        run(repository, "git", "config", "user.name", "wstool test");
-        run(repository, "git", "config", "user.email", "wstool-test@example.invalid");
-        run(repository, "git", "add", ".");
-        run(repository, "git", "commit", "--message", "Gradle CLI test distribution");
+    private URI uploadRepository(String name, Path directory) throws Exception {
+        String repositoryName = name + "-" + UUID.randomUUID().toString().replace("-", "");
+        URI repository = gitManager.create(repositoryName);
+        gitManager.uploadFiles(repositoryName, directory);
+        return repository;
     }
 
     private String sha256(Path path) throws Exception {
@@ -218,9 +231,9 @@ class GradleBuildEndToEndTest {
                         "WSTOOL_MAVEN_TOOL_PACKAGE_CHECKSUM",
                         packageChecksum("WSTOOL_MAVEN_TOOL_PACKAGE"));
         builder.environment()
-                .put("WSTOOL_GRADLE_E2E_ARTIFACT_REPO", artifactRepository.toUri().toString());
+                .put("WSTOOL_GRADLE_E2E_ARTIFACT_REPO", artifactRepositoryUri.toString());
         builder.environment()
-                .put("WSTOOL_GRADLE_E2E_PROJECT_REPO", projectRepository.toUri().toString());
+                .put("WSTOOL_GRADLE_E2E_PROJECT_REPO", projectRepositoryUri.toString());
         builder.environment()
                 .put(
                         "WSTOOL_CLI_CHECKSUM",
@@ -229,16 +242,6 @@ class GradleBuildEndToEndTest {
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertEquals(
                 0, process.waitFor(), "CLI failed: " + String.join(" ", arguments) + "\n" + output);
-    }
-
-    private void run(Path directory, String... command) throws Exception {
-        Process process =
-                new ProcessBuilder(command)
-                        .directory(directory.toFile())
-                        .redirectErrorStream(true)
-                        .start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(0, process.waitFor(), String.join(" ", command) + " failed:\n" + output);
     }
 
     private static String requiredEnv(String name) {

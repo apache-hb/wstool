@@ -18,8 +18,8 @@ import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +30,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.Distribution.PackageSource;
 import wstool.Package.ExternalFiles;
@@ -37,6 +38,7 @@ import wstool.importer.CachedMavenProxy;
 import wstool.npm.importer.CachedNpmProxy;
 import wstool.simple.PklHelper;
 import wstool.test.components.StorageServerManager;
+import wstool.test.components.PackageGitManager;
 
 /** Verifies imported Helidon artifacts and a REST application build offline through wstool. */
 @Testcontainers(disabledWithoutDocker = true)
@@ -49,6 +51,9 @@ class HelidonWstoolEndToEndTest {
 
     @Container
     private static final GenericContainer<?> GARAGE = StorageServerManager.container();
+
+    @Container
+    private static final GiteaContainer GITEA = PackageGitManager.container();
     private static final StorageServerManager STORAGE =
             new StorageServerManager(GARAGE);
 
@@ -59,29 +64,12 @@ class HelidonWstoolEndToEndTest {
     private static S3Client npmStorageClient;
 
     @TempDir Path tempDir;
-    private String originalUserHome;
     private S3Client activeStorageClient;
+    private PackageGitManager gitManager;
 
     @BeforeEach
-    void useLocallyGeneratedPklPackage() throws Exception {
-        originalUserHome = System.getProperty("user.home");
-        pklHomeOverride = tempDir.resolve("pkl-home");
-        Path packageCache =
-                pklHomeOverride.resolve(".pkl/cache/package-2/pkl.konna.cloud/pkl/wstool@1.0.2");
-        Files.createDirectories(packageCache);
-        Path generatedPackage = Path.of("../config/build/generated/pkl/packages");
-        Files.copy(
-                generatedPackage.resolve("wstool@1.0.2"),
-                packageCache.resolve("wstool@1.0.2.json"));
-        Files.copy(
-                generatedPackage.resolve("wstool@1.0.2.zip"),
-                packageCache.resolve("wstool@1.0.2.zip"));
-        System.setProperty("user.home", pklHomeOverride.toString());
-    }
-
-    @AfterEach
-    void restoreUserHome() {
-        System.setProperty("user.home", originalUserHome);
+    void prepareGitManager() {
+        gitManager = new PackageGitManager(tempDir, GITEA);
     }
 
     @BeforeAll
@@ -142,8 +130,7 @@ class HelidonWstoolEndToEndTest {
 
         Path appRepository = tempDir.resolve("helidon-project");
         copyTree(resourcePath("helidon/project"), appRepository);
-        currentProjectRepository = appRepository;
-        initializeGitRepository(appRepository);
+        currentProjectRepository = uploadRepository("helidon-project", appRepository);
 
         Path distribution = tempDir.resolve("distribution");
         Files.createDirectories(distribution);
@@ -151,7 +138,7 @@ class HelidonWstoolEndToEndTest {
         Files.copy(
                 resourcePath("helidon/distribution/distribution.pkl"),
                 distribution.resolve("distribution.pkl"));
-        initializeGitRepository(distribution);
+        URI distributionRepository = uploadRepository("helidon-distribution", distribution);
 
         Path workspaces = tempDir.resolve("workspaces");
         Files.createDirectories(workspaces);
@@ -164,7 +151,7 @@ class HelidonWstoolEndToEndTest {
                 "--distro",
                 "helidon-offline-integration",
                 "--from",
-                distribution.toString(),
+                distributionRepository.toString(),
                 "--branch",
                 "master");
         List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
@@ -230,8 +217,7 @@ class HelidonWstoolEndToEndTest {
             Files.copy(
                     imported.resolve("npm-dependencies.pkl"),
                     appRepository.resolve("npm-dependencies.pkl"));
-            currentProjectRepository = appRepository;
-            initializeGitRepository(appRepository);
+            currentProjectRepository = uploadRepository("npm-project", appRepository);
 
             Path distribution = tempDir.resolve("npm-distribution");
             Files.createDirectories(distribution);
@@ -239,7 +225,7 @@ class HelidonWstoolEndToEndTest {
             Files.copy(
                     resourcePath("npm/distribution/distribution.pkl"),
                     distribution.resolve("distribution.pkl"));
-            initializeGitRepository(distribution);
+            URI distributionRepository = uploadRepository("npm-distribution", distribution);
 
             Path workspaces = tempDir.resolve("npm-workspaces");
             Files.createDirectories(workspaces);
@@ -252,7 +238,7 @@ class HelidonWstoolEndToEndTest {
                     "--distro",
                     "npm-offline-integration",
                     "--from",
-                    distribution.toString(),
+                    distributionRepository.toString(),
                     "--branch",
                     "master");
             List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
@@ -302,21 +288,20 @@ class HelidonWstoolEndToEndTest {
         copyTree(resourcePath("third-party/package"), packageRepository);
         assertTrue(
                 packageRepository.resolve("wstool/bin/local-build").toFile().setExecutable(true));
-        initializeGitRepository(packageRepository);
-        currentProjectRepository = packageRepository;
-        thirdPartyLocalRepository = packageRepository;
+        URI packageRepositoryUri = uploadRepository("third-party-package", packageRepository);
+        currentProjectRepository = packageRepositoryUri;
+        thirdPartyLocalRepository = packageRepositoryUri;
 
         Path upstreamRepository = tempDir.resolve("third-party-upstream");
         copyTree(resourcePath("third-party/upstream"), upstreamRepository);
-        initializeGitRepository(upstreamRepository);
-        thirdPartyUpstreamRepository = upstreamRepository;
+        thirdPartyUpstreamRepository = uploadRepository("third-party-upstream", upstreamRepository);
 
         Path distribution = tempDir.resolve("third-party-distribution");
         Files.createDirectories(distribution);
         Files.copy(
                 resourcePath("third-party/distribution/distribution.pkl"),
                 distribution.resolve("distribution.pkl"));
-        initializeGitRepository(distribution);
+        URI distributionRepository = uploadRepository("third-party-distribution", distribution);
 
         Path workspaces = tempDir.resolve("third-party-workspaces");
         Files.createDirectories(workspaces);
@@ -329,7 +314,7 @@ class HelidonWstoolEndToEndTest {
                 "--distro",
                 "third-party-integration",
                 "--from",
-                distribution.toUri().toString(),
+                distributionRepository.toString(),
                 "--branch",
                 "master");
         runCli(workspace, "workspace", "add", "--package", "third-party");
@@ -420,21 +405,17 @@ class HelidonWstoolEndToEndTest {
         builder.environment().put("AWS_REGION", "us-east-1");
         builder.environment().put("AWS_S3_ENDPOINT", s3Endpoint());
         builder.environment().put("WST_BUILD_IMAGE", BUILD_IMAGE);
-        if (pklHomeOverride != null) {
-            builder.environment().put("HOME", pklHomeOverride.toString());
-            builder.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + pklHomeOverride);
-        }
         if (thirdPartyLocalRepository != null) {
             builder.environment()
                     .put(
                             "WSTOOL_THIRD_PARTY_LOCAL_REPO",
-                            thirdPartyLocalRepository.toUri().toString());
+                            thirdPartyLocalRepository.toString());
         }
         if (thirdPartyUpstreamRepository != null) {
             builder.environment()
                     .put(
                             "WSTOOL_THIRD_PARTY_UPSTREAM_REPO",
-                            thirdPartyUpstreamRepository.toUri().toString());
+                            thirdPartyUpstreamRepository.toString());
         }
         if (dockerShimDirectory != null) {
             builder.environment()
@@ -471,9 +452,9 @@ class HelidonWstoolEndToEndTest {
                         "WSTOOL_MAVEN_TOOL_PACKAGE_CHECKSUM",
                         sha256(archivePath("WSTOOL_MAVEN_TOOL_PACKAGE")));
         builder.environment()
-                .put("WSTOOL_HELIDON_PROJECT_REPO", currentProjectRepository.toUri().toString());
+                .put("WSTOOL_HELIDON_PROJECT_REPO", currentProjectRepository.toString());
         builder.environment()
-                .put("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toUri().toString());
+                .put("WSTOOL_NPM_PROJECT_REPO", currentProjectRepository.toString());
         builder.environment()
                 .put(
                         "WSTOOL_NPM_IMPORT_PACKAGE_URI",
@@ -497,10 +478,6 @@ class HelidonWstoolEndToEndTest {
         command.addAll(List.of(arguments));
         ProcessBuilder builder =
                 new ProcessBuilder(command).directory(tempDir.toFile()).redirectErrorStream(true);
-        if (pklHomeOverride != null) {
-            builder.environment().put("HOME", pklHomeOverride.toString());
-            builder.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + pklHomeOverride);
-        }
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int status = process.waitFor();
@@ -509,28 +486,16 @@ class HelidonWstoolEndToEndTest {
         return status;
     }
 
-    private Path currentProjectRepository;
-    private Path thirdPartyLocalRepository;
-    private Path thirdPartyUpstreamRepository;
+    private URI currentProjectRepository;
+    private URI thirdPartyLocalRepository;
+    private URI thirdPartyUpstreamRepository;
     private Path dockerShimDirectory;
-    private Path pklHomeOverride;
 
-    private void initializeGitRepository(Path repository) throws Exception {
-        run(repository, "git", "init", "--initial-branch=master");
-        run(repository, "git", "config", "user.name", "wstool integration test");
-        run(repository, "git", "config", "user.email", "wstool-test@example.invalid");
-        run(repository, "git", "add", ".");
-        run(repository, "git", "commit", "--message", "Helidon offline integration fixture");
-    }
-
-    private void run(Path directory, String... command) throws Exception {
-        Process process =
-                new ProcessBuilder(command)
-                        .directory(directory.toFile())
-                        .redirectErrorStream(true)
-                        .start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(0, process.waitFor(), String.join(" ", command) + " failed:\n" + output);
+    private URI uploadRepository(String name, Path directory) throws Exception {
+        String repositoryName = name + "-" + UUID.randomUUID().toString().replace("-", "");
+        URI repository = gitManager.create(repositoryName);
+        gitManager.uploadFiles(repositoryName, directory);
+        return repository;
     }
 
     private String sha256(Path path) throws Exception {
