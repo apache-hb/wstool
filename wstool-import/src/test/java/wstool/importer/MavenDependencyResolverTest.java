@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -185,7 +186,7 @@ class MavenDependencyResolverTest {
             assertEquals(2, combinedEntries.size());
             assertEquals(
                     2,
-                    new com.fasterxml.jackson.databind.ObjectMapper()
+                    new ObjectMapper()
                             .readTree(cliOutput.resolve("maven-import-roots.json").toFile())
                             .size());
             assertEquals(requestsAfterInitialResolve, proxy.upstreamRequests());

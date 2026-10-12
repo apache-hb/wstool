@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -66,7 +67,7 @@ public final class CachedMavenProxy implements AutoCloseable {
                 exchange.getResponseBody().write(body);
             }
         } catch (Exception e) {
-            byte[] message = e.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] message = e.toString().getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(502, message.length);
             exchange.getResponseBody().write(message);
         } finally {

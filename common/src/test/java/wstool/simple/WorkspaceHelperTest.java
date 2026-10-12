@@ -14,6 +14,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -31,21 +32,24 @@ public class WorkspaceHelperTest {
     @TempDir Path tempDir;
 
     private PackageGitManager gitManager;
+    private GitHelper git;
+    private StorageHelper storage;
+    @AutoClose private PklHelper pkl;
+    private WorkspaceHelper helper;
 
     @BeforeEach
     void beforeEach() {
         gitManager = new PackageGitManager(tempDir, gitServer);
+        git = new GitHelper(false);
+        storage = new StorageHelper();
+        pkl = new PklHelper(null);
+        helper = workspaceHelper(git, storage, pkl);
     }
 
     @Test
     void createsWorkspaceDirectoriesClonesDistributionAndInitializesStorage() throws Exception {
         URI distribution = uploadRepository("simple/distribution", "workspace-distribution");
         Path parent = tempDir.resolve("workspaces");
-        GitHelper git = new GitHelper(false);
-        StorageHelper storage = new StorageHelper();
-        PklHelper pkl = new PklHelper(null);
-        WorkspaceHelper helper = workspaceHelper(git, storage, pkl);
-
         helper.createWorkspace(
                 ImmutableCreateWorkspaceInput.builder()
                         .parent(parent)
@@ -69,9 +73,6 @@ public class WorkspaceHelperTest {
 
     @Test
     void findWorkspaceUpThrowsWhenNoWorkspaceExists() {
-        WorkspaceHelper helper =
-                workspaceHelper(new GitHelper(false), new StorageHelper(), new PklHelper(null));
-
         IllegalArgumentException error =
                 assertThrows(IllegalArgumentException.class, () -> helper.findWorkspaceUp(tempDir));
         assertTrue(error.getMessage().contains("No workspace found"));
@@ -85,7 +86,6 @@ public class WorkspaceHelperTest {
 
         Path parent = tempDir.resolve("workspaces");
         Path workspace = parent.resolve("demo");
-        StorageHelper storage = new StorageHelper();
         try (PklHelper pkl =
                 new PklHelper(Map.of("PACKAGE_GIT_REPOSITORY", packageRepository.toString()))) {
             WorkspaceHelper helper = workspaceHelper(new GitHelper(false), storage, pkl);

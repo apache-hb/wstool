@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +36,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.Distribution.PackageSource;
+import wstool.Package;
 import wstool.Package.ExternalFiles;
 import wstool.importer.CachedMavenProxy;
 import wstool.npm.importer.CachedNpmProxy;
@@ -111,7 +115,7 @@ class HelidonWstoolEndToEndTest {
                     imported.resolve(
                             "package-tree/packages/io_helidon_webserver_helidon-webserver/4.x/wstool.pkl");
             try (var pkl = new PklHelper(Map.of())) {
-                var packageConfig = pkl.evaluate(helidonPackage).as(wstool.Package.class);
+                var packageConfig = pkl.evaluate(helidonPackage).as(Package.class);
                 var externalFiles = (ExternalFiles) packageConfig.getImportOptions().getSource();
                 assertTrue(
                         externalFiles
@@ -148,7 +152,7 @@ class HelidonWstoolEndToEndTest {
                 distributionRepository.toString(),
                 "--branch",
                 "master");
-        List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
+        List<String> addArguments = new ArrayList<>(List.of("workspace", "add"));
         List<ImportedPackage> mavenPackages =
                 importedPackages(imported.resolve("package-tree/packages"));
         for (ImportedPackage dependency : mavenPackages) {
@@ -235,7 +239,7 @@ class HelidonWstoolEndToEndTest {
                     distributionRepository.toString(),
                     "--branch",
                     "master");
-            List<String> addArguments = new java.util.ArrayList<>(List.of("workspace", "add"));
+            List<String> addArguments = new ArrayList<>(List.of("workspace", "add"));
             List<ImportedPackage> npmPackages =
                     importedNpmPackages(imported.resolve("package-tree/packages"));
             for (ImportedPackage dependency : npmPackages) {
@@ -387,7 +391,7 @@ class HelidonWstoolEndToEndTest {
     }
 
     private void runCli(Path directory, String... arguments) throws Exception {
-        List<String> command = new java.util.ArrayList<>();
+        List<String> command = new ArrayList<>();
         command.add(requiredEnv("WSTOOL_CLI_LAUNCHER"));
         command.addAll(List.of(arguments));
         ProcessBuilder builder =
@@ -418,7 +422,7 @@ class HelidonWstoolEndToEndTest {
                     .put(
                             "PATH",
                             dockerShimDirectory
-                                    + java.io.File.pathSeparator
+                                    + File.pathSeparator
                                     + System.getenv().getOrDefault("PATH", ""));
         }
         builder.environment().put("WSTOOL_CLI_ARCHIVE", requiredEnv("WSTOOL_CLI_ARCHIVE"));
@@ -467,7 +471,7 @@ class HelidonWstoolEndToEndTest {
     }
 
     private int runImporterCli(String subcommand, String... arguments) throws Exception {
-        List<String> command = new java.util.ArrayList<>();
+        List<String> command = new ArrayList<>();
         command.add(requiredEnv("WSTOOL_IMPORT_LAUNCHER"));
         command.add(subcommand);
         command.addAll(List.of(arguments));
@@ -569,7 +573,7 @@ class HelidonWstoolEndToEndTest {
                                             .toList()
                                             .stream();
                                 } catch (IOException e) {
-                                    throw new java.io.UncheckedIOException(e);
+                                    throw new UncheckedIOException(e);
                                 }
                             })
                     .toList();

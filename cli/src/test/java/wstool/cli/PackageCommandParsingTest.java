@@ -3,25 +3,29 @@ package wstool.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-import org.junit.jupiter.api.Test;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import picocli.CommandLine;
 
 class PackageCommandParsingTest {
-    @Test
-    void parsesDirectTargetAndForwardsUnmatchedOptions() {
+    @ParameterizedTest
+    @MethodSource("packageCommands")
+    void parsesTargetAndForwardsUnmatchedOptions(List<String> command, boolean legacyRun) {
         CommandLine.ParseResult result =
-                new CommandLine(Main.class).parseArgs("package", "release", "--jobs", "8");
-
-        assertEquals(List.of("release", "--jobs", "8"), result.subcommand().unmatched());
+                new CommandLine(Main.class).parseArgs(command.toArray(String[]::new));
+        CommandLine.ParseResult target = result.subcommand();
+        if (legacyRun) {
+            assertEquals(List.of(), target.unmatched());
+            target = target.subcommand();
+        }
+        assertEquals(List.of("release", "--jobs", "8"), target.unmatched());
     }
 
-    @Test
-    void parsesLegacyRunTargetAndForwardsUnmatchedOptions() {
-        CommandLine.ParseResult result =
-                new CommandLine(Main.class).parseArgs("package", "run", "release", "--jobs", "8");
-
-        assertEquals(List.of(), result.subcommand().unmatched());
-        assertEquals(
-                List.of("release", "--jobs", "8"), result.subcommand().subcommand().unmatched());
+    static Stream<Arguments> packageCommands() {
+        return Stream.of(
+                Arguments.of(List.of("package", "release", "--jobs", "8"), false),
+                Arguments.of(List.of("package", "run", "release", "--jobs", "8"), true));
     }
 }

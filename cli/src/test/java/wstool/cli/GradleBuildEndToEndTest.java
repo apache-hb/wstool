@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
@@ -187,7 +188,7 @@ class GradleBuildEndToEndTest {
 
     private void runCli(Path directory, String... arguments) throws Exception {
         List<String> command =
-                new java.util.ArrayList<>(
+                new ArrayList<>(
                         List.of(
                                 Path.of(System.getProperty("java.home"), "bin", "java").toString(),
                                 "-cp",

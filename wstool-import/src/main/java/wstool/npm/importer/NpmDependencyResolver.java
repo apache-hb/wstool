@@ -3,6 +3,7 @@ package wstool.npm.importer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -184,7 +185,7 @@ public class NpmDependencyResolver {
             output = stream.readAllBytes();
         }
         int status = process.waitFor();
-        String text = new String(output, java.nio.charset.StandardCharsets.UTF_8);
+        String text = new String(output, StandardCharsets.UTF_8);
         if (status != 0) {
             throw new IllegalStateException(
                     "Command failed with status "

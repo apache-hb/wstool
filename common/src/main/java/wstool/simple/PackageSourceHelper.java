@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Comparator;
 import wstool.Distribution.Archive;
 import wstool.Distribution.Folder;
 import wstool.Distribution.GitRepository;
@@ -148,7 +149,7 @@ public class PackageSourceHelper {
             return;
         }
         try (var entries = Files.walk(path)) {
-            for (Path entry : entries.sorted(java.util.Comparator.reverseOrder()).toList()) {
+            for (Path entry : entries.sorted(Comparator.reverseOrder()).toList()) {
                 Files.delete(entry);
             }
         }

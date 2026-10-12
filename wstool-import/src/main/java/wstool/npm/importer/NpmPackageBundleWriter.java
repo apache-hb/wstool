@@ -7,8 +7,10 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import wstool.importer.ImportRoots;
@@ -108,7 +110,7 @@ public class NpmPackageBundleWriter {
                                 + "packages: Listing<wstoolDistribution.PackageSource> = new Listing {\n");
         groupedPackages(resolved).values().stream()
                 .sorted(
-                        java.util.Comparator.comparing(ResolvedPackage::name)
+                        Comparator.comparing(ResolvedPackage::name)
                                 .thenComparing(ResolvedPackage::version))
                 .forEach(
                         pkg ->
@@ -162,9 +164,9 @@ public class NpmPackageBundleWriter {
     }
 
     private Map<String, ResolvedPackage> groupedPackages(NpmDependencyResolver.Result resolved) {
-        java.util.TreeMap<String, ResolvedPackage> grouped = new java.util.TreeMap<>();
+        TreeMap<String, ResolvedPackage> grouped = new TreeMap<>();
         resolved.packages().values().stream()
-                .sorted(java.util.Comparator.comparing(ResolvedPackage::version))
+                .sorted(Comparator.comparing(ResolvedPackage::version))
                 .forEach(
                         pkg ->
                                 grouped.put(

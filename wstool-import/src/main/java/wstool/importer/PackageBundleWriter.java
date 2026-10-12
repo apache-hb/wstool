@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import wstool.importer.MavenDependencyResolver.ResolvedArtifact;
@@ -144,7 +145,7 @@ public class PackageBundleWriter {
                         "module wstool.importedMavenPackages\n\n"
                                 + "import \"package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl\" as wstoolDistribution\n\n"
                                 + "packages: Listing<wstoolDistribution.PackageSource> = new Listing {\n");
-        java.util.TreeMap<String, MavenCoordinate> packages = new java.util.TreeMap<>();
+        TreeMap<String, MavenCoordinate> packages = new TreeMap<>();
         for (MavenCoordinate coordinate : artifacts.keySet()) {
             packages.put(
                     coordinate.packageName() + "\u0000" + MajorVersion.line(coordinate.version()),

@@ -3,6 +3,7 @@ package wstool.npm.importer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -56,7 +57,7 @@ class NpmWstoolOfflineBuildTest {
         Process process = builder.start();
         String output;
         try (var stream = process.getInputStream()) {
-            output = new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            output = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         }
         int status = process.waitFor();
         assertEquals(0, status, output);

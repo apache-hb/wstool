@@ -217,7 +217,7 @@ class WorkspaceCommandsEndToEndTest {
     }
 
     private Map<String, URI> uploadPackageRepositories() throws Exception {
-        Map<String, URI> repositories = new java.util.LinkedHashMap<>();
+        Map<String, URI> repositories = new LinkedHashMap<>();
         for (String name : PACKAGE_NAMES) {
             repositories.put(name, uploadPackageRepository(name));
         }

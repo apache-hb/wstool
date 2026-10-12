@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.Map;
 import wstool.Package.ExternalFile;
@@ -67,7 +69,7 @@ public class ExternalFilesHelper {
         }
         Files.deleteIfExists(cached);
         IOException failures = new IOException("Unable to fetch external file " + file.getUri());
-        var locations = new java.util.ArrayList<URI>();
+        var locations = new ArrayList<URI>();
         locations.add(file.getUri());
         locations.addAll(file.getMirrors());
         for (URI location : locations) {
@@ -129,7 +131,7 @@ public class ExternalFilesHelper {
             return;
         }
         try (var paths = Files.walk(path)) {
-            for (Path entry : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+            for (Path entry : paths.sorted(Comparator.reverseOrder()).toList()) {
                 Files.delete(entry);
             }
         }

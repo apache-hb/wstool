@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -135,7 +136,7 @@ public final class CachedNpmProxy implements AutoCloseable {
         byte[] digest =
                 MessageDigest.getInstance("SHA-256")
                         .digest(request.getBytes(StandardCharsets.UTF_8));
-        return java.util.HexFormat.of().formatHex(digest);
+        return HexFormat.of().formatHex(digest);
     }
 
     @Override

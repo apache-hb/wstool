@@ -25,6 +25,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import software.amazon.awssdk.identity.spi.AwsCredentialsIdentity;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.npm.importer.CachedNpmProxy;
 import wstool.test.components.PackageGitManager;
@@ -315,7 +316,7 @@ class NpmCdktnWstoolEndToEndTest {
         return STORAGE.endpoint().toString();
     }
 
-    private static software.amazon.awssdk.identity.spi.AwsCredentialsIdentity storageCredentials() {
+    private static AwsCredentialsIdentity storageCredentials() {
         return storageClient
                 .serviceClientConfiguration()
                 .credentialsProvider()

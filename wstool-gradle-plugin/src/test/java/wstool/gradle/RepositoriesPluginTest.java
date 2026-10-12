@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -81,7 +82,7 @@ class RepositoriesPluginTest {
                 throw new IOException("Test resource not found: " + name);
             }
             return Path.of(resource.toURI());
-        } catch (java.net.URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new IOException("Invalid test resource URI: " + name, e);
         }
     }

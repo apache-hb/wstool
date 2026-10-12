@@ -6,12 +6,15 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -74,8 +77,7 @@ public class DistributionArchiveHelper {
                                                         MessageDigest.getInstance("SHA-256")
                                                                 .digest(
                                                                         checksum.getBytes(
-                                                                                java.nio.charset
-                                                                                        .StandardCharsets
+                                                                                StandardCharsets
                                                                                         .UTF_8))));
         Files.createDirectories(cache.getParent());
         if (!Files.isRegularFile(cache) || !matchesChecksum(cache, checksum)) {
@@ -186,7 +188,7 @@ public class DistributionArchiveHelper {
                 if (MessageDigest.isEqual(expectedDigest, digest.digest())) {
                     return true;
                 }
-            } catch (IllegalArgumentException | java.security.NoSuchAlgorithmException ignored) {
+            } catch (IllegalArgumentException | NoSuchAlgorithmException ignored) {
                 // Try another SRI token when this digest algorithm is unavailable or malformed.
             }
         }
@@ -198,7 +200,7 @@ public class DistributionArchiveHelper {
             return;
         }
         try (var entries = Files.walk(path)) {
-            for (Path entry : entries.sorted(java.util.Comparator.reverseOrder()).toList()) {
+            for (Path entry : entries.sorted(Comparator.reverseOrder()).toList()) {
                 Files.delete(entry);
             }
         }

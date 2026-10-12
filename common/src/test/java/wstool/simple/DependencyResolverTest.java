@@ -75,6 +75,8 @@ class DependencyResolverTest {
     private CacheHelper cache;
     private StorageHelper storage;
     private String repositorySuffix;
+    private Path workspace;
+    private DependencyResolver resolver;
 
     @BeforeAll
     static void initializeStorageServer() throws Exception {
@@ -83,7 +85,7 @@ class DependencyResolverTest {
     }
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         gitManager = new PackageGitManager(tempDir, GITEA);
 
         String gitEndpoint = gitManager.endpoint().toString();
@@ -98,13 +100,12 @@ class DependencyResolverTest {
         workspaceHelper = workspaceHelper(new GitHelper(false), storage, pkl);
 
         cache = new CacheHelper(s3, new ArchiveHelper());
+        workspace = createWorkspace();
+        resolver = dependencyResolver();
     }
 
     @Test
     void assemblesDevelopmentSysrootFromLocallyClonedAndCachedPackages() throws Exception {
-        Path workspace = createWorkspace();
-        DependencyResolver resolver = dependencyResolver();
-
         Path sysroot = resolver.createClosure(workspaceHelper, workspace, "app", "development");
 
         for (String packageName :
@@ -156,9 +157,6 @@ class DependencyResolverTest {
 
     @Test
     void buildAndRuntimeSelectorsCollectTheirDocumentedGraphs() throws Exception {
-        Path workspace = createWorkspace();
-        DependencyResolver resolver = dependencyResolver();
-
         Path build = resolver.createClosure(workspaceHelper, workspace, "app", "build");
         assertTrue(Files.exists(build.resolve("bin/compiler")));
         assertTrue(Files.exists(build.resolve("include/compiler-runtime.h")));
@@ -176,9 +174,6 @@ class DependencyResolverTest {
 
     @Test
     void qualifiedSelectorChangesTheTraversalRoot() throws Exception {
-        Path workspace = createWorkspace();
-        DependencyResolver resolver = dependencyResolver();
-
         Path sysroot =
                 resolver.createClosure(workspaceHelper, workspace, "app", "alternate@2.0/runtime");
 

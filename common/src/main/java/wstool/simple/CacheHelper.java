@@ -3,6 +3,7 @@ package wstool.simple;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import software.amazon.awssdk.services.s3.S3Client;
 import wstool.simple.archive.CreateArchiveInput;
 import wstool.simple.archive.ImmutableCreateArchiveInput;
@@ -61,7 +62,7 @@ public class CacheHelper {
             return;
         }
         try (var paths = Files.walk(folder)) {
-            for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+            for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
                 Files.deleteIfExists(path);
             }
         }

@@ -9,11 +9,14 @@ import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import wstool.simple.model.PackageMajorVersion;
 import wstool.simple.storage.DependencyType;
 import wstool.simple.storage.ImmutableAddDependencyInput;
@@ -33,13 +36,15 @@ class WorkspaceStorageTest {
         storage.setup();
     }
 
-    @Test
-    void addDependencyPersistsPackageDependencyAndLowercaseType() throws Exception {
+    @ParameterizedTest
+    @EnumSource(DependencyType.class)
+    void addDependencyPersistsPackageDependencyAndLowercaseType(DependencyType type)
+            throws Exception {
         var input =
                 ImmutableAddDependencyInput.builder()
                         .name(new PackageMajorVersion("app", "1.x"))
                         .dependency(new PackageMajorVersion("library", "2.x"))
-                        .type(DependencyType.RUNTIME)
+                        .type(type)
                         .build();
 
         addPackages(
@@ -59,7 +64,7 @@ class WorkspaceStorageTest {
             assertEquals("1.x", result.getString("package_version"));
             assertEquals("library", result.getString("dependency_name"));
             assertEquals("2.x", result.getString("dependency_version"));
-            assertEquals("runtime", result.getString("dependency_type"));
+            assertEquals(type.name().toLowerCase(Locale.ROOT), result.getString("dependency_type"));
             assertFalse(result.next());
         }
     }

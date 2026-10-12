@@ -15,6 +15,7 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
+import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
 import org.eclipse.aether.graph.Dependency;
 import org.eclipse.aether.graph.DependencyNode;
@@ -29,6 +30,7 @@ import org.eclipse.aether.spi.connector.transport.TransporterFactory;
 import org.eclipse.aether.spi.locator.ServiceLocator;
 import org.eclipse.aether.transport.file.FileTransporterFactory;
 import org.eclipse.aether.transport.http.HttpTransporterFactory;
+import org.w3c.dom.Element;
 
 /** Downloads the Maven dependency graph and its repository artifacts. */
 public class MavenDependencyResolver {
@@ -67,7 +69,7 @@ public class MavenDependencyResolver {
                 new DefaultArtifact(root.group(), root.artifact(), "", "jar", root.version());
         DependencyRequest request =
                 new DependencyRequest(
-                        new org.eclipse.aether.collection.CollectRequest(
+                        new CollectRequest(
                                 new Dependency(rootArtifact, "compile"), List.of(repository)),
                         null);
         DependencyResult result = system.resolveDependencies(session, request);
@@ -113,7 +115,7 @@ public class MavenDependencyResolver {
             var propertyNodes = propertyElement.getChildNodes();
             for (int index = 0; index < propertyNodes.getLength(); index++) {
                 var property = propertyNodes.item(index);
-                if (property instanceof org.w3c.dom.Element element) {
+                if (property instanceof Element element) {
                     properties.put(element.getLocalName(), element.getTextContent().trim());
                 }
             }
@@ -123,7 +125,7 @@ public class MavenDependencyResolver {
         if (dependencies == null) return resolved;
         var nodes = dependencies.getChildNodes();
         for (int index = 0; index < nodes.getLength(); index++) {
-            if (!(nodes.item(index) instanceof org.w3c.dom.Element dependency)
+            if (!(nodes.item(index) instanceof Element dependency)
                     || !"dependency".equals(dependency.getLocalName())) continue;
             String version = expand(optionalChildText(dependency, "version"), properties);
             String type = optionalChildText(dependency, "type");
@@ -184,7 +186,7 @@ public class MavenDependencyResolver {
             var propertyNodes = propertyElement.getChildNodes();
             for (int index = 0; index < propertyNodes.getLength(); index++) {
                 var property = propertyNodes.item(index);
-                if (property instanceof org.w3c.dom.Element element) {
+                if (property instanceof Element element) {
                     properties.put(element.getLocalName(), element.getTextContent().trim());
                 }
             }
@@ -201,7 +203,7 @@ public class MavenDependencyResolver {
         var dependencies = managedDependencies.getChildNodes();
         for (int index = 0; index < dependencies.getLength(); index++) {
             var dependency = dependencies.item(index);
-            if (!(dependency instanceof org.w3c.dom.Element element)
+            if (!(dependency instanceof Element element)
                     || !"dependency".equals(element.getLocalName())
                     || !"import".equals(optionalChildText(element, "scope"))
                     || !"pom".equals(optionalChildText(element, "type"))) {
@@ -225,19 +227,18 @@ public class MavenDependencyResolver {
         }
     }
 
-    private org.w3c.dom.Element directChild(org.w3c.dom.Element parent, String name) {
+    private Element directChild(Element parent, String name) {
         var children = parent.getChildNodes();
         for (int index = 0; index < children.getLength(); index++) {
             var child = children.item(index);
-            if (child instanceof org.w3c.dom.Element element
-                    && name.equals(element.getLocalName())) {
+            if (child instanceof Element element && name.equals(element.getLocalName())) {
                 return element;
             }
         }
         return null;
     }
 
-    private String childText(org.w3c.dom.Element parent, String name) {
+    private String childText(Element parent, String name) {
         var child = directChild(parent, name);
         if (child == null || child.getTextContent().isBlank()) {
             throw new IllegalArgumentException("Maven parent POM is missing " + name);
@@ -245,7 +246,7 @@ public class MavenDependencyResolver {
         return child.getTextContent().trim();
     }
 
-    private String optionalChildText(org.w3c.dom.Element parent, String name) {
+    private String optionalChildText(Element parent, String name) {
         var child = directChild(parent, name);
         return child == null ? "" : child.getTextContent().trim();
     }

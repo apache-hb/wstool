@@ -3,6 +3,7 @@ package wstool.npm.importer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
@@ -74,7 +75,7 @@ public class NpmImportCommand implements Callable<Integer> {
             return;
         }
         try (var paths = Files.walk(path)) {
-            for (Path entry : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+            for (Path entry : paths.sorted(Comparator.reverseOrder()).toList()) {
                 Files.deleteIfExists(entry);
             }
         }

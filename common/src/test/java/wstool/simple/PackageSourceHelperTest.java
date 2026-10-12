@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wstool.Distribution.Archive;
@@ -16,6 +18,18 @@ import wstool.simple.archive.ImmutableCreateArchiveInput;
 
 class PackageSourceHelperTest {
     @TempDir Path tempDir;
+    private ArchiveHelper archives;
+    private PackageSourceHelper sources;
+
+    @BeforeEach
+    void setUp() {
+        archives = new ArchiveHelper();
+        sources =
+                new PackageSourceHelper(
+                        new DistributionArchiveHelper(archives),
+                        new GitHelper(false),
+                        new PackageMapper());
+    }
 
     @Test
     void materializesNestedPackageSourceFromChecksummedBundle() throws Exception {
@@ -32,16 +46,15 @@ class PackageSourceHelperTest {
         tool.toFile().setExecutable(true, false);
 
         Path archive = tempDir.resolve("maven-packages.zip");
-        new ArchiveHelper()
-                .create(
-                        ImmutableCreateArchiveInput.builder()
-                                .source(bundleContents)
-                                .destination(archive)
-                                .build());
+        archives.create(
+                ImmutableCreateArchiveInput.builder()
+                        .source(bundleContents)
+                        .destination(archive)
+                        .build());
         Archive parent = new Archive("maven-import", "1.0.0", archive.toUri(), sha256(archive));
         Folder source = new Folder("example", "1.0", parent, "packages/example/1.0");
 
-        Path resolved = packageSourceHelper().materialize(source, tempDir.resolve("workspace"));
+        Path resolved = sources.materialize(source, tempDir.resolve("workspace"));
 
         assertEquals(
                 "fixture = \"package config\"\n", Files.readString(resolved.resolve("wstool.pkl")));
@@ -53,30 +66,21 @@ class PackageSourceHelperTest {
         Path archive = tempDir.resolve("bundle.zip");
         Path contents = tempDir.resolve("contents");
         Files.createDirectories(contents);
-        new ArchiveHelper()
-                .create(
-                        ImmutableCreateArchiveInput.builder()
-                                .source(contents)
-                                .destination(archive)
-                                .build());
+        archives.create(
+                ImmutableCreateArchiveInput.builder()
+                        .source(contents)
+                        .destination(archive)
+                        .build());
         Archive parent = new Archive("bundle", "1", archive.toUri(), sha256(archive));
         Folder source = new Folder("bad", "1", parent, "../outside");
 
         assertThrows(
-                java.io.IOException.class,
-                () -> packageSourceHelper().materialize(source, tempDir.resolve("workspace")));
+                IOException.class, () -> sources.materialize(source, tempDir.resolve("workspace")));
     }
 
     private String sha256(Path file) throws Exception {
         return HexFormat.of()
                 .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
-    }
-
-    private PackageSourceHelper packageSourceHelper() {
-        return new PackageSourceHelper(
-                new DistributionArchiveHelper(new ArchiveHelper()),
-                new GitHelper(false),
-                new PackageMapper());
     }
 
     private void copyResource(String name, Path destination) throws Exception {
