@@ -12,14 +12,17 @@ typealias NetworkIsolation = "isolated" | "open"
 typealias SourceMount = "readonly" | "readwrite"
 
 class WsToolPackage {
-  name: String
-  version: Version
+  /// The name of this package
+  name: String(isNotEmpty)
+
+  /// The major version of this package
+  version: Version(isNotEmpty)
 }
 
 class BuildOptions {
   /// The name of the build tool to use, this is the name of a script either in the wstool/bin local directory
   /// or provided by a buildDependency in its own bin folder.
-  tool: String
+  tool: String(isNotEmpty)
 
   /// The network isolation mode to use for the build, isolated network is recommended to
   /// prevent builds from being non-deterministic

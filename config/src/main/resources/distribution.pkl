@@ -1,13 +1,11 @@
 open module wstool.distribution
 
-typealias NameVersion = String(matches(Regex("[A-Za-z0-9_.+-]+@[A-Za-z0-9_.+-]+")))
-
 abstract class PackageSource {
   /// The name of this package
   name: String(isNotEmpty)
 
   /// The major version of this package
-  version: String
+  version: String(isNotEmpty)
 }
 
 /// A package that is stored as a source archive
@@ -16,7 +14,7 @@ class Archive extends PackageSource {
   uri: Uri
 
   /// SHA-256 hash of the archive
-  checksum: String
+  checksum: String(isNotEmpty)
 }
 
 local const function isNotRecursive() = (pkg) -> !(pkg is Folder)
@@ -33,7 +31,7 @@ class GitRepository extends PackageSource {
   /// The uri of the git repository
   repo: Uri
 
-  /// The branch to checkout, defaults to master
+  /// The branch to checkout
   branch: String = "master"
 }
 
@@ -44,9 +42,6 @@ class Storage {
   /// The bucket this distribution is stored in
   bucket: String(isNotEmpty)
 }
-
-/// The name of this distribution
-name: String
 
 /// Storage options for this distribution
 storage: Storage
@@ -59,6 +54,7 @@ packages: Listing<PackageSource>(noDuplicatePackageMajorVersions())
 
 local const function isValidDockerImageName() = (name: String) ->
   name.matches(Regex("[a-z0-9]+([._/-][a-z0-9]+)*(:[a-zA-Z0-9_.-]+)?"))
+
 local const function hasSinglePlatform() = (platforms: Listing<DockerImageName>) ->
   platforms.toList().length == 1
 

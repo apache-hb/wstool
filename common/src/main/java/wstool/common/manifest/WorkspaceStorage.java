@@ -3,8 +3,10 @@ package wstool.common.manifest;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.Locale;
 
 import wstool.common.distribution.DistributionConfig;
+import wstool.common.model.DependencyType;
 import wstool.common.model.PackageMajorVersion;
 
 public class WorkspaceStorage {
@@ -14,18 +16,20 @@ public class WorkspaceStorage {
                 name TEXT NOT NULL
             ) STRICT;
 
+            --- Information about a package
             CREATE TABLE IF NOT EXISTS package (
                 name TEXT NOT NULL,
                 version TEXT NOT NULL,
                 PRIMARY KEY (name, version)
             ) STRICT;
 
+            --- Dependency links between packages
             CREATE TABLE IF NOT EXISTS dependency (
                 name TEXT NOT NULL,
                 version TEXT NOT NULL,
                 dependency_name TEXT NOT NULL,
                 dependency_version TEXT NOT NULL,
-                type TEXT NOT NULL,
+                type TEXT NOT NULL CHECK (type IN ('public', 'test', 'runtime', 'override', 'remove', 'build')),
                 PRIMARY KEY (name, version, dependency_name, dependency_version, type),
                 FOREIGN KEY (name, version) REFERENCES package(name, version) ON DELETE CASCADE
             ) STRICT;
@@ -75,13 +79,13 @@ public class WorkspaceStorage {
         }
     }
 
-    public void addDependency(PackageMajorVersion name, PackageMajorVersion dependency, String type) throws Exception {
+    public void addDependency(PackageMajorVersion name, PackageMajorVersion dependency, DependencyType type) throws Exception {
         try (var statement = connection.prepareStatement(ADD_DEPENDENCY)) {
             statement.setString(1, name.name());
             statement.setString(2, name.version());
             statement.setString(3, dependency.name());
             statement.setString(4, dependency.version());
-            statement.setString(5, type);
+            statement.setString(5, type.name().toLowerCase(Locale.ROOT));
             statement.executeUpdate();
         }
     }
