@@ -7,9 +7,4 @@ public record PackageMajorVersion(String name, String version) {
         Objects.requireNonNull(name);
         Objects.requireNonNull(version);
     }
-
-    @Override
-    public String toString() {
-        return name + "-" + version;
-    }
 }
