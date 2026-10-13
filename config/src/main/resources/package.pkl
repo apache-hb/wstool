@@ -17,85 +17,24 @@ class WsToolPackage {
 }
 
 class BuildOptions {
+  /// The name of the build tool to use, this is the name of a script either in the wstool/bin local directory
+  /// or provided by a buildDependency in its own bin folder.
   tool: String
 
-  /// Extra environment variables passed to the build tool
-  buildEnvironment: Mapping<String, String>?
-
-  /// A freeform map of options that are passed to the build tool through the environment variable `WST_USER_OPTIONS`
-  buildConfig: Mapping<String, String>?
-
+  /// The network isolation mode to use for the build, isolated network is recommended to
+  /// prevent builds from being non-deterministic
   networkIsolation: NetworkIsolation = "isolated"
+
+  /// The mount type of the packages source code inside the build container
+  /// Prefer readonly mounts as it means builds don't modify their own source tree
   sourceMount: SourceMount = "readonly"
 }
 
-abstract class ExternalPackage {}
-
-class ExternalFile {
-  /// The URI from which to download this file
-  uri: Uri
-
-  /// Alternate URIs to try if the primary URI cannot be used
-  mirrors: Listing<Uri> = new Listing {}
-
-  /// SHA-256 checksum of the file
-  checksum: String
-
-  /// Whether the file should be executable in the materialized package
-  executable: Boolean = false
-}
-
-class ExternalFiles extends ExternalPackage {
-  /// A list of files that will be copied into the package at the specified path, the path is relative to the root of the package
-  /// These files will not be extracted, and are copied as is. Paths must stay within the package.
-  files: Mapping<String, ExternalFile>
-}
-
-class ExternalArchive extends ExternalPackage {
-  /// The uri of the compressed archive path the code is stored in
-  archive: Uri
-
-  /// A list of mirrors to use for downloading the archive, if the primary uri is unavailable
-  mirrors: Listing<Uri> = new Listing {}
-
-  // SHA-256 hex checksum or an SRI integrity value for the compressed archive
-  checksum: String
-
-  /// A directory to use as the package source root after extraction
-  stripPrefix: String?
-}
-
-class ExternalGitRepository extends ExternalPackage {
-  /// The uri of the git repository
-  repo: Uri
-
-  /// The branch to checkout, defaults to master
-  branch: String = "master"
-}
-
-/// Options for 3rd party imports
-class ImportOptions {
-  /// Uri of the compressed archive path the code is stored in
-  source: ExternalPackage
-
-  /// The license of the code, should be a valid SPDX license identifier
-  license: String
-
-  /// Patches to apply to the source code after it has been extracted from the archive, but before it is built
-  hidden patches: Listing<Resource> = new Listing {}
-
-  patchContents: Listing<String> = new Listing {
-    for (patch in patches) {
-      patch.text
-    }
-  }
-}
-
+/// Package metadata
 package: WsToolPackage
 
-buildOptions: BuildOptions
-
-importOptions: ImportOptions?
+/// Build options
+build: BuildOptions
 
 /// Dependencies only required during build time, such as gradle or cmake
 buildDependencies: DependencyMap?
