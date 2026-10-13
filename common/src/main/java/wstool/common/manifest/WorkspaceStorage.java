@@ -3,10 +3,11 @@ package wstool.common.manifest;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.List;
 import java.util.Locale;
 
-import wstool.common.distribution.DistributionConfig;
 import wstool.common.model.DependencyType;
+import wstool.common.model.PackageDependency;
 import wstool.common.model.PackageMajorVersion;
 
 public class WorkspaceStorage {
@@ -60,14 +61,18 @@ public class WorkspaceStorage {
         }
     }
 
-    public void refresh(DistributionConfig config) throws Exception {
+    public void refresh(List<PackageMajorVersion> names, List<PackageDependency> dependencies) throws Exception {
         try (var statement = connection.createStatement()) {
             statement.executeUpdate("DELETE FROM dependency");
             statement.executeUpdate("DELETE FROM package");
         }
 
-        for (var pkg : config.packages()) {
-            addPackage(pkg.name());
+        for (var name : names) {
+            addPackage(name);
+        }
+
+        for (var dependency : dependencies) {
+            addDependency(dependency.name(), dependency.dependency(), dependency.type());
         }
     }
 

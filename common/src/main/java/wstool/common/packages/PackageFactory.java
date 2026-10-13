@@ -26,7 +26,7 @@ public class PackageFactory {
     public PackageConfig open(Path path) throws Exception {
         Package pkg = pklHelper.evaluate(path.resolve(CONFIG)).as(Package.class);
         PackageMajorVersion name = new PackageMajorVersion(pkg.getPackage().getName(), pkg.getPackage().getVersion());
-        String buildTool = pkg.getBuildOptions().getTool();
+        String buildTool = pkg.getBuild().getTool();
 
         Map<DependencyType, List<PackageMajorVersion>> dependencies = Map.of(
                 DependencyType.BUILD, mapDependencies(pkg.getBuildDependencies()),

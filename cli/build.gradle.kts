@@ -4,6 +4,7 @@ dependencies {
   testImplementation(project(":wstool-test-components"))
   implementation(platform(project(":")))
   implementation(project(":common"))
+  implementation(project(":wstool-git"))
   implementation("info.picocli:picocli:4.7.6")
   implementation("com.google.inject:guice")
   implementation("software.amazon.awssdk:s3")
@@ -46,4 +47,7 @@ tasks.jar {
 
 tasks.named<JavaExec>("run") { systemProperty("wstool.version", project.version.toString()) }
 
-tasks.test { useJUnitPlatform() }
+tasks.test {
+  useJUnitPlatform()
+  systemProperty("wstool.cli.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+}

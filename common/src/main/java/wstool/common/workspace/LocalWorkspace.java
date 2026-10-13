@@ -2,16 +2,27 @@ package wstool.common.workspace;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
+
+import org.apache.commons.io.file.PathUtils;
+
 import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
+import wstool.common.distribution.DistributionPackage.GitRepository;
 import wstool.common.helpers.Asserts;
 import wstool.common.manifest.WorkspaceStorage;
+import wstool.common.model.PackageDependency;
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.packages.PackageConfig;
+import wstool.common.packages.PackageFactory;
 import wstool.git.GitClient;
 import wstool.git.model.GitCloneInput;
 import wstool.git.model.GitRepositoryLocation;
 import wstool.git.model.ImmutableGitCloneInput;
+import wstool.git.model.ImmutableGitRepositoryLocation;
 
 public class LocalWorkspace {
     private static final String DISTRIBUTION = "distribution";
@@ -24,13 +35,15 @@ public class LocalWorkspace {
     private final Path path;
     private final WorkspaceStorage storage;
     private final DistributionFactory distributionFactory;
+    private final PackageFactory packageFactory;
     private final GitClient git;
 
-    public LocalWorkspace(Path path, DistributionFactory distributionFactory, GitClient git)
+    public LocalWorkspace(Path path, DistributionFactory distributionFactory, PackageFactory packageFactory, GitClient git)
             throws Exception {
         this.path = path;
         this.storage = new WorkspaceStorage(path.resolve(MANIFEST));
         this.distributionFactory = distributionFactory;
+        this.packageFactory = packageFactory;
         this.git = git;
     }
 
@@ -38,26 +51,75 @@ public class LocalWorkspace {
         return path;
     }
 
-    public void setup() throws Exception {
+    public void setup(GitRepositoryLocation distribution) throws Exception {
+        storage.setup();
+
         Files.createDirectories(path.resolve(SOURCES));
         Files.createDirectories(path.resolve(CACHE));
         Files.createDirectories(path.resolve(PREFIX));
         Files.createDirectories(path.resolve(BUILD));
-    }
 
-    public void configure(GitRepositoryLocation repository) throws Exception {
-        GitCloneInput input =
-                ImmutableGitCloneInput.builder()
-                        .parent(path)
-                        .name(DISTRIBUTION)
-                        .repository(repository)
-                        .build();
+        GitCloneInput input = ImmutableGitCloneInput.builder()
+            .parent(path)
+            .name("distribution")
+            .repository(distribution)
+            .build();
 
         git.clone(input);
     }
 
     public void refresh() throws Exception {
-        DistributionConfig config = distributionFactory.open(path.resolve(DISTRIBUTION));
+        DistributionConfig config = loadDistribution();
+        var packages = config.packages().stream().map(pkg -> pkg.name()).toList();
+        var dependencies = cloned().stream().map(this::dependenciesOf).flatMap(List::stream).toList();
+
+        storage.refresh(packages, dependencies);
+    }
+
+    public PackageMajorVersion find(String name) throws Exception {
+        DistributionConfig config = loadDistribution();
+        var packages = config.packages().stream()
+                .filter(pkg -> pkg.name().name().equals(name))
+                .map(pkg -> pkg.name())
+                .toList();
+
+        if (packages.isEmpty()) {
+            throw new IllegalArgumentException("Package " + name + " not found in distribution");
+        }
+
+        if (packages.size() > 1) {
+            throw new IllegalArgumentException("Multiple packages found with name " + name);
+        }
+
+        return packages.get(0);
+    }
+
+    public void clone(PackageMajorVersion name) throws Exception {
+        DistributionConfig config = loadDistribution();
+
+        var pkg = config.packages().stream()
+                .filter(it -> it.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Package " + name + " not found in distribution"));
+
+        var repo = (GitRepository) pkg;
+
+        GitRepositoryLocation repository = ImmutableGitRepositoryLocation.builder()
+            .branch(repo.branch())
+            .repository(repo.repository())
+            .build();
+
+        GitCloneInput input = ImmutableGitCloneInput.builder()
+            .parent(path.resolve(SOURCES))
+            .name(name.name())
+            .repository(repository)
+            .build();
+
+        git.clone(input);
+    }
+
+    public void remove(PackageMajorVersion name) throws Exception {
+        PathUtils.deleteDirectory(path.resolve(SOURCES).resolve(name.name()));
     }
 
     public void validate() {
@@ -71,8 +133,28 @@ public class LocalWorkspace {
                 "Missing " + DISTRIBUTION + " repository");
     }
 
-    public PackageConfig find(PackageMajorVersion name) {
-        return null;
+    private List<PackageConfig> cloned() throws Exception {
+        try (Stream<Path> packages = Files.list(path.resolve(SOURCES))) {
+            List<PackageConfig> configs = new ArrayList<>();
+            for (Path path : packages.toList()) {
+                configs.add(packageFactory.open(path));
+            }
+            return configs;
+        }
+    }
+
+    private List<PackageDependency> dependenciesOf(PackageConfig config) {
+        List<PackageDependency> dependencies = new ArrayList<>();
+        for (var entry : config.dependencies().entrySet()) {
+            for (var dependency : entry.getValue()) {
+                dependencies.add(new PackageDependency(config.name(), dependency, entry.getKey()));
+            }
+        }
+        return dependencies;
+    }
+
+    private DistributionConfig loadDistribution() throws Exception {
+        return distributionFactory.open(path.resolve(DISTRIBUTION));
     }
 
     public static boolean isWorkspace(Path path) {

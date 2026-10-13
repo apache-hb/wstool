@@ -26,7 +26,7 @@ import wstool.common.pkl.PklHelper;
         })
 public class Main {
     public static void main(String[] args) throws Exception {
-        Injector injector = Guice.createInjector(new WstoolModule(Map.of()));
+        Injector injector = Guice.createInjector(new WstoolModule(Map.of(), true));
 
         System.exit(runCommandLine(injector, args));
     }

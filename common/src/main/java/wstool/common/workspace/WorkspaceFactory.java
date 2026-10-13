@@ -2,23 +2,36 @@ package wstool.common.workspace;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
 import wstool.common.distribution.DistributionFactory;
+import wstool.common.packages.PackageFactory;
 import wstool.git.GitClient;
+import wstool.git.model.GitRepositoryLocation;
 
 @Singleton
 public class WorkspaceFactory {
     private final DistributionFactory distributionFactory;
+    private final PackageFactory packageFactory;
     private final GitClient git;
 
     @Inject
-    public WorkspaceFactory(DistributionFactory distributionFactory, GitClient git) {
+    public WorkspaceFactory(DistributionFactory distributionFactory, PackageFactory packageFactory, GitClient git) {
         this.distributionFactory = distributionFactory;
+        this.packageFactory = packageFactory;
         this.git = git;
     }
 
+    public LocalWorkspace setup(Path path, GitRepositoryLocation distribution) throws Exception {
+        Files.createDirectories(path);
+        LocalWorkspace workspace = new LocalWorkspace(path, distributionFactory, packageFactory, git);
+        workspace.setup(distribution);
+        return workspace;
+    }
+
     public LocalWorkspace open(Path path) throws Exception {
-        return new LocalWorkspace(path, distributionFactory, git);
+        return new LocalWorkspace(path, distributionFactory, packageFactory, git);
     }
 
     public LocalWorkspace findUp(Path cwd) throws Exception {
