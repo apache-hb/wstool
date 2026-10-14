@@ -1,15 +1,13 @@
 package wstool.common.path;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.packages.PackageConfig;
 import wstool.common.workspace.LocalWorkspace;
@@ -25,7 +23,8 @@ public class BuildRunner {
         this.pathBuilder = pathBuilder;
     }
 
-    public int runBuild(LocalWorkspace workspace, PackageConfig pkg, List<String> args) throws Exception {
+    public int runBuild(LocalWorkspace workspace, PackageConfig pkg, List<String> args)
+            throws Exception {
         PackageMajorVersion name = pkg.name();
         String path = pathBuilder.buildToolPath(workspace, name);
         Path builddir = workspace.builddir(name);
@@ -42,7 +41,12 @@ public class BuildRunner {
 
         ProcessBuilder pb = new ProcessBuilder(command);
         String buildPath = path + ":" + pb.environment().get("PATH");
-        LOGGER.info("Running build for package {} with command: {} in directory: {} with PATH: {}", name, command, builddir, buildPath);
+        LOGGER.info(
+                "Running build for package {} with command: {} in directory: {} with PATH: {}",
+                name,
+                command,
+                builddir,
+                buildPath);
         pb.directory(builddir.toFile());
         pb.environment().put("PATH", buildPath);
         pb.environment().put("WST_PRIVATE", builddir.toAbsolutePath().toString());

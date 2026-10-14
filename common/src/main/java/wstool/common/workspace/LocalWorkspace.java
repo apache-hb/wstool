@@ -4,11 +4,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
-
 import org.apache.commons.io.file.PathUtils;
-
 import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.distribution.DistributionPackage.GitRepository;
@@ -39,7 +36,11 @@ public class LocalWorkspace {
     private final PackageFactory packageFactory;
     private final GitClient git;
 
-    public LocalWorkspace(Path path, DistributionFactory distributionFactory, PackageFactory packageFactory, GitClient git)
+    public LocalWorkspace(
+            Path path,
+            DistributionFactory distributionFactory,
+            PackageFactory packageFactory,
+            GitClient git)
             throws Exception {
         this.path = path;
         this.storage = new WorkspaceStorage(path.resolve(MANIFEST));
@@ -65,11 +66,12 @@ public class LocalWorkspace {
         Files.createDirectories(path.resolve(BUILD));
         Files.createDirectories(path.resolve(BUILD_CLOSURE_CACHE));
 
-        GitCloneInput input = ImmutableGitCloneInput.builder()
-            .parent(path)
-            .name("distribution")
-            .repository(distribution)
-            .build();
+        GitCloneInput input =
+                ImmutableGitCloneInput.builder()
+                        .parent(path)
+                        .name("distribution")
+                        .repository(distribution)
+                        .build();
 
         git.clone(input);
     }
@@ -77,17 +79,19 @@ public class LocalWorkspace {
     public void refresh() throws Exception {
         DistributionConfig config = loadDistribution();
         var packages = config.packages().stream().map(pkg -> pkg.name()).toList();
-        var dependencies = cloned().stream().map(this::dependenciesOf).flatMap(List::stream).toList();
+        var dependencies =
+                cloned().stream().map(this::dependenciesOf).flatMap(List::stream).toList();
 
         storage.refresh(packages, dependencies);
     }
 
     public PackageMajorVersion find(String name) throws Exception {
         DistributionConfig config = loadDistribution();
-        var packages = config.packages().stream()
-                .filter(pkg -> pkg.name().name().equals(name))
-                .map(pkg -> pkg.name())
-                .toList();
+        var packages =
+                config.packages().stream()
+                        .filter(pkg -> pkg.name().name().equals(name))
+                        .map(pkg -> pkg.name())
+                        .toList();
 
         if (packages.isEmpty()) {
             throw new IllegalArgumentException("Package " + name + " not found in distribution");
@@ -103,23 +107,29 @@ public class LocalWorkspace {
     public void clone(PackageMajorVersion name) throws Exception {
         DistributionConfig config = loadDistribution();
 
-        var pkg = config.packages().stream()
-                .filter(it -> it.name().equals(name))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Package " + name + " not found in distribution"));
+        var pkg =
+                config.packages().stream()
+                        .filter(it -> it.name().equals(name))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Package " + name + " not found in distribution"));
 
         var repo = (GitRepository) pkg;
 
-        GitRepositoryLocation repository = ImmutableGitRepositoryLocation.builder()
-            .branch(repo.branch())
-            .repository(repo.repository())
-            .build();
+        GitRepositoryLocation repository =
+                ImmutableGitRepositoryLocation.builder()
+                        .branch(repo.branch())
+                        .repository(repo.repository())
+                        .build();
 
-        GitCloneInput input = ImmutableGitCloneInput.builder()
-            .parent(path.resolve(SOURCES))
-            .name(name.name())
-            .repository(repository)
-            .build();
+        GitCloneInput input =
+                ImmutableGitCloneInput.builder()
+                        .parent(path.resolve(SOURCES))
+                        .name(name.name())
+                        .repository(repository)
+                        .build();
 
         git.clone(input);
     }

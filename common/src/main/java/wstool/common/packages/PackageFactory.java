@@ -1,13 +1,12 @@
 package wstool.common.packages;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import wstool.Package;
 import wstool.common.model.DependencyType;
 import wstool.common.model.PackageMajorVersion;
@@ -41,22 +40,23 @@ public class PackageFactory {
 
     public PackageConfig open(Path path) throws Exception {
         Package pkg = pklHelper.evaluate(path.resolve(CONFIG)).as(Package.class);
-        PackageMajorVersion name = new PackageMajorVersion(pkg.getPackage().getName(), pkg.getPackage().getVersion());
+        PackageMajorVersion name =
+                new PackageMajorVersion(pkg.getPackage().getName(), pkg.getPackage().getVersion());
         String buildTool = pkg.getBuild().getTool();
 
-        Map<DependencyType, List<PackageMajorVersion>> dependencies = Map.of(
-                DependencyType.BUILD, mapDependencies(pkg.getBuildDependencies()),
-                DependencyType.RUNTIME, mapDependencies(pkg.getRuntimeDependencies()),
-                DependencyType.PUBLIC, mapDependencies(pkg.getDependencies()),
-                DependencyType.TEST, mapDependencies(pkg.getTestDependencies()),
-                DependencyType.OVERRIDE, mapDependencies(pkg.getOverrideDependencies())
-        );
+        Map<DependencyType, List<PackageMajorVersion>> dependencies =
+                Map.of(
+                        DependencyType.BUILD, mapDependencies(pkg.getBuildDependencies()),
+                        DependencyType.RUNTIME, mapDependencies(pkg.getRuntimeDependencies()),
+                        DependencyType.PUBLIC, mapDependencies(pkg.getDependencies()),
+                        DependencyType.TEST, mapDependencies(pkg.getTestDependencies()),
+                        DependencyType.OVERRIDE, mapDependencies(pkg.getOverrideDependencies()));
 
         return ImmutablePackageConfig.builder()
-            .name(name)
-            .buildTool(buildTool)
-            .dependencies(dependencies)
-            .build();
+                .name(name)
+                .buildTool(buildTool)
+                .dependencies(dependencies)
+                .build();
     }
 
     private List<PackageMajorVersion> mapDependencies(Map<String, String> dependencies) {

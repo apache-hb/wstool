@@ -2,7 +2,6 @@ package wstool.common.workspace;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import wstool.common.distribution.DistributionFactory;
@@ -17,7 +16,8 @@ public class WorkspaceFactory {
     private final GitClient git;
 
     @Inject
-    public WorkspaceFactory(DistributionFactory distributionFactory, PackageFactory packageFactory, GitClient git) {
+    public WorkspaceFactory(
+            DistributionFactory distributionFactory, PackageFactory packageFactory, GitClient git) {
         this.distributionFactory = distributionFactory;
         this.packageFactory = packageFactory;
         this.git = git;
@@ -25,7 +25,8 @@ public class WorkspaceFactory {
 
     public LocalWorkspace setup(Path path, GitRepositoryLocation distribution) throws Exception {
         Files.createDirectories(path);
-        LocalWorkspace workspace = new LocalWorkspace(path, distributionFactory, packageFactory, git);
+        LocalWorkspace workspace =
+                new LocalWorkspace(path, distributionFactory, packageFactory, git);
         workspace.setup(distribution);
         return workspace;
     }

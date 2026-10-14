@@ -6,7 +6,6 @@ import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
 import wstool.common.model.DependencyType;
 import wstool.common.model.PackageDependency;
 import wstool.common.model.PackageMajorVersion;
@@ -62,7 +61,8 @@ public class WorkspaceStorage {
         }
     }
 
-    public void refresh(List<PackageMajorVersion> names, List<PackageDependency> dependencies) throws Exception {
+    public void refresh(List<PackageMajorVersion> names, List<PackageDependency> dependencies)
+            throws Exception {
         try (var statement = connection.createStatement()) {
             statement.executeUpdate("DELETE FROM dependency");
             statement.executeUpdate("DELETE FROM package");
@@ -85,7 +85,9 @@ public class WorkspaceStorage {
         }
     }
 
-    public void addDependency(PackageMajorVersion name, PackageMajorVersion dependency, DependencyType type) throws Exception {
+    public void addDependency(
+            PackageMajorVersion name, PackageMajorVersion dependency, DependencyType type)
+            throws Exception {
         try (var statement = connection.prepareStatement(ADD_DEPENDENCY)) {
             statement.setString(1, name.name());
             statement.setString(2, name.version());
@@ -113,8 +115,14 @@ public class WorkspaceStorage {
                 while (resultSet.next()) {
                     var dependencyName = resultSet.getString("dependency_name");
                     var dependencyVersion = resultSet.getString("dependency_version");
-                    var type = DependencyType.valueOf(resultSet.getString("type").toUpperCase(Locale.ROOT));
-                    dependencies.add(new PackageDependency(name, new PackageMajorVersion(dependencyName, dependencyVersion), type));
+                    var type =
+                            DependencyType.valueOf(
+                                    resultSet.getString("type").toUpperCase(Locale.ROOT));
+                    dependencies.add(
+                            new PackageDependency(
+                                    name,
+                                    new PackageMajorVersion(dependencyName, dependencyVersion),
+                                    type));
                 }
                 return dependencies;
             }

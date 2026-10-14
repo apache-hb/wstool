@@ -1,9 +1,8 @@
 package wstool.cli.commands.packages;
 
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-
-import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
 import wstool.cli.VersionProvider;
@@ -27,7 +26,10 @@ public class RunTargetCommand extends CommonCommand {
     private final BuildRunner buildRunner;
 
     @Inject
-    public RunTargetCommand(WorkspaceFactory workspaceFactory, PackageFactory packageFactory, BuildRunner buildRunner) {
+    public RunTargetCommand(
+            WorkspaceFactory workspaceFactory,
+            PackageFactory packageFactory,
+            BuildRunner buildRunner) {
         this.workspaceFactory = workspaceFactory;
         this.packageFactory = packageFactory;
         this.buildRunner = buildRunner;

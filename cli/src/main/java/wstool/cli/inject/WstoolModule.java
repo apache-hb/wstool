@@ -1,10 +1,8 @@
 package wstool.cli.inject;
 
-import java.util.Map;
-
 import com.google.inject.Binder;
 import com.google.inject.Module;
-
+import java.util.Map;
 import wstool.common.pkl.PklHelper;
 import wstool.git.GitClient;
 

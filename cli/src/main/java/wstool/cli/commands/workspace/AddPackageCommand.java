@@ -15,10 +15,16 @@ import wstool.common.workspace.WorkspaceFactory;
         description = "Add a package to the workspace.",
         versionProvider = VersionProvider.class)
 public class AddPackageCommand extends CommonCommand {
-    @Option(names = {"--package", "-p"}, description = "The package to add to the workspace.", required = true)
+    @Option(
+            names = {"--package", "-p"},
+            description = "The package to add to the workspace.",
+            required = true)
     String packageName;
 
-    @Option(names = {"--version", "-v"}, description = "The version of the package to add to the workspace.", required = false)
+    @Option(
+            names = {"--version", "-v"},
+            description = "The version of the package to add to the workspace.",
+            required = false)
     String version;
 
     private final WorkspaceFactory workspaceFactory;

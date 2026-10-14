@@ -14,10 +14,15 @@ import wstool.common.workspace.WorkspaceFactory;
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
 public class RemovePackageCommand extends CommonCommand {
-    @Option(names = {"--package", "-p"}, description = "The package to remove from the workspace.", required = true)
+    @Option(
+            names = {"--package", "-p"},
+            description = "The package to remove from the workspace.",
+            required = true)
     String packageName;
 
-    @Option(names = {"--version", "-v"}, description = "The version of the package to remove.")
+    @Option(
+            names = {"--version", "-v"},
+            description = "The version of the package to remove.")
     String version;
 
     private final WorkspaceFactory workspaceFactory;
@@ -31,7 +36,9 @@ public class RemovePackageCommand extends CommonCommand {
     public Integer call() throws Exception {
         var workspace = workspaceFactory.findUp(cwd);
         PackageMajorVersion name =
-                version == null ? workspace.find(packageName) : new PackageMajorVersion(packageName, version);
+                version == null
+                        ? workspace.find(packageName)
+                        : new PackageMajorVersion(packageName, version);
         workspace.remove(name);
         return 0;
     }

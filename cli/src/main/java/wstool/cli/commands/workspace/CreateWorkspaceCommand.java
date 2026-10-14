@@ -1,8 +1,7 @@
 package wstool.cli.commands.workspace;
 
-import java.net.URI;
-
 import jakarta.inject.Inject;
+import java.net.URI;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;
@@ -16,13 +15,22 @@ import wstool.git.model.ImmutableGitRepositoryLocation;
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
 public class CreateWorkspaceCommand extends CommonCommand {
-    @Option(names = {"--name", "-n"}, description = "The name of the workspace.", required = true)
+    @Option(
+            names = {"--name", "-n"},
+            description = "The name of the workspace.",
+            required = true)
     String name;
 
-    @Option(names = {"--distribution", "-d"}, description = "The distribution to use for the workspace.", required = true)
+    @Option(
+            names = {"--distribution", "-d"},
+            description = "The distribution to use for the workspace.",
+            required = true)
     URI distribution;
 
-    @Option(names = {"--branch", "-b"}, description = "The branch of the distribution to use for the workspace.", required = false)
+    @Option(
+            names = {"--branch", "-b"},
+            description = "The branch of the distribution to use for the workspace.",
+            required = false)
     String branch = "master";
 
     private final WorkspaceFactory workspaceFactory;
@@ -34,10 +42,11 @@ public class CreateWorkspaceCommand extends CommonCommand {
 
     @Override
     public Integer call() throws Exception {
-        var distributionLocation = ImmutableGitRepositoryLocation.builder()
-                .repository(distribution)
-                .branch(branch)
-                .build();
+        var distributionLocation =
+                ImmutableGitRepositoryLocation.builder()
+                        .repository(distribution)
+                        .branch(branch)
+                        .build();
 
         workspaceFactory.setup(cwd.resolve(name), distributionLocation);
         return 0;
