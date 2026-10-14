@@ -1,12 +1,16 @@
 package wstool.cli.commands.packages;
 
-import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+
+import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
 import wstool.cli.VersionProvider;
 import wstool.cli.commands.CommonCommand;
+import wstool.common.packages.PackageConfig;
+import wstool.common.packages.PackageFactory;
+import wstool.common.path.BuildRunner;
 import wstool.common.workspace.LocalWorkspace;
 import wstool.common.workspace.WorkspaceFactory;
 
@@ -19,16 +23,21 @@ public class RunTargetCommand extends CommonCommand {
     @Unmatched List<String> args = new ArrayList<>();
 
     private final WorkspaceFactory workspaceFactory;
+    private final PackageFactory packageFactory;
+    private final BuildRunner buildRunner;
 
     @Inject
-    public RunTargetCommand(WorkspaceFactory workspaceFactory) {
+    public RunTargetCommand(WorkspaceFactory workspaceFactory, PackageFactory packageFactory, BuildRunner buildRunner) {
         this.workspaceFactory = workspaceFactory;
+        this.packageFactory = packageFactory;
+        this.buildRunner = buildRunner;
     }
 
     @Override
     public Integer call() throws Exception {
         LocalWorkspace workspace = workspaceFactory.findUp(cwd);
         workspace.refresh();
-        return 0;
+        PackageConfig pkgConfig = packageFactory.findUp(cwd);
+        return buildRunner.runBuild(workspace, pkgConfig, args);
     }
 }

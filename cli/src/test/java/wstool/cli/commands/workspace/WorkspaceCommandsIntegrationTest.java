@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -14,12 +13,15 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.io.file.PathUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import wstool.test.components.PackageGitManager;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -32,6 +34,9 @@ class WorkspaceCommandsIntegrationTest {
     @BeforeEach
     void setUp(TestInfo testInfo) throws Exception {
         tmp = Path.of("build").resolve(testInfo.getTestMethod().orElseThrow().getName());
+        PathUtils.deleteDirectory(tmp);
+        Files.createDirectories(tmp);
+
         git = new PackageGitManager(tmp, GITEA);
     }
 

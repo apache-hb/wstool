@@ -3,6 +3,7 @@ package wstool.common.manifest;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -92,6 +93,31 @@ public class WorkspaceStorage {
             statement.setString(4, dependency.version());
             statement.setString(5, type.name().toLowerCase(Locale.ROOT));
             statement.executeUpdate();
+        }
+    }
+
+    public List<PackageDependency> dependenciesOf(PackageMajorVersion name) throws Exception {
+        var query =
+                """
+                SELECT dependency_name, dependency_version, type
+                FROM dependency
+                WHERE name = ? AND version = ?
+                """;
+
+        try (var statement = connection.prepareStatement(query)) {
+            statement.setString(1, name.name());
+            statement.setString(2, name.version());
+
+            try (var resultSet = statement.executeQuery()) {
+                var dependencies = new ArrayList<PackageDependency>();
+                while (resultSet.next()) {
+                    var dependencyName = resultSet.getString("dependency_name");
+                    var dependencyVersion = resultSet.getString("dependency_version");
+                    var type = DependencyType.valueOf(resultSet.getString("type").toUpperCase(Locale.ROOT));
+                    dependencies.add(new PackageDependency(name, new PackageMajorVersion(dependencyName, dependencyVersion), type));
+                }
+                return dependencies;
+            }
         }
     }
 }

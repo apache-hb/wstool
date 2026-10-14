@@ -30,6 +30,7 @@ public class LocalWorkspace {
     private static final String CACHE = "private/cache";
     private static final String PREFIX = "private/prefix";
     private static final String BUILD = "private/build";
+    private static final String BUILD_CLOSURE_CACHE = "private/build-closure-cache";
     private static final String MANIFEST = "wstool.db";
 
     private final Path path;
@@ -51,6 +52,10 @@ public class LocalWorkspace {
         return path;
     }
 
+    public WorkspaceStorage storage() {
+        return storage;
+    }
+
     public void setup(GitRepositoryLocation distribution) throws Exception {
         storage.setup();
 
@@ -58,6 +63,7 @@ public class LocalWorkspace {
         Files.createDirectories(path.resolve(CACHE));
         Files.createDirectories(path.resolve(PREFIX));
         Files.createDirectories(path.resolve(BUILD));
+        Files.createDirectories(path.resolve(BUILD_CLOSURE_CACHE));
 
         GitCloneInput input = ImmutableGitCloneInput.builder()
             .parent(path)
@@ -131,6 +137,22 @@ public class LocalWorkspace {
         Asserts.check(
                 Files.isDirectory(path.resolve(DISTRIBUTION)),
                 "Missing " + DISTRIBUTION + " repository");
+    }
+
+    public Path builddir(PackageMajorVersion name) {
+        return path.resolve(BUILD).resolve(name.name()).resolve(name.version());
+    }
+
+    public Path prefix(PackageMajorVersion name) {
+        return path.resolve(PREFIX).resolve(name.name()).resolve(name.version());
+    }
+
+    public Path source(PackageMajorVersion name) {
+        return path.resolve(SOURCES).resolve(name.name());
+    }
+
+    public Path buildClosureCache(PackageMajorVersion name) {
+        return path.resolve(BUILD_CLOSURE_CACHE).resolve(name.name()).resolve(name.version());
     }
 
     private List<PackageConfig> cloned() throws Exception {

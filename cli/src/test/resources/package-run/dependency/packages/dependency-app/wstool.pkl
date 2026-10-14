@@ -1,0 +1,7 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "dependency-app"; version = "1.0.0" }
+
+build { tool = "provided-tool" }
+
+buildDependencies { ["tool-provider"] = "1.0.0" }

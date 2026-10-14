@@ -1,5 +1,6 @@
 package wstool.common.packages;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,21 @@ public class PackageFactory {
     @Inject
     public PackageFactory(PklHelper pklHelper) {
         this.pklHelper = pklHelper;
+    }
+
+    public PackageConfig findUp(Path cwd) throws Exception {
+        Path current = cwd.toAbsolutePath();
+
+        while (current != null && !Files.exists(current.resolve(CONFIG))) {
+            current = current.getParent();
+        }
+
+        if (current == null) {
+            throw new IllegalArgumentException(
+                    "No package found in current directory or any parent directories.");
+        }
+
+        return open(current);
     }
 
     public PackageConfig open(Path path) throws Exception {
@@ -45,6 +61,9 @@ public class PackageFactory {
 
     private List<PackageMajorVersion> mapDependencies(Map<String, String> dependencies) {
         List<PackageMajorVersion> result = new ArrayList<>();
+        if (dependencies == null) {
+            return result;
+        }
         for (var entry : dependencies.entrySet()) {
             result.add(new PackageMajorVersion(entry.getKey(), entry.getValue()));
         }

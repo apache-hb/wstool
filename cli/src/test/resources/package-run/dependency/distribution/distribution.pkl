@@ -1,0 +1,23 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+local appRepository = read("env:DEPENDENCY_APP_REPOSITORY")
+local toolRepository = read("env:DEPENDENCY_TOOL_REPOSITORY")
+
+platforms { "ubuntu:24.04" }
+
+storage { bucket = "unused-test-bucket" }
+
+packages {
+  new GitRepository {
+    name = "dependency-app"
+    version = "1.0.0"
+    repo = appRepository
+    branch = "master"
+  }
+  new GitRepository {
+    name = "tool-provider"
+    version = "1.0.0"
+    repo = toolRepository
+    branch = "master"
+  }
+}
