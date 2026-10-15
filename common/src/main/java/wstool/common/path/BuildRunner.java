@@ -25,13 +25,15 @@ public class BuildRunner {
 
     public int runBuild(LocalWorkspace workspace, PackageConfig pkg, List<String> args)
             throws Exception {
+
         PackageMajorVersion name = pkg.name();
-        String path = pathBuilder.buildToolPath(workspace, name);
         Path builddir = workspace.builddir(name);
         Path source = workspace.source(name);
         Path prefix = workspace.prefix(name);
         Files.createDirectories(builddir);
         Files.createDirectories(prefix);
+
+        String path = pathBuilder.buildToolPath(workspace, name);
 
         List<String> command = new ArrayList<>();
         command.add("/usr/bin/env");

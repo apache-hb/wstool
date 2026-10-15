@@ -2,6 +2,6 @@ amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "tool-owner"; version = "1.0.0" }
 
-build { tool = "unused-owner-build-tool" }
+build { tool = "bootstrap" }
 
-buildDependencies { ["tool-helper"] = "1.0.0" }
+dependencies { ["tool-helper"] = "1.0.0" }

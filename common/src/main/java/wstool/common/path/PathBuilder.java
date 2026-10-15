@@ -95,17 +95,19 @@ public class PathBuilder {
     public void runtimeSymlinkFolder(LocalWorkspace workspace, PackageMajorVersion name, Path path)
             throws Exception {
         Set<PackageMajorVersion> closure = runtimeClosure(workspace, name);
+
+        LOGGER.info(
+                "Creating symlink folder for package {} with dependencies {} in workspace {} at {}",
+                name,
+                closure,
+                workspace.path(),
+                path);
+
         createSymlinkFolder(workspace, closure, path);
     }
 
     private void createSymlinkFolder(
             LocalWorkspace workspace, Set<PackageMajorVersion> closure, Path dst) throws Exception {
-
-        LOGGER.info(
-                "Creating symlink folder for packages {} in workspace {} at {}",
-                closure,
-                workspace.path(),
-                dst);
 
         Files.createDirectories(dst);
         for (PackageMajorVersion name : closure) {
