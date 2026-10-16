@@ -3,7 +3,7 @@ set -euo pipefail
 
 source_dir="$WST_SRCDIR/source"
 sysroot="$WST_PRIVATE/sysroot"
-wstool sysroot build --output "$sysroot"
+wstool sysroot "(closure build)" --output "$sysroot"
 test -f "$sysroot/include/zlib.h"
 test -f "$sysroot/include/expat.h"
 "$source_dir/bootstrap" \

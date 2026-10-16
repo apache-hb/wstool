@@ -4,6 +4,8 @@ dependencies {
   testImplementation(project(":wstool-test-components"))
   implementation(platform(project(":")))
   implementation(project(":common"))
+  implementation(project(":wstool-sysroot"))
+  implementation("de.tu-dresden.inf.lat.jsexp:jsexp:0.2.2")
   implementation(project(":wstool-git"))
   implementation("info.picocli:picocli:4.7.6")
   implementation("com.google.inject:guice")

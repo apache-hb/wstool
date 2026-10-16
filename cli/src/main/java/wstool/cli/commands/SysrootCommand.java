@@ -2,15 +2,28 @@ package wstool.cli.commands;
 
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.util.List;
+
+import de.tudresden.inf.lat.jsexp.SexpFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import wstool.cli.VersionProvider;
-import wstool.common.model.PackageMajorVersion;
 import wstool.common.packages.PackageFactory;
-import wstool.common.path.PathBuilder;
 import wstool.common.workspace.LocalWorkspace;
 import wstool.common.workspace.WorkspaceFactory;
+import wstool.sysroot.ClosureFactory;
+import wstool.sysroot.Selector;
+import wstool.sysroot.SelectorContext;
+import wstool.sysroot.SelectorFactory;
+import wstool.sysroot.closures.AggregateClosureFactory;
+import wstool.sysroot.closures.DirectClosure;
+import wstool.sysroot.closures.NamedClosure;
+import wstool.sysroot.selectors.AggregateSelectorFactory;
+import wstool.sysroot.selectors.ClosureSelector;
+import wstool.sysroot.selectors.PathSelector;
+import wstool.sysroot.selectors.PrefixSelector;
+import wstool.sysroot.selectors.VersionSelector;
 
 @Command(
         name = "sysroot",
@@ -21,7 +34,7 @@ public class SysrootCommand extends CommonCommand {
     @Parameters(
             index = "0",
             description =
-                    "Sysroot selector: build, development, runtime, or <name>@<version>/<selector>.")
+                    "Selector s-expression, for example (closure build) or (closure runtime (name version)).")
     private String selector;
 
     @Option(
@@ -32,16 +45,26 @@ public class SysrootCommand extends CommonCommand {
 
     private final WorkspaceFactory workspaceFactory;
     private final PackageFactory packageFactory;
-    private final PathBuilder pathBuilder;
+    private final SelectorFactory selectorFactory;
 
     @Inject
     public SysrootCommand(
             WorkspaceFactory workspaceFactory,
-            PackageFactory packageFactory,
-            PathBuilder pathBuilder) {
+            PackageFactory packageFactory) {
         this.workspaceFactory = workspaceFactory;
         this.packageFactory = packageFactory;
-        this.pathBuilder = pathBuilder;
+        ClosureFactory closureFactory =
+                new AggregateClosureFactory(
+                        List.of(
+                                new DirectClosure.DirectClosureFactory(),
+                                new NamedClosure.NamedClosureFactory()));
+        this.selectorFactory =
+                new AggregateSelectorFactory(
+                        List.of(
+                                new PathSelector.PathSelectorFactory(closureFactory),
+                                new ClosureSelector.ClosureSelectorFactory(closureFactory),
+                                new PrefixSelector.PrefixSelectorFactory(),
+                                new VersionSelector.VersionSelectorFactory()));
     }
 
     @Override
@@ -49,33 +72,19 @@ public class SysrootCommand extends CommonCommand {
         LocalWorkspace workspace = workspaceFactory.findUp(cwd);
         workspace.refresh();
 
-        PackageMajorVersion root = packageFactory.findUp(cwd).name();
-        String mode = selector;
-        int separator = selector.lastIndexOf('/');
-        if (separator >= 0) {
-            String packageSelector = selector.substring(0, separator);
-            mode = selector.substring(separator + 1);
-            int versionSeparator = packageSelector.lastIndexOf('@');
-            if (versionSeparator <= 0 || versionSeparator == packageSelector.length() - 1) {
-                throw new IllegalArgumentException(
-                        "Invalid package selector '"
-                                + selector
-                                + "'. Expected <name>@<version>/<selector>.");
-            }
-            root =
-                    new PackageMajorVersion(
-                            packageSelector.substring(0, versionSeparator),
-                            packageSelector.substring(versionSeparator + 1));
+        SelectorContext context =
+                new SelectorContext(workspace, packageFactory.findUp(cwd).name(), output);
+        Selector parsed =
+                selectorFactory
+                        .parse(SexpFactory.parse(selector), context)
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Unknown selector expression: " + selector));
+        if (!(parsed instanceof ClosureSelector)) {
+            throw new IllegalArgumentException("The sysroot command requires a (closure ...) selector.");
         }
-
-        if (!mode.equals("build") && !mode.equals("development") && !mode.equals("runtime")) {
-            throw new IllegalArgumentException(
-                    "Invalid sysroot selector '"
-                            + mode
-                            + "'. Expected build, development, or runtime.");
-        }
-
-        pathBuilder.sysrootSymlinkFolder(workspace, root, mode, output);
+        parsed.select();
         return 0;
     }
 }

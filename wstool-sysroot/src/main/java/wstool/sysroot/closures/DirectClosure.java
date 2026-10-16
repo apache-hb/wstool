@@ -1,6 +1,7 @@
 package wstool.sysroot.closures;
 
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -23,17 +24,28 @@ public class DirectClosure implements Closure {
     public static class DirectClosureFactory implements ClosureFactory {
         @Override
         public Optional<Closure> parse(Sexp expr, ClosureContext context) {
-            // (direct [build|test|runtime]+)
-            if (!expr.get(0).equals(SexpFactory.newAtomicSexp("direct"))) {
+            if (expr.isAtomic() || expr.getLength() == 0 || !expr.get(0).equals(SexpFactory.newAtomicSexp("direct"))) {
                 return Optional.empty();
             }
-
-            return Optional.of(new DirectClosure(context, EnumSet.allOf(ClosureName.class)));
+            EnumSet<ClosureName> names = EnumSet.noneOf(ClosureName.class);
+            for (int i = 1; i < expr.getLength(); i++) {
+                Sexp child = expr.get(i);
+                if (!child.isAtomic() || !ClosureNames.supports(child.toString())) {
+                    throw new IllegalArgumentException("Invalid direct closure member: " + child);
+                }
+                names.add(ClosureNames.from(child.toString()));
+            }
+            return Optional.of(new DirectClosure(context, names));
         }
     }
 
     @Override
     public Set<PackageMajorVersion> collect() throws Exception {
-        return Set.of(context.name());
+        Set<PackageMajorVersion> packages = new LinkedHashSet<>();
+        packages.add(context.name());
+        for (ClosureName name : names) {
+            packages.addAll(new NamedClosure(context, name).collect());
+        }
+        return packages;
     }
 }

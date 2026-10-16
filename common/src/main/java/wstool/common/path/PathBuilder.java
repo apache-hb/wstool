@@ -10,14 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
@@ -108,71 +104,6 @@ public class PathBuilder {
                 path);
 
         createSymlinkFolder(workspace, closure, path);
-    }
-
-    public void sysrootSymlinkFolder(
-            LocalWorkspace workspace, PackageMajorVersion root, String selector, Path path)
-            throws Exception {
-        Set<PackageMajorVersion> closure = sysrootClosure(workspace, root, selector);
-
-        LOGGER.info(
-                "Creating {} sysroot for package {} with dependencies {} in workspace {} at {}",
-                selector,
-                root,
-                closure,
-                workspace.path(),
-                path);
-
-        createSymlinkFolder(workspace, closure, path);
-    }
-
-    private Set<PackageMajorVersion> sysrootClosure(
-            LocalWorkspace workspace, PackageMajorVersion root, String selector) throws Exception {
-        Map<String, Set<DependencyType>> modes =
-                Map.of(
-                        "build", EnumSet.of(DependencyType.BUILD),
-                        "development",
-                                EnumSet.of(
-                                        DependencyType.BUILD,
-                                        DependencyType.PUBLIC,
-                                        DependencyType.TEST,
-                                        DependencyType.RUNTIME),
-                        "runtime", EnumSet.of(DependencyType.PUBLIC, DependencyType.RUNTIME));
-        Set<DependencyType> dependencyTypes = modes.get(selector);
-        if (dependencyTypes == null) {
-            throw new IllegalArgumentException(
-                    "Invalid sysroot selector '"
-                            + selector
-                            + "'. Expected build, development, or runtime.");
-        }
-
-        Set<PackageMajorVersion> closure = new LinkedHashSet<>();
-        Queue<PackageMajorVersion> pending = new ArrayDeque<>();
-        for (PackageDependency dependency : workspace.storage().dependenciesOf(root)) {
-            if (dependencyTypes.contains(dependency.type())) {
-                pending.add(dependency.dependency());
-            }
-        }
-
-        while (!pending.isEmpty()) {
-            PackageMajorVersion current = pending.remove();
-            if (!closure.add(current)) {
-                continue;
-            }
-
-            for (PackageDependency dependency : workspace.storage().dependenciesOf(current)) {
-                if (dependencyTypes.contains(dependency.type())) {
-                    pending.add(dependency.dependency());
-                } else if (selector.equals("build")
-                        && (dependency.type() == DependencyType.PUBLIC
-                                || dependency.type() == DependencyType.RUNTIME)) {
-                    // Build tools need their own runtime libraries and public dependencies.
-                    pending.add(dependency.dependency());
-                }
-            }
-        }
-
-        return closure;
     }
 
     private void createSymlinkFolder(

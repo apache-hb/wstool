@@ -25,7 +25,8 @@ public class VersionSelector implements Selector {
         @Override
         public Optional<Selector> parse(Sexp expr, SelectorContext context) throws Exception {
             // (version name)
-            if (!expr.get(0).equals(SexpFactory.newAtomicSexp("version"))) {
+            if (expr.isAtomic() || expr.getLength() != 2
+                    || !expr.get(0).equals(SexpFactory.newAtomicSexp("version"))) {
                 return Optional.empty();
             }
 

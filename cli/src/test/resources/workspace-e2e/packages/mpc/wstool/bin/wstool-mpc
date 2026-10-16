@@ -3,7 +3,7 @@ set -euo pipefail
 source_dir="$WST_SRCDIR/source"
 build_dir="$WST_PRIVATE/build"
 sysroot="$WST_PRIVATE/sysroot"
-wstool sysroot build --output "$sysroot"
+wstool sysroot "(closure build)" --output "$sysroot"
 test -f "$sysroot/include/gmp.h"
 test -f "$sysroot/include/mpfr.h"
 mkdir -p "$build_dir"

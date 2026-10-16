@@ -25,7 +25,8 @@ public class PrefixSelector implements Selector {
         @Override
         public Optional<Selector> parse(Sexp expr, SelectorContext context) throws Exception {
             // (prefix (name version?))
-            if (!expr.get(0).equals(SexpFactory.newAtomicSexp("prefix"))) {
+            if (expr.isAtomic() || expr.getLength() != 2
+                    || !expr.get(0).equals(SexpFactory.newAtomicSexp("prefix"))) {
                 return Optional.empty();
             }
 
