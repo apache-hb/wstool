@@ -1,17 +1,14 @@
 package wstool.sysroot.selectors;
 
-import java.util.Optional;
-
 import de.tudresden.inf.lat.jsexp.Sexp;
 import de.tudresden.inf.lat.jsexp.SexpFactory;
+import java.util.Optional;
 import wstool.common.model.PackageMajorVersion;
 import wstool.sysroot.Selector;
 import wstool.sysroot.SelectorContext;
 import wstool.sysroot.SelectorFactory;
 
-/**
- * Returns an absolute path to the given package install prefix
- */
+/** Returns an absolute path to the given package install prefix */
 public class PrefixSelector implements Selector {
     private final SelectorContext context;
     private final PackageMajorVersion target;
@@ -25,7 +22,8 @@ public class PrefixSelector implements Selector {
         @Override
         public Optional<Selector> parse(Sexp expr, SelectorContext context) throws Exception {
             // (prefix (name version?))
-            if (expr.isAtomic() || expr.getLength() != 2
+            if (expr.isAtomic()
+                    || expr.getLength() != 2
                     || !expr.get(0).equals(SexpFactory.newAtomicSexp("prefix"))) {
                 return Optional.empty();
             }

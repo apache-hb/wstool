@@ -1,8 +1,13 @@
 # Ignore Gradle project-specific cache directory
 .gradle
+.classpath
+.project
+.settings/
+.vscode/
 
 # Ignore Gradle build output directory
 build
+bin
 
 # Ignore Kotlin plugin data
 .kotlin

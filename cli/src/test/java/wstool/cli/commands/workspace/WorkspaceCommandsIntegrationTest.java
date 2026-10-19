@@ -95,6 +95,32 @@ class WorkspaceCommandsIntegrationTest {
     }
 
     @Test
+    void selectResolvesSelectorWithoutOutputOption() throws Exception {
+        URI packageRepository = createSamplePackage();
+        Path workspace = createWorkspace("select-workspace", packageRepository);
+        CliHelper.assertSuccess(
+                cli.runCli(
+                        workspace,
+                        Map.of("PACKAGE_REPOSITORY", packageRepository.toString()),
+                        "workspace",
+                        "add",
+                        "--package",
+                        "sample"));
+
+        CliResult result =
+                cli.runCli(
+                        workspace.resolve("src/sample"),
+                        Map.of(),
+                        "select",
+                        "(prefix sample)");
+
+        CliHelper.assertSuccess(result);
+        assertEquals(
+                workspace.resolve("private/prefix/sample/1.0.0").toAbsolutePath() + "\n",
+                result.output());
+    }
+
+    @Test
     void removeDeletesClonedPackageFromWorkspace() throws Exception {
         URI packageRepository = createSamplePackage();
         Path workspace = createWorkspace("remove-workspace", packageRepository);

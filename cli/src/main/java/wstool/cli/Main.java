@@ -6,7 +6,7 @@ import java.util.Map;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import wstool.cli.commands.BuildCommand;
-import wstool.cli.commands.SysrootCommand;
+import wstool.cli.commands.SelectCommand;
 import wstool.cli.commands.packages.PackageCommand;
 import wstool.cli.commands.workspace.WorkspaceCommand;
 import wstool.cli.inject.GuiceCommandFactory;
@@ -21,7 +21,7 @@ import wstool.common.pkl.PklHelper;
         subcommands = {
             WorkspaceCommand.class,
             PackageCommand.class,
-            SysrootCommand.class,
+            SelectCommand.class,
             BuildCommand.class
         })
 public class Main {

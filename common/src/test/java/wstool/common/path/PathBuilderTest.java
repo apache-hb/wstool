@@ -41,13 +41,15 @@ class PathBuilderTest {
         Files.createDirectories(workspacePath);
         workspace = new LocalWorkspace(workspacePath, null, null, null);
         workspace.storage().setup();
-        workspace.storage().refresh(
-                List.of(APP, MIDDLE, LEAF, BUILD_ONLY, TEST_ONLY),
-                List.of(
-                        dependency(APP, MIDDLE, DependencyType.RUNTIME),
-                        dependency(MIDDLE, LEAF, DependencyType.PUBLIC),
-                        dependency(APP, BUILD_ONLY, DependencyType.BUILD),
-                        dependency(APP, TEST_ONLY, DependencyType.TEST)));
+        workspace
+                .storage()
+                .refresh(
+                        List.of(APP, MIDDLE, LEAF, BUILD_ONLY, TEST_ONLY),
+                        List.of(
+                                dependency(APP, MIDDLE, DependencyType.RUNTIME),
+                                dependency(MIDDLE, LEAF, DependencyType.PUBLIC),
+                                dependency(APP, BUILD_ONLY, DependencyType.BUILD),
+                                dependency(APP, TEST_ONLY, DependencyType.TEST)));
         Files.createDirectories(workspace.prefix(APP));
 
         copyResource("path-builder/app-tool", workspace.prefix(APP).resolve("bin/app-tool"));

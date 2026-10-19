@@ -1,9 +1,8 @@
 package wstool.sysroot.closures;
 
+import de.tudresden.inf.lat.jsexp.Sexp;
 import java.util.List;
 import java.util.Optional;
-
-import de.tudresden.inf.lat.jsexp.Sexp;
 import wstool.sysroot.Closure;
 import wstool.sysroot.ClosureContext;
 import wstool.sysroot.ClosureFactory;

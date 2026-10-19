@@ -1,9 +1,8 @@
 package wstool.sysroot.selectors;
 
+import de.tudresden.inf.lat.jsexp.Sexp;
 import java.util.List;
 import java.util.Optional;
-
-import de.tudresden.inf.lat.jsexp.Sexp;
 import wstool.sysroot.Selector;
 import wstool.sysroot.SelectorContext;
 import wstool.sysroot.SelectorFactory;

@@ -1,5 +1,7 @@
 package wstool.sysroot.selectors;
 
+import de.tudresden.inf.lat.jsexp.Sexp;
+import de.tudresden.inf.lat.jsexp.SexpFactory;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,9 +10,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import de.tudresden.inf.lat.jsexp.Sexp;
-import de.tudresden.inf.lat.jsexp.SexpFactory;
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.workspace.LocalWorkspace;
 import wstool.sysroot.Closure;
@@ -55,11 +54,13 @@ public class PathSelector implements Selector {
                     expr.getLength() > 2
                             ? VersionSelector.resolve(context, expr.get(2))
                             : context.name();
-            Closure closure = closureFactory.parse(expr.get(1), new ClosureContext(context.workspace(), target))
-                    .orElseThrow(
-                            () ->
-                                    new IllegalArgumentException(
-                                            "Unknown closure expression: " + expr.get(1)));
+            Closure closure =
+                    closureFactory
+                            .parse(expr.get(1), new ClosureContext(context.workspace(), target))
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "Unknown closure expression: " + expr.get(1)));
 
             return Optional.of(new PathSelector(closure, context.workspace(), target));
         }

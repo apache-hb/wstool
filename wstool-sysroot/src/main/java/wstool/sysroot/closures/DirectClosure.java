@@ -1,12 +1,11 @@
 package wstool.sysroot.closures;
 
+import de.tudresden.inf.lat.jsexp.Sexp;
+import de.tudresden.inf.lat.jsexp.SexpFactory;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
-
-import de.tudresden.inf.lat.jsexp.Sexp;
-import de.tudresden.inf.lat.jsexp.SexpFactory;
 import wstool.common.model.PackageMajorVersion;
 import wstool.sysroot.Closure;
 import wstool.sysroot.ClosureContext;
@@ -24,7 +23,9 @@ public class DirectClosure implements Closure {
     public static class DirectClosureFactory implements ClosureFactory {
         @Override
         public Optional<Closure> parse(Sexp expr, ClosureContext context) {
-            if (expr.isAtomic() || expr.getLength() == 0 || !expr.get(0).equals(SexpFactory.newAtomicSexp("direct"))) {
+            if (expr.isAtomic()
+                    || expr.getLength() == 0
+                    || !expr.get(0).equals(SexpFactory.newAtomicSexp("direct"))) {
                 return Optional.empty();
             }
             EnumSet<ClosureName> names = EnumSet.noneOf(ClosureName.class);

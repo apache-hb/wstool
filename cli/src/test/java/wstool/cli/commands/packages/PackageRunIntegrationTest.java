@@ -132,9 +132,9 @@ class PackageRunIntegrationTest {
         addPackage(workspace, "tool-owner", environment);
         addPackage(workspace, "tool-helper", environment);
 
-        cli.checkCli(workspace.resolve("src/tool-helper"), environment, "package", "run", "release");
         cli.checkCli(
-                workspace.resolve("src/tool-owner"), environment, "package", "run", "release");
+                workspace.resolve("src/tool-helper"), environment, "package", "run", "release");
+        cli.checkCli(workspace.resolve("src/tool-owner"), environment, "package", "run", "release");
 
         CliResult result =
                 runPackage(workspace.resolve("src/transitive-app"), environment, "release");

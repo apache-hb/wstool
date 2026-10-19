@@ -1,17 +1,14 @@
 package wstool.sysroot.selectors;
 
-import java.util.Optional;
-
 import de.tudresden.inf.lat.jsexp.Sexp;
 import de.tudresden.inf.lat.jsexp.SexpFactory;
+import java.util.Optional;
 import wstool.common.model.PackageMajorVersion;
 import wstool.sysroot.Selector;
 import wstool.sysroot.SelectorContext;
 import wstool.sysroot.SelectorFactory;
 
-/**
- * Given a package name finds its effective version in the provided context
- */
+/** Given a package name finds its effective version in the provided context */
 public class VersionSelector implements Selector {
     private final SelectorContext context;
     private final String name;
@@ -25,7 +22,8 @@ public class VersionSelector implements Selector {
         @Override
         public Optional<Selector> parse(Sexp expr, SelectorContext context) throws Exception {
             // (version name)
-            if (expr.isAtomic() || expr.getLength() != 2
+            if (expr.isAtomic()
+                    || expr.getLength() != 2
                     || !expr.get(0).equals(SexpFactory.newAtomicSexp("version"))) {
                 return Optional.empty();
             }

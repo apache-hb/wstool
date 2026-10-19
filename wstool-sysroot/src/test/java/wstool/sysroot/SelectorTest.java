@@ -17,13 +17,13 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import wstool.common.model.DependencyType;
-import wstool.common.model.PackageDependency;
-import wstool.common.model.PackageMajorVersion;
 import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.distribution.DistributionPackage;
 import wstool.common.distribution.ImmutableDistributionConfig;
+import wstool.common.model.DependencyType;
+import wstool.common.model.PackageDependency;
+import wstool.common.model.PackageMajorVersion;
 import wstool.common.workspace.LocalWorkspace;
 import wstool.sysroot.closures.AggregateClosureFactory;
 import wstool.sysroot.closures.DirectClosure;
@@ -35,7 +35,8 @@ import wstool.sysroot.selectors.PrefixSelector;
 import wstool.sysroot.selectors.VersionSelector;
 
 class SelectorTest {
-    private static final Path TEST_OUTPUT_ROOT = Path.of("build/selector-test-output").toAbsolutePath();
+    private static final Path TEST_OUTPUT_ROOT =
+            Path.of("build/selector-test-output").toAbsolutePath();
     private static final PackageMajorVersion APP = new PackageMajorVersion("app", "1.0");
     private static final PackageMajorVersion RUNTIME = new PackageMajorVersion("runtime", "1.0");
     private static final PackageMajorVersion PUBLIC = new PackageMajorVersion("public", "1.0");
@@ -68,25 +69,32 @@ class SelectorTest {
                 };
         workspace = new LocalWorkspace(workspacePath, distributionFactory, null, null);
         workspace.storage().setup();
-        workspace.storage().refresh(
-                List.of(APP, RUNTIME, PUBLIC, BUILD, TEST, UNUSED),
-                List.of(
-                        dependency(APP, RUNTIME, DependencyType.RUNTIME),
-                        dependency(APP, PUBLIC, DependencyType.PUBLIC),
-                        dependency(APP, BUILD, DependencyType.BUILD),
-                        dependency(APP, TEST, DependencyType.TEST),
-                        dependency(APP, UNUSED, DependencyType.OVERRIDE),
-                        dependency(RUNTIME, PUBLIC, DependencyType.PUBLIC),
-                        dependency(BUILD, RUNTIME, DependencyType.RUNTIME)));
+        workspace
+                .storage()
+                .refresh(
+                        List.of(APP, RUNTIME, PUBLIC, BUILD, TEST, UNUSED),
+                        List.of(
+                                dependency(APP, RUNTIME, DependencyType.RUNTIME),
+                                dependency(APP, PUBLIC, DependencyType.PUBLIC),
+                                dependency(APP, BUILD, DependencyType.BUILD),
+                                dependency(APP, TEST, DependencyType.TEST),
+                                dependency(APP, UNUSED, DependencyType.OVERRIDE),
+                                dependency(RUNTIME, PUBLIC, DependencyType.PUBLIC),
+                                dependency(BUILD, RUNTIME, DependencyType.RUNTIME)));
         createPackageFiles(APP, RUNTIME, PUBLIC, BUILD, TEST, UNUSED);
 
-        closureFactory = new AggregateClosureFactory(List.of(
-                new DirectClosure.DirectClosureFactory(), new NamedClosure.NamedClosureFactory()));
-        selectorFactory = new AggregateSelectorFactory(List.of(
-                new PathSelector.PathSelectorFactory(closureFactory),
-                new ClosureSelector.ClosureSelectorFactory(closureFactory),
-                new PrefixSelector.PrefixSelectorFactory(),
-                new VersionSelector.VersionSelectorFactory()));
+        closureFactory =
+                new AggregateClosureFactory(
+                        List.of(
+                                new DirectClosure.DirectClosureFactory(),
+                                new NamedClosure.NamedClosureFactory()));
+        selectorFactory =
+                new AggregateSelectorFactory(
+                        List.of(
+                                new PathSelector.PathSelectorFactory(closureFactory),
+                                new ClosureSelector.ClosureSelectorFactory(closureFactory),
+                                new PrefixSelector.PrefixSelectorFactory(),
+                                new VersionSelector.VersionSelectorFactory()));
     }
 
     @Test
@@ -99,84 +107,109 @@ class SelectorTest {
 
     @Test
     void buildClosureIncludesRuntimeRequirementsOfBuildDependencies() throws Exception {
-        Closure closure = closureFactory.parse(SexpFactory.parse("build"), new ClosureContext(workspace, APP)).orElseThrow();
+        Closure closure =
+                closureFactory
+                        .parse(SexpFactory.parse("build"), new ClosureContext(workspace, APP))
+                        .orElseThrow();
         assertEquals(Set.of(BUILD, RUNTIME, PUBLIC), closure.collect());
     }
 
     @Test
     void directClosureCombinesRequestedClosuresAndAlwaysIncludesRoot() throws Exception {
-        Closure closure = closureFactory.parse(
-                SexpFactory.parse("(direct build runtime)"), new ClosureContext(workspace, APP)).orElseThrow();
+        Closure closure =
+                closureFactory
+                        .parse(
+                                SexpFactory.parse("(direct build runtime)"),
+                                new ClosureContext(workspace, APP))
+                        .orElseThrow();
         assertEquals(Set.of(APP, BUILD, RUNTIME, PUBLIC), closure.collect());
-        assertEquals(Set.of(APP), closureFactory.parse(
-                SexpFactory.parse("(direct)"), new ClosureContext(workspace, APP)).orElseThrow().collect());
+        assertEquals(
+                Set.of(APP),
+                closureFactory
+                        .parse(SexpFactory.parse("(direct)"), new ClosureContext(workspace, APP))
+                        .orElseThrow()
+                        .collect());
     }
 
     @Test
     void pathSelectorBuildsColonSeparatedPathsAndSupportsExplicitTarget() throws Exception {
-        Selector current = selector("(path (direct))", null);
+        Selector current = selector("(path (direct))");
         assertEquals(workspace.source(APP).resolve("wstool/bin").toString(), current.select());
 
-        Selector explicit = selector("(path (runtime) (runtime 1.0))", null);
+        Selector explicit = selector("(path (runtime) (runtime 1.0))");
         assertEquals(workspace.prefix(PUBLIC).resolve("bin").toString(), explicit.select());
 
-        Selector composed = selector("(path (direct build))", null);
+        Selector composed = selector("(path (direct build))");
         assertEquals(
                 workspace.source(APP).resolve("wstool/bin")
-                        + File.pathSeparator + workspace.prefix(BUILD).resolve("bin")
-                        + File.pathSeparator + workspace.prefix(RUNTIME).resolve("bin")
-                        + File.pathSeparator + workspace.prefix(PUBLIC).resolve("bin"),
+                        + File.pathSeparator
+                        + workspace.prefix(BUILD).resolve("bin")
+                        + File.pathSeparator
+                        + workspace.prefix(RUNTIME).resolve("bin")
+                        + File.pathSeparator
+                        + workspace.prefix(PUBLIC).resolve("bin"),
                 composed.select());
     }
 
     @Test
-    void closureSelectorCreatesMergedSysrootForEachClosureType() throws Exception {
-        Path output = outputRoot.resolve("sysroot");
-        assertEquals(output.toString(), selector("(closure runtime)", output).select());
+    void closureSelectorCreatesMergedWorkspaceCacheForEachClosureType() throws Exception {
+        Path output = Path.of(selector("(closure runtime)").select());
         assertTrue(Files.isSymbolicLink(output.resolve("bin/runtime-tool")));
         assertTrue(Files.isSymbolicLink(output.resolve("bin/public-tool")));
         assertFalse(Files.exists(output.resolve("bin/build-tool")));
         assertFalse(Files.exists(output.resolve("bin/app-tool")));
 
-        Path buildOutput = outputRoot.resolve("build-sysroot");
-        selector("(closure build)", buildOutput).select();
+        Path buildOutput = Path.of(selector("(closure build)").select());
         assertTrue(Files.isSymbolicLink(buildOutput.resolve("bin/build-tool")));
         assertTrue(Files.isSymbolicLink(buildOutput.resolve("bin/runtime-tool")));
         assertFalse(Files.exists(buildOutput.resolve("bin/test-tool")));
 
-        Path combinedOutput = outputRoot.resolve("combined-sysroot");
-        selector("(closure (direct runtime))", combinedOutput).select();
+        Path combinedOutput = Path.of(selector("(closure (direct runtime))").select());
         assertTrue(Files.isSymbolicLink(combinedOutput.resolve("bin/app-tool")));
         assertTrue(Files.isSymbolicLink(combinedOutput.resolve("bin/runtime-tool")));
     }
 
     @Test
     void simpleSelectorsResolveVersionsAndPrefixes() throws Exception {
-        assertEquals("1.0", selector("(version runtime)", null).select());
-        assertEquals(workspace.prefix(RUNTIME).toAbsolutePath().toString(), selector("(prefix runtime)", null).select());
-        assertEquals(workspace.prefix(RUNTIME).toAbsolutePath().toString(), selector("(prefix (runtime 1.0))", null).select());
+        assertEquals("1.0", selector("(version runtime)").select());
+        assertEquals(
+                workspace.prefix(RUNTIME).toAbsolutePath().toString(),
+                selector("(prefix runtime)").select());
+        assertEquals(
+                workspace.prefix(RUNTIME).toAbsolutePath().toString(),
+                selector("(prefix (runtime 1.0))").select());
     }
 
     @Test
     void rejectsUnknownClosureAndMalformedSelectors() throws Exception {
-        assertTrue(closureFactory.parse(SexpFactory.parse("unknown"), new ClosureContext(workspace, APP)).isEmpty());
-        assertThrows(IllegalArgumentException.class, () -> selector("(path unknown)", null));
-        assertThrows(IllegalArgumentException.class, () -> selector("(path (direct invalid))", null));
+        assertTrue(
+                closureFactory
+                        .parse(SexpFactory.parse("unknown"), new ClosureContext(workspace, APP))
+                        .isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> selector("(path unknown)"));
+        assertThrows(
+                IllegalArgumentException.class, () -> selector("(path (direct invalid))"));
     }
 
     private Set<PackageMajorVersion> collect(String name) throws Exception {
-        return closureFactory.parse(SexpFactory.parse(name), new ClosureContext(workspace, APP)).orElseThrow().collect();
+        return closureFactory
+                .parse(SexpFactory.parse(name), new ClosureContext(workspace, APP))
+                .orElseThrow()
+                .collect();
     }
 
-    private Selector selector(String expr, Path output) throws Exception {
-        return selectorFactory.parse(
-                SexpFactory.parse(expr), new SelectorContext(workspace, APP, output)).orElseThrow();
+    private Selector selector(String expr) throws Exception {
+        return selectorFactory
+                .parse(SexpFactory.parse(expr), new SelectorContext(workspace, APP))
+                .orElseThrow();
     }
 
     private void createPackageFiles(PackageMajorVersion... packages) throws Exception {
         for (PackageMajorVersion name : packages) {
             Files.createDirectories(workspace.prefix(name).resolve("bin"));
-            Files.writeString(workspace.prefix(name).resolve("bin").resolve(name.name() + "-tool"), name.name());
+            Files.writeString(
+                    workspace.prefix(name).resolve("bin").resolve(name.name() + "-tool"),
+                    name.name());
         }
         Files.createDirectories(workspace.source(APP).resolve("wstool/bin"));
         Files.writeString(workspace.source(APP).resolve("wstool/bin/local-tool"), "local");

@@ -1,12 +1,11 @@
 package wstool.sysroot.closures;
 
+import de.tudresden.inf.lat.jsexp.Sexp;
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-
-import de.tudresden.inf.lat.jsexp.Sexp;
 import wstool.common.model.DependencyType;
 import wstool.common.model.PackageDependency;
 import wstool.common.model.PackageMajorVersion;
@@ -46,17 +45,21 @@ public class NamedClosure implements Closure {
     public Set<PackageMajorVersion> collect() throws Exception {
         Set<PackageMajorVersion> closure = new LinkedHashSet<>();
         Queue<PackageMajorVersion> pending = new ArrayDeque<>();
-        for (PackageDependency dependency : context.workspace().storage().dependenciesOf(context.name())) {
+        
+        for (PackageDependency dependency :
+                context.workspace().storage().dependenciesOf(context.name())) {
             if (ClosureNames.includes(name, dependency.type())) {
                 pending.add(dependency.dependency());
             }
         }
+
         while (!pending.isEmpty()) {
             PackageMajorVersion current = pending.remove();
             if (!closure.add(current)) {
                 continue;
             }
-            for (PackageDependency dependency : context.workspace().storage().dependenciesOf(current)) {
+            for (PackageDependency dependency :
+                    context.workspace().storage().dependenciesOf(current)) {
                 if (ClosureNames.includes(name, dependency.type())) {
                     pending.add(dependency.dependency());
                 } else if (name == ClosureName.BUILD

@@ -15,7 +15,8 @@ import wstool.common.workspace.LocalWorkspace;
 public final class SymlinkFolder {
     private SymlinkFolder() {}
 
-    public static void create(LocalWorkspace workspace, Set<PackageMajorVersion> packages, Path target)
+    public static void create(
+            LocalWorkspace workspace, Set<PackageMajorVersion> packages, Path target)
             throws Exception {
         Files.createDirectories(target);
         for (PackageMajorVersion name : packages) {
@@ -27,8 +28,8 @@ public final class SymlinkFolder {
                     source,
                     new SimpleFileVisitor<>() {
                         @Override
-                        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                                throws IOException {
+                        public FileVisitResult preVisitDirectory(
+                                Path dir, BasicFileAttributes attrs) throws IOException {
                             Files.createDirectories(target.resolve(source.relativize(dir)));
                             return FileVisitResult.CONTINUE;
                         }

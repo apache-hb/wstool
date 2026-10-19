@@ -1,14 +1,14 @@
 package wstool.cli.commands;
 
-import jakarta.inject.Inject;
-import java.nio.file.Path;
-import java.util.List;
-
 import de.tudresden.inf.lat.jsexp.SexpFactory;
+import jakarta.inject.Inject;
+import java.util.List;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 import wstool.cli.VersionProvider;
+import wstool.common.packages.PackageConfig;
 import wstool.common.packages.PackageFactory;
 import wstool.common.workspace.LocalWorkspace;
 import wstool.common.workspace.WorkspaceFactory;
@@ -26,33 +26,28 @@ import wstool.sysroot.selectors.PrefixSelector;
 import wstool.sysroot.selectors.VersionSelector;
 
 @Command(
-        name = "sysroot",
-        description = "Create a sysroot from workspace package artifacts.",
+        name = "select",
+        description = "Select packages from a workspace.",
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
-public class SysrootCommand extends CommonCommand {
+public class SelectCommand extends CommonCommand {
+    @Spec private CommandSpec spec;
+
     @Parameters(
             index = "0",
             description =
                     "Selector s-expression, for example (closure build) or (closure runtime (name version)).")
     private String selector;
 
-    @Option(
-            names = "--output",
-            description = "Directory to create the sysroot in.",
-            required = true)
-    private Path output;
-
     private final WorkspaceFactory workspaceFactory;
     private final PackageFactory packageFactory;
     private final SelectorFactory selectorFactory;
 
     @Inject
-    public SysrootCommand(
-            WorkspaceFactory workspaceFactory,
-            PackageFactory packageFactory) {
+    public SelectCommand(WorkspaceFactory workspaceFactory, PackageFactory packageFactory) {
         this.workspaceFactory = workspaceFactory;
         this.packageFactory = packageFactory;
+
         ClosureFactory closureFactory =
                 new AggregateClosureFactory(
                         List.of(
@@ -61,8 +56,8 @@ public class SysrootCommand extends CommonCommand {
         this.selectorFactory =
                 new AggregateSelectorFactory(
                         List.of(
-                                new PathSelector.PathSelectorFactory(closureFactory),
                                 new ClosureSelector.ClosureSelectorFactory(closureFactory),
+                                new PathSelector.PathSelectorFactory(closureFactory),
                                 new PrefixSelector.PrefixSelectorFactory(),
                                 new VersionSelector.VersionSelectorFactory()));
     }
@@ -71,9 +66,11 @@ public class SysrootCommand extends CommonCommand {
     public Integer call() throws Exception {
         LocalWorkspace workspace = workspaceFactory.findUp(cwd);
         workspace.refresh();
+        PackageConfig pkg = packageFactory.findUp(cwd);
 
         SelectorContext context =
-                new SelectorContext(workspace, packageFactory.findUp(cwd).name(), output);
+                new SelectorContext(workspace, pkg.name());
+
         Selector parsed =
                 selectorFactory
                         .parse(SexpFactory.parse(selector), context)
@@ -81,10 +78,9 @@ public class SysrootCommand extends CommonCommand {
                                 () ->
                                         new IllegalArgumentException(
                                                 "Unknown selector expression: " + selector));
-        if (!(parsed instanceof ClosureSelector)) {
-            throw new IllegalArgumentException("The sysroot command requires a (closure ...) selector.");
-        }
-        parsed.select();
+
+        spec.commandLine().getOut().println(parsed.select());
+
         return 0;
     }
 }

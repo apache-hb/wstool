@@ -81,7 +81,7 @@ testDependencies {
 
 ### wstool sysroot command
 
-The main command for configuring and aggregating packages during builds is `wstool sysroot <selector>`, this allows creation of a fake sysroot with installation files from other packages in it. This is most commonly used for creating a build root with all required headers/libraries/binaries in it during build. This can also be used to create a final aggregate package with `wstool aggregate <selector>`. `wstool sysroot <selector>` can accept any of the following arguments as its selector: `build`, `development`, `runtime`, and `<packagename>@<version>/<selector>`. `build` collects all the build time dependencies and their transitive dependents. `development` collects all buildDependencies, dependencies, testDependencies, and runtimeDependencies. And runtime collects only dependencies and runtimeDependencies. Specifying a package name version overrides the package to use as the root for graph traversal as this defaults to the current package.
+The main command for configuring and aggregating packages during builds is `wstool select <selector>`, this allows creation of a fake sysroot with installation files from other packages in it. This is most commonly used for creating a build root with all required headers/libraries/binaries in it during build. This can also be used to create a final aggregate package with `wstool aggregate <selector>`. `wstool select <selector>` uses an s-expression as its argument. `(closure (build))` collects all the build time dependencies and their transitive dependents. `(test)` Collects all test dependencies. And `(closure (runtime))` collects only dependencies and runtimeDependencies. Multiple closures can be specified such as `(closure (test runtime))` to select dependencies from multiple closures. Specifying a package name version overrides the package to use as the root for graph traversal as this defaults to the current package. For example `(closure (test) (my-dependency 1.x))` creates a closure with all the testDependencies from `my-dependency` version `1.x` if its available in the current distribution.
 
 ## writing your own build tools
 
@@ -214,3 +214,7 @@ For npm packages, `buildOptions.tool` remains `npm-wstool`; the shared package t
 Maven import package configs use `ExternalFiles`, fetching each artifact from the configured Maven repository and verifying its SHA-256 checksum. npm package configs use `ExternalArchive` with the tarball URL and integrity recorded by npm. The npm importer writes only package metadata and does not copy package files into an `external-files/` directory.
 
 Archive extraction uses Apache Commons Compress to read ZIP and TAR archives, including compressed TAR files. It uses the archive entry metadata to preserve file permissions and rejects paths and links that escape the extraction directory.
+
+### Selector command
+
+`wstool select <selector>` replaces the former `wstool sysroot` command for evaluating workspace selectors. Closure selectors create their merged package files in the workspace selector cache, so no output directory is required.

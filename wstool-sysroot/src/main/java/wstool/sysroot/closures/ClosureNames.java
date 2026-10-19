@@ -25,10 +25,11 @@ final class ClosureNames {
         return switch (name) {
             case BUILD -> type == DependencyType.BUILD;
             case RUNTIME -> type == DependencyType.PUBLIC || type == DependencyType.RUNTIME;
-            case TEST -> type == DependencyType.BUILD
-                    || type == DependencyType.PUBLIC
-                    || type == DependencyType.TEST
-                    || type == DependencyType.RUNTIME;
+            case TEST ->
+                    type == DependencyType.BUILD
+                            || type == DependencyType.PUBLIC
+                            || type == DependencyType.TEST
+                            || type == DependencyType.RUNTIME;
         };
     }
 }

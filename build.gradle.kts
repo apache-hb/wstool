@@ -1,16 +1,23 @@
-import java.nio.file.Files
 import org.gradle.api.plugins.JavaPluginExtension
 
 plugins {
   id("java-platform")
+  id("eclipse")
   id("com.diffplug.spotless") version "8.10.2"
 }
 
-group = "com.apachehb.wstool"
+group = "wstool"
 
 version = providers.gradleProperty("releaseVersion").orElse("0.1.0").get()
 
+eclipse {
+}
+
 subprojects {
+  // Generate Eclipse project metadata for every module so Buildship can provide
+  // project dependencies and source roots to the IDE.
+  apply(plugin = "eclipse")
+
   group = rootProject.group
   version = rootProject.version
 
@@ -47,16 +54,17 @@ val pklSourceFiles =
   }
 
 val textSourceFiles =
-  rootDir
-    .walkTopDown()
-    .onEnter { file ->
-      !Files.isSymbolicLink(file.toPath()) && file.name !in setOf("build", ".gradle")
-    }
-    .filter { file ->
-      file.isFile &&
-        (file.extension in setOf("md", "xml") || file.name in setOf(".gitattributes", ".gitignore"))
-    }
-    .toList()
+  fileTree(rootDir) {
+    include("**/*.md", "**/*.xml", "**/.gitattributes", "**/.gitignore")
+    exclude(
+      "**/.git/**",
+      "**/.gradle/**",
+      "**/build/**",
+      "**/node_modules/**",
+      "**/.idea/**",
+      "**/.vscode-server/**",
+    )
+  }
 
 tasks.register<JavaExec>("pklFormat") {
   group = "formatting"
