@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-printf '%s\n' "$@" > "$WST_PREFIX/arguments.txt"
-printf '%s\n' "$WST_SRCDIR" > "$WST_PREFIX/source-dir.txt"

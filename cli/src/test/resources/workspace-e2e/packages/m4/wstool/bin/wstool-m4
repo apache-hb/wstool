@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-source_dir="$WST_SRCDIR/source"
-build_dir="$WST_PRIVATE/build"
-mkdir -p "$build_dir"
-cd "$build_dir"
-"$source_dir/configure" --prefix="$WST_PREFIX"
-make -j32
-make install

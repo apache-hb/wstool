@@ -187,8 +187,7 @@ class SelectorTest {
                         .parse(SexpFactory.parse("unknown"), new ClosureContext(workspace, APP))
                         .isEmpty());
         assertThrows(IllegalArgumentException.class, () -> selector("(path unknown)"));
-        assertThrows(
-                IllegalArgumentException.class, () -> selector("(path (direct invalid))"));
+        assertThrows(IllegalArgumentException.class, () -> selector("(path (direct invalid))"));
     }
 
     private Set<PackageMajorVersion> collect(String name) throws Exception {

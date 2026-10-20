@@ -2,9 +2,9 @@ plugins { `java-library` }
 
 dependencies {
   implementation(platform(project(":")))
-  implementation(project(":common"))
+  implementation(project(":wstool-common"))
   implementation("de.tu-dresden.inf.lat.jsexp:jsexp:0.2.2")
-  api(project(":config"))
+  api(project(":wstool-config"))
   api("org.jspecify:jspecify:1.0.0")
 
   runtimeOnly("org.apache.logging.log4j:log4j-core")

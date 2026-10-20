@@ -10,8 +10,7 @@ group = "wstool"
 
 version = providers.gradleProperty("releaseVersion").orElse("0.1.0").get()
 
-eclipse {
-}
+eclipse {}
 
 subprojects {
   // Generate Eclipse project metadata for every module so Buildship can provide

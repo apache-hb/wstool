@@ -218,3 +218,7 @@ Archive extraction uses Apache Commons Compress to read ZIP and TAR archives, in
 ### Selector command
 
 `wstool select <selector>` replaces the former `wstool sysroot` command for evaluating workspace selectors. Closure selectors create their merged package files in the workspace selector cache, so no output directory is required.
+
+### Gradle module paths
+
+The Gradle modules are `wstool-cli`, `wstool-config`, and `wstool-common`. For example, build the CLI distribution with `./gradlew :wstool-cli:packageCli`; its generated files are under `wstool-cli/build/distributions`.

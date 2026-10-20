@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-helper_output="$(helper-tool)"
-printf 'owner received: %s\n' "$helper_output" > "$WST_PREFIX/result.txt"

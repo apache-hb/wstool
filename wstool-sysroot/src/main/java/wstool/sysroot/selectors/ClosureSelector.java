@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Optional;
-
 import wstool.common.model.PackageMajorVersion;
 import wstool.sysroot.Closure;
 import wstool.sysroot.ClosureContext;
@@ -64,9 +63,7 @@ public class ClosureSelector implements Selector {
 
             return Optional.of(
                     new ClosureSelector(
-                            closure,
-                            new SelectorContext(context.workspace(), target),
-                            key));
+                            closure, new SelectorContext(context.workspace(), target), key));
         }
     }
 

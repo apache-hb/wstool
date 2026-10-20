@@ -1,8 +1,0 @@
-#!/bin/sh
-
-INPUT=$WST_SRCDIR/bin
-OUTPUT=$WST_PREFIX/bin
-
-echo "rsync -a $INPUT/ $OUTPUT/"
-
-rsync -a $INPUT/ $OUTPUT/

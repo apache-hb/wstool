@@ -1,7 +1,6 @@
 package wstool.sysroot;
 
 import java.util.Objects;
-
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.workspace.LocalWorkspace;
 

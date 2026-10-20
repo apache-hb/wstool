@@ -45,7 +45,7 @@ public class NamedClosure implements Closure {
     public Set<PackageMajorVersion> collect() throws Exception {
         Set<PackageMajorVersion> closure = new LinkedHashSet<>();
         Queue<PackageMajorVersion> pending = new ArrayDeque<>();
-        
+
         for (PackageDependency dependency :
                 context.workspace().storage().dependenciesOf(context.name())) {
             if (ClosureNames.includes(name, dependency.type())) {
