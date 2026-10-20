@@ -1,8 +1,8 @@
 package wstool.cli.commands.packages;
 
-import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import javax.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Unmatched;
 import wstool.cli.VersionProvider;

@@ -16,7 +16,7 @@ dependencies {
   compileOnly("org.immutables:value-annotations:2.12.2")
   annotationProcessor("org.immutables:value:2.12.2")
 
-  api("jakarta.inject:jakarta.inject-api:2.0.1")
+  api("javax.inject:javax.inject:1")
   implementation("org.apache.commons:commons-compress:1.28.0")
   implementation("org.tukaani:xz:1.12")
   implementation("org.apache.logging.log4j:log4j-api")

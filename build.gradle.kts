@@ -37,7 +37,7 @@ dependencies {
   api(platform("org.pkl-lang:pkl-bom:0.32.1"))
   api(platform("org.testcontainers:testcontainers-bom:2.0.5"))
 
-  api("com.google.inject:guice:7.0.0")
+  api("com.google.dagger:dagger:2.60.1")
   api("org.apache.logging.log4j:log4j-api")
   api("org.apache.logging.log4j:log4j-core")
 }

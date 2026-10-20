@@ -1,8 +1,8 @@
 package wstool.cli.commands;
 
 import de.tudresden.inf.lat.jsexp.SexpFactory;
-import jakarta.inject.Inject;
 import java.util.List;
+import javax.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Parameters;

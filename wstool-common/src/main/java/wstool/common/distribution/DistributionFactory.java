@@ -1,10 +1,10 @@
 package wstool.common.distribution;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import wstool.Distribution;
 import wstool.Distribution.Archive;
 import wstool.Distribution.Folder;

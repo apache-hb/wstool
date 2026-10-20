@@ -1,7 +1,5 @@
 package wstool.cli;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import java.util.Map;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -9,8 +7,8 @@ import wstool.cli.commands.BuildCommand;
 import wstool.cli.commands.SelectCommand;
 import wstool.cli.commands.packages.PackageCommand;
 import wstool.cli.commands.workspace.WorkspaceCommand;
-import wstool.cli.inject.GuiceCommandFactory;
-import wstool.cli.inject.WstoolModule;
+import wstool.cli.inject.DaggerWstoolComponent;
+import wstool.cli.inject.WstoolComponent;
 import wstool.common.pkl.PklHelper;
 
 @Command(
@@ -26,14 +24,15 @@ import wstool.common.pkl.PklHelper;
         })
 public class Main {
     public static void main(String[] args) throws Exception {
-        Injector injector = Guice.createInjector(new WstoolModule(Map.of(), true));
+        WstoolComponent component =
+                DaggerWstoolComponent.builder().env(Map.of()).interactive(true).build();
 
-        System.exit(runCommandLine(injector, args));
+        System.exit(runCommandLine(component, args));
     }
 
-    private static int runCommandLine(Injector injector, String[] args) throws Exception {
-        try (PklHelper _ = injector.getInstance(PklHelper.class)) {
-            return new CommandLine(new Main(), new GuiceCommandFactory(injector)).execute(args);
+    private static int runCommandLine(WstoolComponent component, String[] args) throws Exception {
+        try (PklHelper _ = component.pklHelper()) {
+            return new CommandLine(new Main(), component.commandFactory()).execute(args);
         }
     }
 }

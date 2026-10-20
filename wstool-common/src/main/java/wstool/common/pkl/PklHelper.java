@@ -1,10 +1,10 @@
 package wstool.common.pkl;
 
-import jakarta.inject.Singleton;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import javax.inject.Singleton;
 import org.pkl.config.java.Config;
 import org.pkl.config.java.ConfigEvaluator;
 import org.pkl.config.java.ConfigEvaluatorBuilder;

@@ -1,12 +1,12 @@
 package wstool.common.packages;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import wstool.Package;
 import wstool.common.model.DependencyType;
 import wstool.common.model.PackageMajorVersion;

@@ -1,6 +1,6 @@
 package wstool.cli.commands.workspace;
 
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import wstool.cli.VersionProvider;

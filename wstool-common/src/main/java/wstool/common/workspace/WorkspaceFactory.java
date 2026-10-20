@@ -1,9 +1,9 @@
 package wstool.common.workspace;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.packages.PackageFactory;
 import wstool.git.GitClient;
