@@ -11,8 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public final class CliHelper {
+    private static final Logger LOGGER = LogManager.getLogger(CliHelper.class);
+
     private final Path tmp;
 
     public CliHelper(Path tmp) {
@@ -33,6 +37,7 @@ public final class CliHelper {
         }
 
         Path output = tmp.resolve("cli-output.txt");
+        Path error = tmp.resolve("cli-error.txt");
         var command = new ArrayList<String>();
         command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
         command.add("-Dwstool.version=integration-test");
@@ -43,15 +48,18 @@ public final class CliHelper {
 
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.directory(cwd.toFile());
-        builder.redirectErrorStream(true);
         builder.redirectOutput(output.toFile());
-        builder.environment().remove("PACKAGE_REPOSITORY");
+        builder.redirectError(error.toFile());
         builder.environment().putAll(environment);
 
         Process process = builder.start();
         if (!process.waitFor(Duration.ofMinutes(2).toMillis(), TimeUnit.MILLISECONDS)) {
             process.destroyForcibly();
             throw new IOException("wstool CLI did not finish within two minutes");
+        }
+        String errorOutput = Files.readString(error, StandardCharsets.UTF_8);
+        if (!errorOutput.isBlank()) {
+            LOGGER.info("wstool CLI stderr: {}", errorOutput);
         }
         return new CliResult(process.exitValue(), Files.readString(output, StandardCharsets.UTF_8));
     }

@@ -108,7 +108,11 @@ class WorkspaceCommandsIntegrationTest {
                         "sample"));
 
         CliResult result =
-                cli.runCli(workspace.resolve("src/sample"), Map.of(), "select", "(prefix sample)");
+                cli.runCli(
+                        workspace.resolve("src/sample"),
+                        Map.of("PACKAGE_REPOSITORY", packageRepository.toString()),
+                        "select",
+                        "(prefix sample)");
 
         CliHelper.assertSuccess(result);
         assertEquals(

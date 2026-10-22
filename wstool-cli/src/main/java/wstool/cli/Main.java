@@ -25,7 +25,7 @@ import wstool.common.pkl.PklHelper;
 public class Main {
     public static void main(String[] args) throws Exception {
         WstoolComponent component =
-                DaggerWstoolComponent.builder().env(Map.of()).interactive(true).build();
+                DaggerWstoolComponent.builder().env(System.getenv()).interactive(true).build();
 
         System.exit(runCommandLine(component, args));
     }
