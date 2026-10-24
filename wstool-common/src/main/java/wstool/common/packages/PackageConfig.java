@@ -14,5 +14,10 @@ public interface PackageConfig {
 
     String buildTool();
 
+    @Value.Default
+    default List<ExternalSource> externalSources() {
+        return List.of();
+    }
+
     Map<DependencyType, List<PackageMajorVersion>> dependencies();
 }

@@ -1,0 +1,32 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+local repository = read("env:WSTOOL_TEST_HTTP_BASE")
+
+package {
+  name = "external-source-e2e"
+  version = "1.0"
+}
+
+build {
+  tool = "/bin/sh"
+}
+
+externalSources = new ImportOptions {
+  sources = new Listing {
+    new ArchiveSource {
+      uri = "\(repository)/project.tar.gz"
+      checksum = "b75da2ab971321012cfa506109d934ab037ad17bf259880f21f7717c528e94ab"
+      stripComponents = 1
+      license = "MIT"
+      patches = new Listing {
+        "patches/update-message.patch"
+      }
+    }
+    new FileSource {
+      uri = "\(repository)/version.txt"
+      path = "data/version.txt"
+      checksum = "6ec09b2a0adb9e54f8be4133731437c3b3adc509b555a9c0ef358fcb96ddf64f"
+      license = "MIT"
+    }
+  }
+}

@@ -17,10 +17,12 @@ public class BuildRunner {
     private static final Logger LOGGER = LogManager.getLogger(BuildRunner.class);
 
     private final PathBuilder pathBuilder;
+    private final BuildSourcePreparer buildSourcePreparer;
 
     @Inject
-    public BuildRunner(PathBuilder pathBuilder) {
+    public BuildRunner(PathBuilder pathBuilder, BuildSourcePreparer buildSourcePreparer) {
         this.pathBuilder = pathBuilder;
+        this.buildSourcePreparer = buildSourcePreparer;
     }
 
     public int runBuild(LocalWorkspace workspace, PackageConfig pkg, List<String> args)
@@ -28,12 +30,12 @@ public class BuildRunner {
 
         PackageMajorVersion name = pkg.name();
         Path builddir = workspace.builddir(name);
-        Path source = workspace.source(name);
+        Path source = buildSourcePreparer.prepare(workspace, pkg);
         Path prefix = workspace.prefix(name);
         Files.createDirectories(builddir);
         Files.createDirectories(prefix);
 
-        String path = pathBuilder.buildToolPath(workspace, name);
+        String path = pathBuilder.buildToolPath(workspace, name, source);
 
         List<String> command = new ArrayList<>();
         command.add("/usr/bin/env");
@@ -47,9 +49,9 @@ public class BuildRunner {
                 "Running build for package {} with command: {} in directory: {} with PATH: {}",
                 name,
                 command,
-                builddir,
+                source,
                 buildPath);
-        pb.directory(builddir.toFile());
+        pb.directory(source.toFile());
         pb.environment().put("PATH", buildPath);
         pb.environment().put("WST_PRIVATE", builddir.toAbsolutePath().toString());
         pb.environment().put("WST_SRCDIR", source.toAbsolutePath().toString());

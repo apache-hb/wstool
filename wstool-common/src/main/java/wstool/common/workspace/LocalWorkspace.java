@@ -27,6 +27,7 @@ public class LocalWorkspace {
     private static final String CACHE = "private/cache";
     private static final String PREFIX = "private/prefix";
     private static final String BUILD = "private/build";
+    private static final String BUILD_SOURCE = "private/build-source";
     private static final String SELECTOR_CACHE = "private/selector-cache";
     private static final String BUILD_CLOSURE_CACHE = "private/build-closure-cache";
     private static final String MANIFEST = "wstool.db";
@@ -65,6 +66,7 @@ public class LocalWorkspace {
         Files.createDirectories(path.resolve(CACHE));
         Files.createDirectories(path.resolve(PREFIX));
         Files.createDirectories(path.resolve(BUILD));
+        Files.createDirectories(path.resolve(BUILD_SOURCE));
         Files.createDirectories(path.resolve(SELECTOR_CACHE));
         Files.createDirectories(path.resolve(BUILD_CLOSURE_CACHE));
 
@@ -153,6 +155,14 @@ public class LocalWorkspace {
 
     public Path builddir(PackageMajorVersion name) {
         return path.resolve(BUILD).resolve(name.name()).resolve(name.version());
+    }
+
+    public Path buildSource(PackageMajorVersion name) {
+        return path.resolve(BUILD_SOURCE).resolve(name.name()).resolve(name.version());
+    }
+
+    public Path cache() {
+        return path.resolve(CACHE);
     }
 
     public Path prefix(PackageMajorVersion name) {

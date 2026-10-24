@@ -1,6 +1,8 @@
 package wstool.cli.commands.packages;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.net.URI;
@@ -18,7 +20,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import wstool.cli.commands.CliHelper;
 import wstool.test.components.CliResult;
+import wstool.test.components.LocalFileHttpServer;
 import wstool.test.components.PackageGitManager;
+import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
 class PackageRunIntegrationTest {
@@ -144,6 +148,60 @@ class PackageRunIntegrationTest {
                 "owner received: helper from dependency\n",
                 Files.readString(
                         workspace.resolve("private/prefix/transitive-app/1.0.0/result.txt")));
+    }
+
+    @Test
+    void cliBuildsPackageUsingHttpExternalSourcesAndLocalPatch() throws Exception {
+        Path fixtureDirectory =
+                TestResources.copyDirectory(
+                        getClass(),
+                        "/external-source-fixtures",
+                        tmp.resolve("external-source-fixtures"));
+        Path packageFixture = fixtureDirectory.resolve("e2e-package");
+        Map<String, Path> servedFiles =
+                Map.of(
+                        "/project.tar.gz", fixtureDirectory.resolve("e2e-upstream/project.tar.gz"),
+                        "/version.txt", fixtureDirectory.resolve("e2e-files/version.txt"));
+        try (LocalFileHttpServer server = new LocalFileHttpServer(servedFiles)) {
+            URI httpBase = server.baseUri();
+            URI packageRepository = createRepository("external-source-e2e", packageFixture);
+            Map<String, String> environment =
+                    Map.of(
+                            "EXTERNAL_SOURCE_REPOSITORY", packageRepository.toString(),
+                            "WSTOOL_TEST_HTTP_BASE", httpBase.toString());
+            Path workspace =
+                    createWorkspace(
+                            "external-source-e2e",
+                            "/package-run/external-source/distribution",
+                            environment);
+            addPackage(workspace, "external-source-e2e", environment);
+            Path packageDirectory = workspace.resolve("src/external-source-e2e");
+
+            CliResult result = runPackage(packageDirectory, environment, "wstool/bin/build.sh");
+
+            CliHelper.assertSuccess(result);
+            Path intermediate = workspace.resolve("private/build-source/external-source-e2e/1.0");
+            Path prefix = workspace.resolve("private/prefix/external-source-e2e/1.0");
+            assertEquals(
+                    "Hello from the patched third-party source archive.\n"
+                            + "Overlay from the workspace package.\n"
+                            + "Release version 2.7.3\n",
+                    Files.readString(prefix.resolve("package-output.txt")));
+            assertEquals(
+                    intermediate.toAbsolutePath() + "\n",
+                    Files.readString(prefix.resolve("build-directory.txt")));
+            assertEquals(
+                    "Hello from the patched third-party source archive.\n",
+                    Files.readString(intermediate.resolve("src/message.txt")));
+            assertTrue(Files.isRegularFile(intermediate.resolve("README.txt")));
+            assertEquals(
+                    "Overlay from the workspace package.\n",
+                    Files.readString(packageDirectory.resolve("src/package-overlay.txt")));
+            assertFalse(Files.exists(packageDirectory.resolve("src/message.txt")));
+            assertFalse(Files.exists(packageDirectory.resolve("data/version.txt")));
+            assertEquals(1, server.requestCount("/project.tar.gz"));
+            assertEquals(1, server.requestCount("/version.txt"));
+        }
     }
 
     private Path createWorkspace(

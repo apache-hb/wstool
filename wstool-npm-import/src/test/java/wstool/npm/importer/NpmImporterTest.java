@@ -19,6 +19,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import wstool.test.components.NpmRegistryManager;
+import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
 class NpmImporterTest {
@@ -109,11 +110,10 @@ class NpmImporterTest {
     }
 
     private static Path packageFixture(String name) throws Exception {
-        var resource = NpmImporterTest.class.getResource("/npm-registry/packages/" + name);
-        if (resource == null) {
-            throw new IOException("Missing npm package fixture: " + name);
-        }
-        return Path.of(resource.toURI());
+        return TestResources.copyDirectory(
+                NpmImporterTest.class,
+                "/npm-registry/packages/" + name,
+                npmConfigDirectory.resolve(name));
     }
 
     private NpmPackage packageNamed(List<NpmPackage> packages, String name) {

@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-  testImplementation(project(":wstool-test-components"))
+  testImplementation(testFixtures(project(":wstool-test-components")))
   implementation(platform(project(":")))
   implementation("org.pkl-lang:pkl-config-java:0.32.1")
 }

@@ -8,6 +8,9 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import wstool.Package;
+import wstool.Package.ArchiveSource;
+import wstool.Package.CodeSource;
+import wstool.Package.FileSource;
 import wstool.common.model.DependencyType;
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.pkl.PklHelper;
@@ -43,6 +46,7 @@ public class PackageFactory {
         PackageMajorVersion name =
                 new PackageMajorVersion(pkg.getPackage().getName(), pkg.getPackage().getVersion());
         String buildTool = pkg.getBuild().getTool();
+        List<ExternalSource> externalSources = mapExternalSources(pkg.getExternalSources());
 
         Map<DependencyType, List<PackageMajorVersion>> dependencies =
                 Map.of(
@@ -55,6 +59,7 @@ public class PackageFactory {
         return ImmutablePackageConfig.builder()
                 .name(name)
                 .buildTool(buildTool)
+                .externalSources(externalSources)
                 .dependencies(dependencies)
                 .build();
     }
@@ -68,5 +73,28 @@ public class PackageFactory {
             result.add(new PackageMajorVersion(entry.getKey(), entry.getValue()));
         }
         return result;
+    }
+
+    private List<ExternalSource> mapExternalSources(Package.ImportOptions externalSources) {
+        if (externalSources == null) {
+            return List.of();
+        }
+
+        return externalSources.getSources().stream().map(this::mapExternalSource).toList();
+    }
+
+    private ExternalSource mapExternalSource(CodeSource source) {
+        if (source instanceof ArchiveSource archive) {
+            return new ArchiveSourceConfig(
+                    archive.getUri(),
+                    archive.getChecksum(),
+                    Math.toIntExact(archive.getStripComponents()),
+                    source.getPatches());
+        }
+        if (source instanceof FileSource file) {
+            return new FileSourceConfig(
+                    file.getUri(), file.getPath(), file.getChecksum(), source.getPatches());
+        }
+        throw new IllegalArgumentException("Unknown external source type " + source.getClass());
     }
 }

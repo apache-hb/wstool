@@ -4,13 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.List;
 import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.eclipse.aether.supplier.RepositorySystemSupplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import wstool.test.components.TestResources;
 
 class MavenImporterTest {
     @TempDir Path tempDirectory;
@@ -46,8 +46,10 @@ class MavenImporterTest {
                 () -> importer.resolve(List.of("test.import-fixture:missing:1.0")));
     }
 
-    private MavenImporter newImporter() throws URISyntaxException {
-        Path repository = Path.of(getClass().getResource("/maven-repository").toURI());
+    private MavenImporter newImporter() throws Exception {
+        Path repository =
+                TestResources.copyDirectory(
+                        getClass(), "/maven-repository", tempDirectory.resolve("maven-repository"));
         return new MavenImporter(
                 new RepositorySystemSupplier(),
                 repository.toUri().toString(),

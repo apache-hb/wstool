@@ -3,7 +3,6 @@ package wstool.npm.importer.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import wstool.test.components.CliProcess;
 import wstool.test.components.CliResult;
 import wstool.test.components.NpmRegistryManager;
+import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
 class NpmImportMainTest {
@@ -91,10 +91,9 @@ class NpmImportMainTest {
     }
 
     private static Path packageFixture(String name) throws Exception {
-        var resource = NpmImportMainTest.class.getResource("/npm-registry/packages/" + name);
-        if (resource == null) {
-            throw new IOException("Missing npm package fixture: " + name);
-        }
-        return Path.of(resource.toURI());
+        return TestResources.copyDirectory(
+                NpmImportMainTest.class,
+                "/npm-registry/packages/" + name,
+                npmConfigDirectory.resolve("package-fixtures").resolve(name));
     }
 }

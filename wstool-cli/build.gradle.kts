@@ -4,7 +4,7 @@ import java.nio.file.Path
 plugins { application }
 
 dependencies {
-  testImplementation(project(":wstool-test-components"))
+  testImplementation(testFixtures(project(":wstool-test-components")))
   implementation(platform(project(":")))
   implementation(project(":wstool-common"))
   implementation(project(":wstool-sysroot"))

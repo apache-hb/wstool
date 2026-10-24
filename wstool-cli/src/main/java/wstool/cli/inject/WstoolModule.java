@@ -4,8 +4,10 @@ import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ClassKey;
 import dagger.multibindings.IntoMap;
+import java.net.http.HttpClient;
 import java.util.Map;
 import javax.inject.Singleton;
+import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import wstool.cli.commands.CommonCommand;
 import wstool.cli.commands.SelectCommand;
 import wstool.cli.commands.packages.PackageCommand;
@@ -19,6 +21,18 @@ import wstool.git.GitClient;
 /** Configures the application-scoped services used by the CLI. */
 @Module
 public final class WstoolModule {
+    @Provides
+    @Singleton
+    static ArchiveStreamFactory provideArchiveStreamFactory() {
+        return new ArchiveStreamFactory();
+    }
+
+    @Provides
+    @Singleton
+    static HttpClient provideHttpClient() {
+        return HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+    }
+
     @Provides
     @Singleton
     static PklHelper providePklHelper(Map<String, String> env) {

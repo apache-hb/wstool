@@ -31,11 +31,10 @@ public class PathBuilder {
     @Inject
     public PathBuilder() {}
 
-    public String buildToolPath(LocalWorkspace workspace, PackageMajorVersion name)
+    public String buildToolPath(
+            LocalWorkspace workspace, PackageMajorVersion name, Path packageSource)
             throws Exception {
         List<Path> closure = new ArrayList<>();
-
-        Path packageSource = workspace.source(name);
 
         Path localBin = packageSource.resolve("wstool/bin");
         if (Files.isDirectory(localBin)) {

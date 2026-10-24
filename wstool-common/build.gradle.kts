@@ -7,7 +7,7 @@ plugins {
 }
 
 dependencies {
-  testImplementation(project(":wstool-test-components"))
+  testImplementation(testFixtures(project(":wstool-test-components")))
   implementation(project(":wstool-git"))
   implementation(platform(project(":")))
   api(project(":wstool-config"))
@@ -17,7 +17,7 @@ dependencies {
   annotationProcessor("org.immutables:value:2.12.2")
 
   api("javax.inject:javax.inject:1")
-  implementation("org.apache.commons:commons-compress:1.28.0")
+  api("org.apache.commons:commons-compress:1.28.0")
   implementation("org.tukaani:xz:1.12")
   implementation("org.apache.logging.log4j:log4j-api")
   implementation("io.opentelemetry:opentelemetry-api")

@@ -33,11 +33,53 @@ class BuildOptions {
   sourceMount: SourceMount = "readonly"
 }
 
+/// External source code of some description
+abstract class CodeSource {
+  /// Patches to apply to this code source before building.
+  /// These are applied using `patch`
+  patches: Listing<Uri> = new Listing {}
+
+  /// SPDX license string for this code, must be provided
+  license: String(isNotEmpty)
+}
+
+local const function isNotNegative() = (v) -> (v >= 0)
+local const function isSha256() = (v) -> v.matches(Regex("^[a-fA-F0-9]{64}$"))
+
+class ArchiveSource extends CodeSource {
+  /// Location of the archive
+  uri: Uri
+
+  /// sha256 checksum of the archive
+  checksum: String(isSha256())
+
+  /// Strip leading folders
+  stripComponents: Int(isNotNegative()) = 0
+}
+
+class FileSource extends CodeSource {
+  /// Location of the file
+  uri: Uri
+
+  /// Local path to write to the file to when building
+  path: String
+
+  /// sha256 checksum of the file
+  checksum: String(isSha256())
+}
+
+class ImportOptions {
+  sources: Listing<CodeSource> = new Listing {}
+}
+
 /// Package metadata
 package: WsToolPackage
 
 /// Build options
 build: BuildOptions
+
+/// External import options
+externalSources: ImportOptions?
 
 /// Dependencies only required during build time, such as gradle or cmake
 buildDependencies: DependencyMap?

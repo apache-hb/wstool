@@ -10,7 +10,7 @@ dependencies {
   runtimeOnly("org.apache.logging.log4j:log4j-core")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
-  testImplementation(project(":wstool-test-components"))
+  testImplementation(testFixtures(project(":wstool-test-components")))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 }
 
@@ -18,8 +18,6 @@ application {
   applicationName = "wstool-maven-import"
   mainClass = "wstool.maven.importer.cli.MavenImportMain"
 }
-
-sourceSets { test { resources.srcDir("../wstool-maven-import/src/test/resources") } }
 
 tasks.test {
   useJUnitPlatform()

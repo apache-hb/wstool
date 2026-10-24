@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wstool.test.components.CliProcess;
 import wstool.test.components.CliResult;
+import wstool.test.components.TestResources;
 
 class MavenImportMainTest {
     private static final CliProcess CLI_PROCESS =
@@ -22,7 +23,9 @@ class MavenImportMainTest {
 
     @Test
     void subprocessImportsArtifactsFromLocalMavenRepository() throws Exception {
-        Path repository = Path.of(getClass().getResource("/maven-repository").toURI());
+        Path repository =
+                TestResources.copyDirectory(
+                        getClass(), "/maven-repository", tempDirectory.resolve("maven-repository"));
         Path localRepository = tempDirectory.resolve("maven-cache");
 
         CliResult result =
