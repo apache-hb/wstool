@@ -1,6 +1,5 @@
 package wstool.cli;
 
-import java.util.Map;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import wstool.cli.commands.BuildCommand;

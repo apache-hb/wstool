@@ -1,0 +1,10 @@
+{
+  "name": "@wstool-test/root",
+  "version": "1.0.0",
+  "description": "Test root package published to the local Verdaccio registry.",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@wstool-test/leaf": "2.1.0"
+  }
+}

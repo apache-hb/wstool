@@ -1,0 +1,7 @@
+{
+  "name": "@wstool-test/leaf",
+  "version": "2.1.0",
+  "description": "Test dependency published to the local Verdaccio registry.",
+  "main": "index.js",
+  "license": "MIT"
+}

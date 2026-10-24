@@ -10,6 +10,7 @@ dependencies {
   implementation("dev.parsick.testcontainers.gitserver:testcontainers-gitea:0.16.0")
   implementation("org.testcontainers:testcontainers")
   implementation("org.apache.logging.log4j:log4j-api")
+  implementation("org.apache.fory:fory-json:1.7.7")
   implementation("software.amazon.awssdk:s3")
 
   testRuntimeOnly("org.apache.logging.log4j:log4j-core")

@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import java.nio.file.Path
+
 plugins { application }
 
 dependencies {
@@ -49,6 +52,97 @@ tasks.jar {
 }
 
 tasks.named<JavaExec>("run") { systemProperty("wstool.version", project.version.toString()) }
+
+tasks.register<Exec>("packageDeb") {
+  group = "distribution"
+  description = "Builds a Debian package containing wstool and its Java runtime."
+  dependsOn(tasks.named("installDist"))
+
+  val installDirectory = layout.buildDirectory.dir("install/wstool")
+  val distributionDirectory = layout.buildDirectory.dir("distributions")
+  val jpackageDirectory = layout.buildDirectory.dir("jpackage-deb")
+
+  doFirst {
+    jpackageDirectory.get().asFile.deleteRecursively()
+    jpackageDirectory.get().asFile.mkdirs()
+    distributionDirectory.get().asFile.mkdirs()
+    commandLine(
+      "jpackage",
+      "--type",
+      "deb",
+      "--name",
+      "wstool",
+      "--app-version",
+      project.version.toString(),
+      "--vendor",
+      "wstool",
+      "--input",
+      installDirectory.get().file("lib").asFile.absolutePath,
+      "--main-jar",
+      tasks.jar.get().archiveFileName.get(),
+      "--main-class",
+      "wstool.cli.Main",
+      "--java-options",
+      "--enable-native-access=ALL-UNNAMED",
+      "--java-options",
+      "--sun-misc-unsafe-memory-access=allow",
+      "--dest",
+      jpackageDirectory.get().asFile.absolutePath,
+    )
+  }
+
+  doLast {
+    fun runPackageCommand(vararg arguments: String) {
+      val exitCode = ProcessBuilder(*arguments).inheritIO().start().waitFor()
+      check(exitCode == 0) { "Command failed: ${arguments.joinToString(" ")}" }
+    }
+
+    val jpackageFile = jpackageDirectory.get().asFile.listFiles()!!.single { it.extension == "deb" }
+    val packageRoot = layout.buildDirectory.dir("deb-package-root").get().asFile
+    val controlRoot = layout.buildDirectory.dir("deb-package-control").get().asFile
+    packageRoot.deleteRecursively()
+    controlRoot.deleteRecursively()
+    packageRoot.mkdirs()
+    controlRoot.mkdirs()
+
+    runPackageCommand("dpkg-deb", "--extract", jpackageFile.absolutePath, packageRoot.absolutePath)
+    runPackageCommand("dpkg-deb", "--control", jpackageFile.absolutePath, controlRoot.absolutePath)
+
+    val systemBin = packageRoot.resolve("usr/bin")
+    systemBin.mkdirs()
+    Files.createSymbolicLink(
+      systemBin.resolve("wstool").toPath(),
+      Path.of("/opt/wstool/bin/wstool"),
+    )
+    controlRoot.copyRecursively(packageRoot.resolve("DEBIAN"), overwrite = true)
+    listOf("preinst", "postinst", "prerm", "postrm").forEach { script ->
+      check(packageRoot.resolve("DEBIAN/$script").setExecutable(true, false))
+    }
+
+    runPackageCommand(
+      "dpkg-deb",
+      "--build",
+      "--root-owner-group",
+      packageRoot.absolutePath,
+      distributionDirectory.get().file(jpackageFile.name).asFile.absolutePath,
+    )
+  }
+
+  inputs.dir(installDirectory)
+  inputs.property(
+    "jpackageOptions",
+    listOf(
+      "deb",
+      "wstool",
+      project.version.toString(),
+      "wstool.cli.Main",
+      "--enable-native-access=ALL-UNNAMED",
+      "--sun-misc-unsafe-memory-access=allow",
+    ),
+  )
+  outputs.dir(jpackageDirectory)
+  outputs.dir(distributionDirectory)
+}
 
 tasks.test {
   useJUnitPlatform()

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import wstool.cli.commands.CliHelper;
-import wstool.cli.commands.CliHelper.CliResult;
+import wstool.test.components.CliResult;
 import wstool.test.components.PackageGitManager;
 
 @Testcontainers(disabledWithoutDocker = true)
