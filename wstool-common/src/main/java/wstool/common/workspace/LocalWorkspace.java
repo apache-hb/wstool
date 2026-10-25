@@ -1,6 +1,7 @@
 package wstool.common.workspace;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import wstool.common.model.PackageDependency;
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.packages.PackageConfig;
 import wstool.common.packages.PackageFactory;
+import wstool.common.path.ArchivePackagePreparer;
 import wstool.git.GitClient;
 import wstool.git.model.GitCloneInput;
 import wstool.git.model.GitRepositoryLocation;
@@ -38,6 +40,22 @@ public class LocalWorkspace {
     private final DistributionFactory distributionFactory;
     private final PackageFactory packageFactory;
     private final GitClient git;
+    private final ArchivePackagePreparer archivePackagePreparer;
+
+    public LocalWorkspace(
+            Path path,
+            DistributionFactory distributionFactory,
+            PackageFactory packageFactory,
+            GitClient git,
+            ArchivePackagePreparer archivePackagePreparer)
+            throws Exception {
+        this.path = path;
+        this.storage = new WorkspaceStorage(path.resolve(MANIFEST));
+        this.distributionFactory = distributionFactory;
+        this.packageFactory = packageFactory;
+        this.git = git;
+        this.archivePackagePreparer = archivePackagePreparer;
+    }
 
     public LocalWorkspace(
             Path path,
@@ -45,11 +63,7 @@ public class LocalWorkspace {
             PackageFactory packageFactory,
             GitClient git)
             throws Exception {
-        this.path = path;
-        this.storage = new WorkspaceStorage(path.resolve(MANIFEST));
-        this.distributionFactory = distributionFactory;
-        this.packageFactory = packageFactory;
-        this.git = git;
+        this(path, distributionFactory, packageFactory, git, null);
     }
 
     public Path path() {
@@ -121,28 +135,7 @@ public class LocalWorkspace {
                                         new IllegalArgumentException(
                                                 "Package " + name + " not found in distribution"));
 
-        GitRepository repo = gitRepository(pkg);
-
-        Path clonePath = sourceRoot(name);
-        Path parent = clonePath.getParent();
-        Files.createDirectories(parent);
-
-        GitRepositoryLocation repository =
-                ImmutableGitRepositoryLocation.builder()
-                        .branch(repo.branch())
-                        .repository(repo.repository())
-                        .build();
-
-        GitCloneInput input =
-                ImmutableGitCloneInput.builder()
-                        .parent(parent)
-                        .name(clonePath.getFileName().toString())
-                        .repository(repository)
-                        .build();
-
-        if (!Files.exists(clonePath.resolve(".git"))) {
-            git.clone(input);
-        }
+        prepareSource(pkg);
         if (pkg instanceof DistributionPackage.Folder && !Files.isDirectory(source(name))) {
             throw new IOException(
                     "Package folder does not exist in cloned repository: " + source(name));
@@ -150,7 +143,11 @@ public class LocalWorkspace {
     }
 
     public void remove(PackageMajorVersion name) throws Exception {
-        if (!(distributionPackage(name) instanceof DistributionPackage.Folder)) {
+        DistributionPackage pkg = distributionPackage(name);
+        if (pkg instanceof DistributionPackage.Archive archive) {
+            archivePackagePreparer()
+                    .remove(privateSource(archive.name()), sourceRoot(archive.name()));
+        } else if (!(pkg instanceof DistributionPackage.Folder)) {
             PathUtils.deleteDirectory(sourceRoot(name));
         }
     }
@@ -250,7 +247,7 @@ public class LocalWorkspace {
                         : loadDistribution().packages().stream()
                                 .filter(pkg -> pkg.name().equals(name))
                                 .filter(DistributionPackage.Folder.class::isInstance)
-                                .map(pkg -> gitRepository(pkg).name())
+                                .map(this::sourceOwner)
                                 .findFirst()
                                 .orElse(name);
         Path relative = Path.of(repositoryName.name()).normalize();
@@ -264,14 +261,82 @@ public class LocalWorkspace {
         return root;
     }
 
-    private GitRepository gitRepository(DistributionPackage pkg) {
-        return switch (pkg) {
-            case GitRepository repository -> repository;
-            case DistributionPackage.Folder folder -> gitRepository(folder.source());
+    private void prepareSource(DistributionPackage pkg) throws Exception {
+        switch (pkg) {
+            case GitRepository repository -> cloneRepository(repository);
             case DistributionPackage.Archive archive ->
-                    throw new UnsupportedOperationException(
-                            "Cannot clone archive package source " + archive.archive());
+                    archivePackagePreparer()
+                            .prepare(
+                                    cache(),
+                                    privateSource(archive.name()),
+                                    sourceRoot(archive.name()),
+                                    resolveDistributionArchive(archive.archive()),
+                                    archive.checksum());
+            case DistributionPackage.Folder folder -> prepareSource(folder.source());
+        }
+    }
+
+    private void cloneRepository(GitRepository repository) throws Exception {
+        Path clonePath = sourceRoot(repository.name());
+        Path parent = clonePath.getParent();
+        Files.createDirectories(parent);
+
+        GitRepositoryLocation location =
+                ImmutableGitRepositoryLocation.builder()
+                        .branch(repository.branch())
+                        .repository(repository.repository())
+                        .build();
+        GitCloneInput input =
+                ImmutableGitCloneInput.builder()
+                        .parent(parent)
+                        .name(clonePath.getFileName().toString())
+                        .repository(location)
+                        .build();
+        if (!Files.exists(clonePath.resolve(".git"))) {
+            git.clone(input);
+        }
+    }
+
+    private PackageMajorVersion sourceOwner(DistributionPackage pkg) {
+        return switch (pkg) {
+            case DistributionPackage.Folder folder -> sourceOwner(folder.source());
+            case GitRepository repository -> repository.name();
+            case DistributionPackage.Archive archive -> archive.name();
         };
+    }
+
+    private Path privateSource(PackageMajorVersion name) {
+        Path root = path.resolve("private/source").normalize();
+        Path relative = Path.of(name.name()).resolve(name.version()).normalize();
+        Path source = root.resolve(relative).normalize();
+        if (relative.isAbsolute() || relative.startsWith("..") || !source.startsWith(root)) {
+            throw new IllegalArgumentException("Package name is not a safe source path: " + name);
+        }
+        return source;
+    }
+
+    private URI resolveDistributionArchive(URI archive) throws IOException {
+        if (archive.isAbsolute()) {
+            return archive;
+        }
+        String relativePath = archive.getPath();
+        if (relativePath == null || relativePath.isBlank()) {
+            throw new IOException("Distribution archive URI has no path: " + archive);
+        }
+        Path distributionRoot = path.resolve(DISTRIBUTION).toAbsolutePath().normalize();
+        Path archivePath = distributionRoot.resolve(relativePath).normalize();
+        if (!archivePath.startsWith(distributionRoot)) {
+            throw new IOException("Distribution archive path escapes its repository: " + archive);
+        }
+        return archivePath.toUri();
+    }
+
+    private ArchivePackagePreparer archivePackagePreparer() {
+        if (archivePackagePreparer == null) {
+            throw new IllegalStateException(
+                    "Archive package support is unavailable without an archive preparer");
+        }
+        return archivePackagePreparer;
     }
 
     private List<PackageDependency> dependenciesOf(PackageConfig config) {

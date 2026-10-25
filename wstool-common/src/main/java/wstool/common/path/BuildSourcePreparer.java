@@ -33,11 +33,14 @@ import wstool.common.workspace.LocalWorkspace;
 public class BuildSourcePreparer {
     private static final Logger LOGGER = LogManager.getLogger(BuildSourcePreparer.class);
     private final HttpClient httpClient;
+    private final ArchiveCache archiveCache;
     private final ArchiveExtractor archiveExtractor;
 
     @Inject
-    public BuildSourcePreparer(HttpClient httpClient, ArchiveExtractor archiveExtractor) {
+    public BuildSourcePreparer(
+            HttpClient httpClient, ArchiveCache archiveCache, ArchiveExtractor archiveExtractor) {
         this.httpClient = httpClient;
+        this.archiveCache = archiveCache;
         this.archiveExtractor = archiveExtractor;
     }
 
@@ -56,14 +59,14 @@ public class BuildSourcePreparer {
         for (ExternalSource source : pkg.externalSources()) {
             if (source instanceof ArchiveSourceConfig archive) {
                 Path cachedArchive =
-                        cachedFile(
+                        archiveCache.get(
                                 workspace.cache(),
                                 resolveSourceUri(packageSource, archive.uri()),
                                 archive.checksum());
                 archiveExtractor.extract(cachedArchive, intermediate, archive.stripComponents());
             } else if (source instanceof FileSourceConfig file) {
                 Path cached =
-                        cachedFile(
+                        archiveCache.get(
                                 workspace.cache(),
                                 resolveSourceUri(packageSource, file.uri()),
                                 file.checksum());
@@ -83,38 +86,6 @@ public class BuildSourcePreparer {
         }
 
         return intermediate;
-    }
-
-    private Path cachedFile(Path workspaceCache, URI uri, String checksum) throws Exception {
-        String normalizedChecksum = checksum.toLowerCase();
-
-        Path downloads = workspaceCache.resolve("sources/downloads");
-        Files.createDirectories(downloads);
-        Path cached =
-                downloads.resolve(sha256(normalizedChecksum.getBytes(StandardCharsets.UTF_8)));
-        if (Files.isRegularFile(cached) && normalizedChecksum.equals(sha256(cached))) {
-            return cached;
-        }
-
-        Path temporary = Files.createTempFile(downloads, ".download-", ".tmp");
-        try {
-            download(uri, temporary);
-            String actualChecksum = sha256(temporary);
-            if (!normalizedChecksum.equals(actualChecksum)) {
-                throw new IOException(
-                        "SHA-256 mismatch for "
-                                + uri
-                                + ": expected "
-                                + checksum
-                                + ", got "
-                                + actualChecksum);
-            }
-            moveIntoPlace(temporary, cached);
-        } catch (Exception e) {
-            Files.deleteIfExists(temporary);
-            throw e;
-        }
-        return cached;
     }
 
     private void download(URI uri, Path destination) throws Exception {
@@ -328,7 +299,7 @@ public class BuildSourcePreparer {
     private void moveIntoPlace(Path source, Path destination) throws IOException {
         try {
             Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
+        } catch (IOException exception) {
             Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
     }

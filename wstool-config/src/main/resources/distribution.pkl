@@ -9,12 +9,14 @@ abstract class PackageSource {
 }
 
 /// A package that is stored as a source archive
+local const function isSha256() = (v) -> v.matches(Regex("^[a-fA-F0-9]{64}$"))
+
 class Archive extends PackageSource {
   /// Path to the archive, can be remote or on the local filesystem
   uri: Uri
 
   /// SHA-256 hash of the archive
-  checksum: String(isNotEmpty)
+  checksum: String(isSha256())
 }
 
 local const function isNotRecursive() = (pkg) -> !(pkg is Folder)

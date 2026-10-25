@@ -6,6 +6,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.packages.PackageFactory;
+import wstool.common.path.ArchivePackagePreparer;
 import wstool.git.GitClient;
 import wstool.git.model.GitRepositoryLocation;
 
@@ -14,25 +15,32 @@ public class WorkspaceFactory {
     private final DistributionFactory distributionFactory;
     private final PackageFactory packageFactory;
     private final GitClient git;
+    private final ArchivePackagePreparer archivePackagePreparer;
 
     @Inject
     public WorkspaceFactory(
-            DistributionFactory distributionFactory, PackageFactory packageFactory, GitClient git) {
+            DistributionFactory distributionFactory,
+            PackageFactory packageFactory,
+            GitClient git,
+            ArchivePackagePreparer archivePackagePreparer) {
         this.distributionFactory = distributionFactory;
         this.packageFactory = packageFactory;
         this.git = git;
+        this.archivePackagePreparer = archivePackagePreparer;
     }
 
     public LocalWorkspace setup(Path path, GitRepositoryLocation distribution) throws Exception {
         Files.createDirectories(path);
         LocalWorkspace workspace =
-                new LocalWorkspace(path, distributionFactory, packageFactory, git);
+                new LocalWorkspace(
+                        path, distributionFactory, packageFactory, git, archivePackagePreparer);
         workspace.setup(distribution);
         return workspace;
     }
 
     public LocalWorkspace open(Path path) throws Exception {
-        return new LocalWorkspace(path, distributionFactory, packageFactory, git);
+        return new LocalWorkspace(
+                path, distributionFactory, packageFactory, git, archivePackagePreparer);
     }
 
     public LocalWorkspace findUp(Path cwd) throws Exception {

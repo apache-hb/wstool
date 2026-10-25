@@ -1,0 +1,16 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+local archiveUri = read("env:WSTOOL_ARCHIVE_URI")
+
+platforms { "ubuntu:24.04" }
+
+storage { bucket = "unused-test-bucket" }
+
+packages {
+  new Archive {
+    name = "archive-package"
+    version = "1.0.0"
+    uri = archiveUri
+    checksum = "3e2794e2a87ec816c8d8ae82446e2e39c45b9fc012c77600e8d791ed5b152f6e"
+  }
+}

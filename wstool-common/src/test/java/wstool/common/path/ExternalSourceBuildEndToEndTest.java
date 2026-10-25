@@ -58,11 +58,13 @@ class ExternalSourceBuildEndToEndTest {
             workspace.storage().refresh(List.of(PACKAGE), List.of());
             copyTree(packageDirectory, workspace.source(PACKAGE));
 
+            HttpClient httpClient = HttpClient.newHttpClient();
             BuildRunner buildRunner =
                     new BuildRunner(
                             new PathBuilder(),
                             new BuildSourcePreparer(
-                                    HttpClient.newHttpClient(),
+                                    httpClient,
+                                    new ArchiveCache(httpClient),
                                     new ArchiveExtractor(new ArchiveStreamFactory())));
             assertEquals(
                     0,
