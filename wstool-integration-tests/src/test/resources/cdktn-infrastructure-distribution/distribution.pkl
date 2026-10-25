@@ -32,7 +32,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/cdktn/0.24.0"
+    path = "npm/cdktn/0.24.0"
   }
   new Folder {
     name = "@cdktn/provider-local"
@@ -42,7 +42,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/@cdktn/provider-local/14.0.1"
+    path = "npm/@cdktn/provider-local/14.0.1"
   }
   new Folder {
     name = "@cdktn/provider-random"
@@ -52,7 +52,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/@cdktn/provider-random/15.0.1"
+    path = "npm/@cdktn/provider-random/15.0.1"
   }
   new Folder {
     name = "constructs"
@@ -62,7 +62,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/constructs/10.7.2"
+    path = "npm/constructs/10.7.2"
   }
   new Folder {
     name = "typescript"
@@ -72,7 +72,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/typescript/5.9.3"
+    path = "npm/typescript/5.9.3"
   }
   new GitRepository {
     name = "wstool-test-infrastructure"

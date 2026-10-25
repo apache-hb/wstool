@@ -37,6 +37,8 @@ jobs:
           fi
           echo "RELEASE_VERSION=$RELEASE_VERSION" >> "$GITHUB_ENV"
           ./gradlew --no-daemon "-PreleaseVersion=$RELEASE_VERSION" \
+            :wstool-maven-import-cli:packageDeb \
+            :wstool-npm-import-cli:packageDeb \
             :wstool-npm-import:packageNpmWstool \
             :wstool-npm-import:packageWstoolNpmImport \
             :wstool-maven-import:packageWstoolMavenImport
@@ -47,6 +49,8 @@ jobs:
             wstool-npm-import/build/distributions/npm-wstool-1.0.0.tar.gz \
             wstool-npm-import/build/distributions/wstool-npm-import-1.0.0.tar.gz \
             wstool-maven-import/build/distributions/wstool-maven-import-1.0.0.tar.gz \
+            "wstool-maven-import-cli/build/distributions/wstool-maven-import_${RELEASE_VERSION}_amd64.deb" \
+            "wstool-npm-import-cli/build/distributions/wstool-npm-import_${RELEASE_VERSION}_amd64.deb" \
             > SHA256SUMS
 
       - name: Publish GitHub release
@@ -59,4 +63,6 @@ jobs:
             wstool-npm-import/build/distributions/npm-wstool-1.0.0.tar.gz
             wstool-npm-import/build/distributions/wstool-npm-import-1.0.0.tar.gz
             wstool-maven-import/build/distributions/wstool-maven-import-1.0.0.tar.gz
+            wstool-maven-import-cli/build/distributions/wstool-maven-import_${{ env.RELEASE_VERSION }}_amd64.deb
+            wstool-npm-import-cli/build/distributions/wstool-npm-import_${{ env.RELEASE_VERSION }}_amd64.deb
             SHA256SUMS

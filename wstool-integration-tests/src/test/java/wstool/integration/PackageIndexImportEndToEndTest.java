@@ -75,18 +75,13 @@ class PackageIndexImportEndToEndTest {
         Files.createDirectories(index);
         PackageGitManager git = new PackageGitManager(temporaryDirectory, GITEA);
 
-        Path npmOutput = temporaryDirectory.resolve("npm-resolution");
         CliResult npmResult =
                 NPM_IMPORT.run(
                         temporaryDirectory,
-                        temporaryDirectory,
+                        index,
                         Map.of(),
                         "--registry",
                         NpmRegistryManager.registryUri(NPM_REGISTRY).toString(),
-                        "--output",
-                        npmOutput.toString(),
-                        "--package-index",
-                        index.toString(),
                         "@wstool-test/root:1.0.0");
         assertSuccess(npmResult);
 
@@ -99,29 +94,23 @@ class PackageIndexImportEndToEndTest {
         CliResult mavenResult =
                 MAVEN_IMPORT.run(
                         temporaryDirectory,
-                        temporaryDirectory,
+                        index,
                         Map.of(),
                         "--repository",
                         mavenRepository.toUri().toString(),
                         "--local-repository",
                         mavenCache.toString(),
-                        "--package-index",
-                        index.toString(),
                         "test.import-fixture:root:1.0");
         assertSuccess(mavenResult);
 
+        assertTrue(Files.isRegularFile(index.resolve("npm/@wstool-test/root/1.0.0/wstool.pkl")));
+        assertTrue(Files.isRegularFile(index.resolve("npm/@wstool-test/leaf/2.1.0/wstool.pkl")));
         assertTrue(
                 Files.isRegularFile(
-                        index.resolve("packages/npm/@wstool-test/root/1.0.0/wstool.pkl")));
+                        index.resolve("maven/test/import-fixture/root/1.0/wstool.pkl")));
         assertTrue(
                 Files.isRegularFile(
-                        index.resolve("packages/npm/@wstool-test/leaf/2.1.0/wstool.pkl")));
-        assertTrue(
-                Files.isRegularFile(
-                        index.resolve("packages/maven/test/import-fixture/root/1.0/wstool.pkl")));
-        assertTrue(
-                Files.isRegularFile(
-                        index.resolve("packages/maven/test/import-fixture/leaf/2.0/wstool.pkl")));
+                        index.resolve("maven/test/import-fixture/leaf/2.0/wstool.pkl")));
         URI npmImportRepository =
                 git.create(
                         "wstool-npm-import",
@@ -165,20 +154,15 @@ class PackageIndexImportEndToEndTest {
         addPackage(workspace, "@wstool-test/root", environment);
         assertTrue(
                 Files.isRegularFile(
-                        packageIndexSource.resolve(
-                                "packages/npm/@wstool-test/root/1.0.0/wstool.pkl")));
+                        packageIndexSource.resolve("npm/@wstool-test/root/1.0.0/wstool.pkl")));
         addPackage(workspace, "@wstool-test/leaf", environment);
         addPackage(workspace, "test.import-fixture:root", environment);
         addPackage(workspace, "test.import-fixture:leaf", environment);
 
-        runPackage(packageIndexSource.resolve("packages/npm/@wstool-test/leaf/2.1.0"), environment);
-        runPackage(packageIndexSource.resolve("packages/npm/@wstool-test/root/1.0.0"), environment);
-        runPackage(
-                packageIndexSource.resolve("packages/maven/test/import-fixture/root/1.0"),
-                environment);
-        runPackage(
-                packageIndexSource.resolve("packages/maven/test/import-fixture/leaf/2.0"),
-                environment);
+        runPackage(packageIndexSource.resolve("npm/@wstool-test/leaf/2.1.0"), environment);
+        runPackage(packageIndexSource.resolve("npm/@wstool-test/root/1.0.0"), environment);
+        runPackage(packageIndexSource.resolve("maven/test/import-fixture/root/1.0"), environment);
+        runPackage(packageIndexSource.resolve("maven/test/import-fixture/leaf/2.0"), environment);
 
         assertTrue(
                 Files.isRegularFile(

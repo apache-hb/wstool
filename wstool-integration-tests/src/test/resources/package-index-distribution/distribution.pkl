@@ -16,7 +16,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/@wstool-test/root/1.0.0"
+    path = "npm/@wstool-test/root/1.0.0"
   }
   new Folder {
     name = "@wstool-test/leaf"
@@ -26,7 +26,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/npm/@wstool-test/leaf/2.1.0"
+    path = "npm/@wstool-test/leaf/2.1.0"
   }
   new Folder {
     name = "test.import-fixture:root"
@@ -36,7 +36,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/maven/test/import-fixture/root/1.0"
+    path = "maven/test/import-fixture/root/1.0"
   }
   new Folder {
     name = "test.import-fixture:leaf"
@@ -46,7 +46,7 @@ packages {
       version = "1.0"
       repo = packageIndex
     }
-    path = "packages/maven/test/import-fixture/leaf/2.0"
+    path = "maven/test/import-fixture/leaf/2.0"
   }
   new GitRepository {
     name = "wstool-npm-import"

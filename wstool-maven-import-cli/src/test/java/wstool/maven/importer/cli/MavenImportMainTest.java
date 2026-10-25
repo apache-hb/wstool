@@ -52,6 +52,12 @@ class MavenImportMainTest {
         assertTrue(
                 Files.isRegularFile(
                         localRepository.resolve("test/import-fixture/leaf/2.0/leaf-2.0.jar")));
+        assertTrue(
+                Files.isRegularFile(
+                        tempDirectory.resolve("maven/test/import-fixture/root/1.0/wstool.pkl")));
+        assertTrue(
+                Files.isRegularFile(
+                        tempDirectory.resolve("maven/test/import-fixture/leaf/2.0/wstool.pkl")));
     }
 
     @Test

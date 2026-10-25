@@ -1,8 +1,12 @@
-plugins { application }
+plugins {
+  application
+  id("wstool.deb-package")
+}
 
 dependencies {
   implementation(platform(project(":")))
   implementation(project(":wstool-npm-import"))
+  implementation("commons-io:commons-io:2.20.0")
   implementation("info.picocli:picocli:4.7.6")
   implementation("org.apache.logging.log4j:log4j-api")
   runtimeOnly("org.apache.logging.log4j:log4j-core")

@@ -42,20 +42,17 @@ class NpmImportMainTest {
 
     @Test
     void subprocessImportsPackagesFromNpmRepository() throws Exception {
-        Path output = tempDirectory.resolve("imported");
         URI registry = NpmRegistryManager.registryUri(REGISTRY);
 
-        CliResult result =
-                runCli(
-                        "--registry",
-                        registry.toString(),
-                        "--output",
-                        output.toString(),
-                        "@wstool-test/root:1.0.0");
+        CliResult result = runCli("--registry", registry.toString(), "@wstool-test/root:1.0.0");
 
         assertSuccess(result);
-        assertTrue(Files.isRegularFile(output.resolve("package.json")), result.error());
-        assertTrue(Files.isRegularFile(output.resolve("package-lock.json")), result.error());
+        assertTrue(
+                Files.isRegularFile(
+                        tempDirectory.resolve("npm/@wstool-test/root/1.0.0/wstool.pkl")));
+        assertTrue(
+                Files.isRegularFile(
+                        tempDirectory.resolve("npm/@wstool-test/leaf/2.1.0/wstool.pkl")));
         Set<String> resolvedPackages =
                 result.output()
                         .lines()
@@ -73,15 +70,15 @@ class NpmImportMainTest {
 
         assertSuccess(result);
         assertTrue(result.output().contains("--registry"));
-        assertTrue(result.output().contains("--output"));
+        assertTrue(result.output().contains("PACKAGE[:VERSION]"));
     }
 
     @Test
-    void subprocessRejectsMissingOutputDirectory() throws Exception {
-        CliResult result = runCli("@wstool-test/root:1.0.0");
+    void subprocessRejectsMissingPackageName() throws Exception {
+        CliResult result = runCli();
 
         assertEquals(2, result.exitCode(), result.output() + result.error());
-        assertTrue(result.error().contains("Missing required option"));
+        assertTrue(result.error().contains("Missing required parameter"));
     }
 
     private CliResult runCli(String... arguments) throws Exception {

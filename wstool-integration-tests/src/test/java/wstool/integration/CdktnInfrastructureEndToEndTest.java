@@ -87,33 +87,33 @@ class CdktnInfrastructureEndToEndTest {
         Path wstoolExecutable = wstoolBin.resolve("wstool");
         assertTrue(wstoolExecutable.toFile().setExecutable(true));
 
-        Path npmResolution = OUTPUT_DIRECTORY.resolve("npm-resolution");
-        CliResult npmImportResult =
-                NPM_IMPORT.run(
-                        OUTPUT_DIRECTORY,
-                        OUTPUT_DIRECTORY,
-                        Map.of(),
-                        "--registry",
-                        NpmRegistryManager.registryUri(NPM_REGISTRY).toString(),
-                        "--output",
-                        npmResolution.toString(),
-                        "--package-index",
-                        index.toString(),
+        for (String packageSpecification :
+                List.of(
                         "cdktn:0.24.0",
                         "@cdktn/provider-local:14.0.1",
                         "@cdktn/provider-random:15.0.1",
                         "constructs:10.7.2",
-                        "typescript:5.9.3");
-        assertSuccess(npmImportResult);
-        assertLockfileUsesRegistry(npmResolution, NpmRegistryManager.registryUri(NPM_REGISTRY));
+                        "typescript:5.9.3")) {
+            CliResult npmImportResult =
+                    NPM_IMPORT.run(
+                            OUTPUT_DIRECTORY,
+                            index,
+                            Map.of(),
+                            "--registry",
+                            NpmRegistryManager.registryUri(NPM_REGISTRY).toString(),
+                            packageSpecification);
+            assertSuccess(npmImportResult);
+            assertPackagesUseRegistry(
+                    npmImportResult, NpmRegistryManager.registryUri(NPM_REGISTRY));
+        }
 
         for (String packagePath :
                 List.of(
-                        "packages/npm/cdktn/0.24.0",
-                        "packages/npm/@cdktn/provider-local/14.0.1",
-                        "packages/npm/@cdktn/provider-random/15.0.1",
-                        "packages/npm/constructs/10.7.2",
-                        "packages/npm/typescript/5.9.3")) {
+                        "npm/cdktn/0.24.0",
+                        "npm/@cdktn/provider-local/14.0.1",
+                        "npm/@cdktn/provider-random/15.0.1",
+                        "npm/constructs/10.7.2",
+                        "npm/typescript/5.9.3")) {
             assertTrue(Files.isRegularFile(index.resolve(packagePath).resolve("wstool.pkl")));
         }
 
@@ -161,15 +161,11 @@ class CdktnInfrastructureEndToEndTest {
 
         runPackage(packageIndexSource.resolve("packages/npm-wstool"), environment);
         runPackage(workspace.resolve("src/wstool-npm-import"), environment);
-        runPackage(packageIndexSource.resolve("packages/npm/cdktn/0.24.0"), environment);
-        runPackage(
-                packageIndexSource.resolve("packages/npm/@cdktn/provider-local/14.0.1"),
-                environment);
-        runPackage(
-                packageIndexSource.resolve("packages/npm/@cdktn/provider-random/15.0.1"),
-                environment);
-        runPackage(packageIndexSource.resolve("packages/npm/constructs/10.7.2"), environment);
-        runPackage(packageIndexSource.resolve("packages/npm/typescript/5.9.3"), environment);
+        runPackage(packageIndexSource.resolve("npm/cdktn/0.24.0"), environment);
+        runPackage(packageIndexSource.resolve("npm/@cdktn/provider-local/14.0.1"), environment);
+        runPackage(packageIndexSource.resolve("npm/@cdktn/provider-random/15.0.1"), environment);
+        runPackage(packageIndexSource.resolve("npm/constructs/10.7.2"), environment);
+        runPackage(packageIndexSource.resolve("npm/typescript/5.9.3"), environment);
         runPackage(workspace.resolve("src/wstool-test-infrastructure"), environment);
 
         Path terraformJson =
@@ -242,26 +238,16 @@ class CdktnInfrastructureEndToEndTest {
         return git.create(repository, contents, additionalFolders);
     }
 
-    private void assertLockfileUsesRegistry(Path npmResolution, URI registryUri)
-            throws IOException {
-        Map<String, Object> lockfile =
-                JSON.fromJson(
-                        Files.readString(npmResolution.resolve("package-lock.json")),
-                        JSON_OBJECT_TYPE);
-        Map<String, Object> packages = mapValue(lockfile, "packages");
-        for (var entry : packages.entrySet()) {
-            if (!entry.getKey().startsWith("node_modules/")) {
-                continue;
-            }
-            Object resolved = mapValue(entry.getValue()).get("resolved");
-            if (resolved instanceof String value) {
-                URI tarballUri = URI.create(value);
-                assertEquals(
-                        registryUri.getHost(),
-                        tarballUri.getHost(),
-                        "npm tarballs should use the local registry");
-                assertEquals(registryUri.getPort(), tarballUri.getPort());
-            }
+    private void assertPackagesUseRegistry(CliResult result, URI registryUri) {
+        for (String line : result.output().lines().toList()) {
+            String[] fields = line.split("\\t", -1);
+            assertEquals(3, fields.length, line);
+            URI tarballUri = URI.create(fields[1]);
+            assertEquals(
+                    registryUri.getHost(),
+                    tarballUri.getHost(),
+                    "npm tarballs should use the local registry");
+            assertEquals(registryUri.getPort(), tarballUri.getPort());
         }
     }
 

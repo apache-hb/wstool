@@ -232,3 +232,22 @@ The `npm-wstool` package installs npm packages imported as source archives. Gene
 Use `wstool-npm-import` for imported npm packages; it stores each package's prepared source as a tarball in its prefix. Use `npm-wstool` for source packages; it resolves dependencies from the wstool package closure through the local registry proxy, runs the npm build, and installs the result.
 
 This role description supersedes the preceding npm tool package description.
+
+### Debian packages for the importer CLIs
+
+Build bundled Java runtime Debian packages for the Maven and npm importer commands with:
+
+```sh
+./gradlew :wstool-maven-import-cli:packageDeb :wstool-npm-import-cli:packageDeb
+```
+
+The packages are written to each CLI module's `build/distributions` directory and install the
+`wstool-maven-import` and `wstool-npm-import` commands globally.
+
+### Importing dependencies into a package index
+
+Run an importer from the package index root and provide one root package target. The npm importer
+accepts `PACKAGE[:VERSION]`; the Maven importer accepts `GROUP:ARTIFACT:VERSION`. Both resolve the
+root package and its dependency graph, then write package folders directly under `npm/` or `maven/`.
+The npm manifest and lockfile are created temporarily under `build/` while npm resolves the graph,
+then removed after the package configs are written.

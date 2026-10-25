@@ -49,7 +49,7 @@ public final class NpmPackageIndexWriter {
             String checksum = checksum(tarballUri.toString(), npmPackage.integrity());
             Path packageDirectory =
                     indexRoot
-                            .resolve("packages/npm")
+                            .resolve("npm")
                             .resolve(npmPackage.name())
                             .resolve(npmPackage.version())
                             .normalize();

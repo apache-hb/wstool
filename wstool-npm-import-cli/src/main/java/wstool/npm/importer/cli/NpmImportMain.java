@@ -1,9 +1,11 @@
 package wstool.npm.importer.cli;
 
 import java.net.http.HttpClient;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
+import org.apache.commons.io.file.PathUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
@@ -16,7 +18,7 @@ import wstool.npm.importer.NpmPackageIndexWriter;
 
 @Command(
         name = "wstool-npm-import",
-        description = "Resolve npm packages and their transitive dependencies.",
+        description = "Import an npm package and its dependencies into the current package index.",
         mixinStandardHelpOptions = true,
         version = "1.0.0")
 public final class NpmImportMain implements Callable<Integer> {
@@ -31,19 +33,8 @@ public final class NpmImportMain implements Callable<Integer> {
             defaultValue = "https://registry.npmjs.org/")
     private String registry;
 
-    @Option(
-            names = {"--output", "-o"},
-            description = "Directory for package.json and package-lock.json.",
-            required = true)
-    private Path outputDirectory;
-
-    @Option(
-            names = "--package-index",
-            description = "Write per-package wstool.pkl files under this package index directory.")
-    private Path packageIndexDirectory;
-
-    @Parameters(arity = "1..*", paramLabel = "PACKAGE[:VERSION]")
-    private List<String> packages;
+    @Parameters(arity = "1", paramLabel = "PACKAGE[:VERSION]")
+    private String packageSpecification;
 
     public static void main(String[] args) {
         int exitCode = new CommandLine(new NpmImportMain()).execute(args);
@@ -52,31 +43,35 @@ public final class NpmImportMain implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        NpmImportResult result =
-                new NpmImporter(npmExecutable, registry).importPackages(packages, outputDirectory);
-        if (packageIndexDirectory != null) {
+        Path workingDirectory = Path.of("").toAbsolutePath().normalize();
+        Path buildDirectory = workingDirectory.resolve("build");
+        Files.createDirectories(buildDirectory);
+        Path outputDirectory = Files.createTempDirectory(buildDirectory, "wstool-npm-import-");
+        try {
+            NpmImportResult result =
+                    new NpmImporter(npmExecutable, registry)
+                            .importPackages(List.of(packageSpecification), outputDirectory);
             List<Path> configs =
                     new NpmPackageIndexWriter(
                                     HttpClient.newBuilder()
                                             .followRedirects(HttpClient.Redirect.NORMAL)
                                             .build())
-                            .write(result.packages(), packageIndexDirectory);
-            logger.info("Wrote {} package configs to {}", configs.size(), packageIndexDirectory);
+                            .write(result.packages(), workingDirectory);
+            logger.info("Wrote {} package configs to {}", configs.size(), workingDirectory);
+            for (var npmPackage : result.packages()) {
+                System.out.println(
+                        npmPackage.name()
+                                + "@"
+                                + npmPackage.version()
+                                + "\t"
+                                + npmPackage.tarballUrl()
+                                + "\t"
+                                + npmPackage.integrity());
+            }
+            logger.info("Resolved {} npm packages", result.packages().size());
+            return 0;
+        } finally {
+            PathUtils.deleteDirectory(outputDirectory);
         }
-        for (var npmPackage : result.packages()) {
-            System.out.println(
-                    npmPackage.name()
-                            + "@"
-                            + npmPackage.version()
-                            + "\t"
-                            + npmPackage.tarballUrl()
-                            + "\t"
-                            + npmPackage.integrity());
-        }
-        logger.info(
-                "Resolved {} npm packages; lockfile written to {}",
-                result.packages().size(),
-                result.lockfile());
-        return 0;
     }
 }

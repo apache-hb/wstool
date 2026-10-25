@@ -1,4 +1,7 @@
-plugins { application }
+plugins {
+  application
+  id("wstool.deb-package")
+}
 
 dependencies {
   implementation(platform(project(":")))

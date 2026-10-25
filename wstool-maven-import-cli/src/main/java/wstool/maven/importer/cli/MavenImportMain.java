@@ -16,7 +16,8 @@ import wstool.maven.importer.cli.inject.MavenImportComponent;
 
 @Command(
         name = "wstool-maven-import",
-        description = "Resolve Maven artifacts and their compile/runtime dependencies.",
+        description =
+                "Import a Maven artifact and its compile/runtime dependencies into the current package index.",
         mixinStandardHelpOptions = true,
         version = "1.0.0")
 public final class MavenImportMain implements Callable<Integer> {
@@ -33,13 +34,8 @@ public final class MavenImportMain implements Callable<Integer> {
             description = "Local artifact cache directory.")
     private Path localRepository = Path.of(System.getProperty("user.home"), ".m2", "repository");
 
-    @Option(
-            names = "--package-index",
-            description = "Write per-artifact wstool.pkl files under this package index directory.")
-    private Path packageIndexDirectory;
-
-    @Parameters(arity = "1..*", paramLabel = "GROUP:ARTIFACT:VERSION")
-    private List<String> coordinates;
+    @Parameters(arity = "1", paramLabel = "GROUP:ARTIFACT:VERSION")
+    private String coordinate;
 
     public static void main(String[] args) {
         int exitCode = new CommandLine(new MavenImportMain()).execute(args);
@@ -53,13 +49,12 @@ public final class MavenImportMain implements Callable<Integer> {
                         .repositoryUrl(repository)
                         .localRepository(localRepository)
                         .build();
-        List<MavenArtifact> artifacts = component.mavenImporter().resolve(coordinates);
-        if (packageIndexDirectory != null) {
-            List<Path> configs =
-                    new MavenPackageIndexWriter()
-                            .write(artifacts, repository, localRepository, packageIndexDirectory);
-            logger.info("Wrote {} package configs to {}", configs.size(), packageIndexDirectory);
-        }
+        List<MavenArtifact> artifacts = component.mavenImporter().resolve(List.of(coordinate));
+        Path packageIndexDirectory = Path.of("").toAbsolutePath().normalize();
+        List<Path> configs =
+                new MavenPackageIndexWriter()
+                        .write(artifacts, repository, localRepository, packageIndexDirectory);
+        logger.info("Wrote {} package configs to {}", configs.size(), packageIndexDirectory);
         for (MavenArtifact artifact : artifacts) {
             System.out.println(artifact.coordinate() + "\t" + artifact.file());
         }

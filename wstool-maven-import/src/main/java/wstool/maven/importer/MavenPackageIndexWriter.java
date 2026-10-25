@@ -57,7 +57,7 @@ public final class MavenPackageIndexWriter {
             String checksum = sha256(artifactPath);
             Path packageDirectory =
                     indexRoot
-                            .resolve("packages/maven")
+                            .resolve("maven")
                             .resolve(coordinate.group().replace('.', '/'))
                             .resolve(coordinate.artifact())
                             .resolve(coordinate.version())
