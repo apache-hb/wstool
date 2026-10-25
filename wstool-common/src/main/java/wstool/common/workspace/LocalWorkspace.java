@@ -1,13 +1,14 @@
 package wstool.common.workspace;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 import org.apache.commons.io.file.PathUtils;
 import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
+import wstool.common.distribution.DistributionPackage;
 import wstool.common.distribution.DistributionPackage.GitRepository;
 import wstool.common.helpers.Asserts;
 import wstool.common.manifest.WorkspaceStorage;
@@ -120,7 +121,11 @@ public class LocalWorkspace {
                                         new IllegalArgumentException(
                                                 "Package " + name + " not found in distribution"));
 
-        var repo = (GitRepository) pkg;
+        GitRepository repo = gitRepository(pkg);
+
+        Path clonePath = sourceRoot(name);
+        Path parent = clonePath.getParent();
+        Files.createDirectories(parent);
 
         GitRepositoryLocation repository =
                 ImmutableGitRepositoryLocation.builder()
@@ -130,16 +135,24 @@ public class LocalWorkspace {
 
         GitCloneInput input =
                 ImmutableGitCloneInput.builder()
-                        .parent(path.resolve(SOURCES))
-                        .name(name.name())
+                        .parent(parent)
+                        .name(clonePath.getFileName().toString())
                         .repository(repository)
                         .build();
 
-        git.clone(input);
+        if (!Files.exists(clonePath.resolve(".git"))) {
+            git.clone(input);
+        }
+        if (pkg instanceof DistributionPackage.Folder && !Files.isDirectory(source(name))) {
+            throw new IOException(
+                    "Package folder does not exist in cloned repository: " + source(name));
+        }
     }
 
     public void remove(PackageMajorVersion name) throws Exception {
-        PathUtils.deleteDirectory(path.resolve(SOURCES).resolve(name.name()));
+        if (!(distributionPackage(name) instanceof DistributionPackage.Folder)) {
+            PathUtils.deleteDirectory(sourceRoot(name));
+        }
     }
 
     public void validate() {
@@ -170,7 +183,21 @@ public class LocalWorkspace {
     }
 
     public Path source(PackageMajorVersion name) {
-        return path.resolve(SOURCES).resolve(name.name());
+        Path root = sourceRoot(name);
+        if (distributionFactory == null) {
+            return root;
+        }
+        DistributionPackage pkg = distributionPackage(name);
+        if (pkg instanceof DistributionPackage.Folder folder) {
+            Path relative = folder.path().normalize();
+            Path source = root.resolve(relative).normalize();
+            if (relative.isAbsolute() || relative.startsWith("..") || !source.startsWith(root)) {
+                throw new IllegalArgumentException(
+                        "Package folder path must stay within its repository: " + folder.path());
+            }
+            return source;
+        }
+        return root;
     }
 
     public Path buildClosureCache(PackageMajorVersion name) {
@@ -185,13 +212,66 @@ public class LocalWorkspace {
     }
 
     private List<PackageConfig> cloned() throws Exception {
-        try (Stream<Path> packages = Files.list(path.resolve(SOURCES))) {
-            List<PackageConfig> configs = new ArrayList<>();
-            for (Path path : packages.toList()) {
-                configs.add(packageFactory.open(path));
+        List<PackageConfig> configs = new ArrayList<>();
+        for (DistributionPackage pkg : loadDistribution().packages()) {
+            Path source = source(pkg);
+            if (Files.isRegularFile(source.resolve("wstool.pkl"))) {
+                configs.add(packageFactory.open(source));
             }
-            return configs;
         }
+        return configs;
+    }
+
+    private DistributionPackage distributionPackage(PackageMajorVersion name) {
+        return loadDistribution().packages().stream()
+                .filter(pkg -> pkg.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Package " + name + " not found"));
+    }
+
+    private Path source(DistributionPackage pkg) {
+        Path root = sourceRoot(pkg.name());
+        if (pkg instanceof DistributionPackage.Folder folder) {
+            Path relative = folder.path().normalize();
+            Path source = root.resolve(relative).normalize();
+            if (relative.isAbsolute() || relative.startsWith("..") || !source.startsWith(root)) {
+                throw new IllegalArgumentException(
+                        "Package folder path must stay within its repository: " + folder.path());
+            }
+            return source;
+        }
+        return root;
+    }
+
+    private Path sourceRoot(PackageMajorVersion name) {
+        PackageMajorVersion repositoryName =
+                distributionFactory == null
+                        ? name
+                        : loadDistribution().packages().stream()
+                                .filter(pkg -> pkg.name().equals(name))
+                                .filter(DistributionPackage.Folder.class::isInstance)
+                                .map(pkg -> gitRepository(pkg).name())
+                                .findFirst()
+                                .orElse(name);
+        Path relative = Path.of(repositoryName.name()).normalize();
+        Path root = path.resolve(SOURCES).resolve(relative).normalize();
+        if (relative.isAbsolute()
+                || relative.startsWith("..")
+                || !root.startsWith(path.resolve(SOURCES))) {
+            throw new IllegalArgumentException(
+                    "Package name is not a safe source path: " + repositoryName);
+        }
+        return root;
+    }
+
+    private GitRepository gitRepository(DistributionPackage pkg) {
+        return switch (pkg) {
+            case GitRepository repository -> repository;
+            case DistributionPackage.Folder folder -> gitRepository(folder.source());
+            case DistributionPackage.Archive archive ->
+                    throw new UnsupportedOperationException(
+                            "Cannot clone archive package source " + archive.archive());
+        };
     }
 
     private List<PackageDependency> dependenciesOf(PackageConfig config) {
@@ -204,7 +284,7 @@ public class LocalWorkspace {
         return dependencies;
     }
 
-    private DistributionConfig loadDistribution() throws Exception {
+    private DistributionConfig loadDistribution() {
         return distributionFactory.open(path.resolve(DISTRIBUTION));
     }
 
