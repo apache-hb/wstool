@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wstool.common.model.PackageMajorVersion;
@@ -22,6 +23,7 @@ import wstool.common.workspace.LocalWorkspace;
 import wstool.test.components.LocalFileHttpServer;
 import wstool.test.components.TestResources;
 
+@Tag("integration")
 class ExternalSourceBuildEndToEndTest {
     private static final PackageMajorVersion PACKAGE =
             new PackageMajorVersion("external-source-e2e", "1.0");

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.GenericContainer;
@@ -22,6 +23,7 @@ import wstool.test.components.NpmRegistryManager;
 import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("integration")
 class NpmImportMainTest {
     private static final CliProcess CLI_PROCESS =
             new CliProcess(NpmImportMain.class, "wstool.npm-import-cli.classpath", List.of());

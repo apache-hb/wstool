@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.io.file.PathUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.testcontainers.junit.jupiter.Container;
@@ -25,6 +26,7 @@ import wstool.test.components.PackageGitManager;
 import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("integration")
 class PackageRunIntegrationTest {
     @Container private static final GiteaContainer GITEA = PackageGitManager.container();
 

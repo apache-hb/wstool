@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.fory.json.ForyJson;
 import org.apache.fory.reflect.TypeRef;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.GenericContainer;
@@ -22,6 +23,7 @@ import wstool.test.components.NpmRegistryManager;
 import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("integration")
 class NpmImporterTest {
     private static final TypeRef<Map<String, Object>> JSON_OBJECT_TYPE = new TypeRef<>() {};
 

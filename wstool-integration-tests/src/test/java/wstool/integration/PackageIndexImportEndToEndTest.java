@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -26,6 +27,7 @@ import wstool.test.components.PackageGitManager;
 import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("integration")
 class PackageIndexImportEndToEndTest {
     private static final Path OUTPUT_DIRECTORY =
             Path.of(System.getProperty("wstool.integration-tests.output-directory"))

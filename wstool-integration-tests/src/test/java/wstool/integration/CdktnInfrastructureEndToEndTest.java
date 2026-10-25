@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.fory.json.ForyJson;
 import org.apache.fory.reflect.TypeRef;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -30,6 +31,7 @@ import wstool.test.components.PackageGitManager;
 import wstool.test.components.TestResources;
 
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("integration")
 class CdktnInfrastructureEndToEndTest {
     private static final TypeRef<Map<String, Object>> JSON_OBJECT_TYPE = new TypeRef<>() {};
     private static final ForyJson JSON = ForyJson.builder().build();

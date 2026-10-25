@@ -15,6 +15,9 @@ dependencies {
   implementation("org.apache.logging.log4j:log4j-api")
   implementation("org.apache.fory:fory-json:1.7.7")
   implementation("software.amazon.awssdk:s3")
+  implementation("org.junit.jupiter:junit-jupiter-api:5.12.2")
+  compileOnly("com.google.auto.service:auto-service-annotations:1.1.1")
+  annotationProcessor("com.google.auto.service:auto-service:1.1.1")
 
   testRuntimeOnly("org.apache.logging.log4j:log4j-core")
   testImplementation("org.testcontainers:testcontainers")
