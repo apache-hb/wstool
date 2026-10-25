@@ -15,11 +15,21 @@ public final class CliProcess {
     private final Class<?> mainClass;
     private final String classpathProperty;
     private final List<String> javaOptions;
+    private final Duration timeout;
 
     public CliProcess(Class<?> mainClass, String classpathProperty, List<String> javaOptions) {
+        this(mainClass, classpathProperty, javaOptions, Duration.ofMinutes(2));
+    }
+
+    public CliProcess(
+            Class<?> mainClass,
+            String classpathProperty,
+            List<String> javaOptions,
+            Duration timeout) {
         this.mainClass = mainClass;
         this.classpathProperty = classpathProperty;
         this.javaOptions = List.copyOf(javaOptions);
+        this.timeout = timeout;
     }
 
     public CliResult run(
@@ -51,10 +61,10 @@ public final class CliProcess {
         builder.environment().putAll(environment);
 
         Process process = builder.start();
-        if (!process.waitFor(Duration.ofMinutes(2).toMillis(), TimeUnit.MILLISECONDS)) {
+        if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
             process.destroyForcibly();
             throw new IOException(
-                    "CLI process did not finish within two minutes: " + mainClass.getName());
+                    "CLI process did not finish within " + timeout + ": " + mainClass.getName());
         }
         return new CliResult(
                 process.exitValue(),

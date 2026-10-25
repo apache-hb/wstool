@@ -38,7 +38,7 @@ packages {
     checksum = gradleRunnerChecksum
   }
   new Archive {
-    name = "maven-wstool-import"
+    name = "wstool-maven-import"
     version = "1.0.0"
     uri = mavenToolArchive
     checksum = mavenToolChecksum

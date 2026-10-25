@@ -10,6 +10,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import wstool.maven.importer.MavenArtifact;
+import wstool.maven.importer.MavenPackageIndexWriter;
 import wstool.maven.importer.cli.inject.DaggerMavenImportComponent;
 import wstool.maven.importer.cli.inject.MavenImportComponent;
 
@@ -32,6 +33,11 @@ public final class MavenImportMain implements Callable<Integer> {
             description = "Local artifact cache directory.")
     private Path localRepository = Path.of(System.getProperty("user.home"), ".m2", "repository");
 
+    @Option(
+            names = "--package-index",
+            description = "Write per-artifact wstool.pkl files under this package index directory.")
+    private Path packageIndexDirectory;
+
     @Parameters(arity = "1..*", paramLabel = "GROUP:ARTIFACT:VERSION")
     private List<String> coordinates;
 
@@ -48,6 +54,12 @@ public final class MavenImportMain implements Callable<Integer> {
                         .localRepository(localRepository)
                         .build();
         List<MavenArtifact> artifacts = component.mavenImporter().resolve(coordinates);
+        if (packageIndexDirectory != null) {
+            List<Path> configs =
+                    new MavenPackageIndexWriter()
+                            .write(artifacts, repository, localRepository, packageIndexDirectory);
+            logger.info("Wrote {} package configs to {}", configs.size(), packageIndexDirectory);
+        }
         for (MavenArtifact artifact : artifacts) {
             System.out.println(artifact.coordinate() + "\t" + artifact.file());
         }

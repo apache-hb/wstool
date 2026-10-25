@@ -6,4 +6,4 @@ buildOptions {
   tool = "maven-wstool-import"
 }
 
-buildDependencies { ["maven-wstool-import"] = "1.0.0" }
+buildDependencies { ["wstool-maven-import"] = "1.0.0" }

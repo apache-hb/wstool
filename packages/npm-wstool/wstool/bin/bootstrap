@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+mkdir -p "$WST_PREFIX/bin"
+install -m 755 "$WST_SRCDIR/wstool/bin/npm-wstool" "$WST_PREFIX/bin/npm-wstool"

@@ -1,0 +1,66 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+local packageIndex = read("env:PACKAGE_INDEX_REPOSITORY")
+local npmImport = read("env:WSTOOL_NPM_IMPORT_REPOSITORY")
+
+platforms { "ubuntu:24.04" }
+
+storage { bucket = "unused-test-bucket" }
+
+packages {
+  new Folder {
+    name = "@wstool-test/root"
+    version = "1.0.0"
+    from = new GitRepository {
+      name = "package-index"
+      version = "1.0"
+      repo = packageIndex
+    }
+    path = "packages/npm/@wstool-test/root/1.0.0"
+  }
+  new Folder {
+    name = "@wstool-test/leaf"
+    version = "2.1.0"
+    from = new GitRepository {
+      name = "package-index"
+      version = "1.0"
+      repo = packageIndex
+    }
+    path = "packages/npm/@wstool-test/leaf/2.1.0"
+  }
+  new Folder {
+    name = "test.import-fixture:root"
+    version = "1.0"
+    from = new GitRepository {
+      name = "package-index"
+      version = "1.0"
+      repo = packageIndex
+    }
+    path = "packages/maven/test/import-fixture/root/1.0"
+  }
+  new Folder {
+    name = "test.import-fixture:leaf"
+    version = "2.0"
+    from = new GitRepository {
+      name = "package-index"
+      version = "1.0"
+      repo = packageIndex
+    }
+    path = "packages/maven/test/import-fixture/leaf/2.0"
+  }
+  new GitRepository {
+    name = "wstool-npm-import"
+    version = "1.0.0"
+    repo = npmImport
+  }
+  new Folder {
+    name = "wstool-maven-import"
+    version = "1.0.0"
+    from = new GitRepository {
+      name = "package-index"
+      version = "1.0"
+      repo = packageIndex
+    }
+    path = "packages/wstool-maven-import"
+  }
+}

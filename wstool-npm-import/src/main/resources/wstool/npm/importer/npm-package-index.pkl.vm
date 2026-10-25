@@ -1,0 +1,29 @@
+amends $packageModule
+
+package {
+  name = $name
+  version = $version
+}
+
+build { tool = "wstool-npm-import" }
+
+buildDependencies { ["wstool-npm-import"] = "1.0.0" }
+
+#if($dependencies.size() > 0)
+dependencies {
+#foreach($dependency in $dependencies)
+  [$dependency.name] = $dependency.version
+#end
+}
+
+#end
+externalSources = new ImportOptions {
+  sources = new Listing {
+    new ArchiveSource {
+      uri = $tarballUri
+      checksum = $checksum
+      stripComponents = 1
+      license = "NOASSERTION"
+    }
+  }
+}

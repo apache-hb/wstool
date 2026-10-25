@@ -1,0 +1,188 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('node:fs');
+const http = require('node:http');
+const crypto = require('node:crypto');
+const path = require('node:path');
+const { createReadStream } = require('node:fs');
+const { spawn, spawnSync } = require('node:child_process');
+
+const source = required('WST_SRCDIR');
+const prefix = required('WST_PREFIX');
+
+buildProject().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+async function buildProject() {
+  const work = path.join(required('WST_PRIVATE'), 'npm-project');
+  fs.rmSync(work, { recursive: true, force: true });
+  fs.mkdirSync(work, { recursive: true });
+  fs.cpSync(source, work, {
+    recursive: true,
+    dereference: true,
+    filter: (entry) => path.basename(entry) !== 'node_modules' && path.basename(entry) !== '.git',
+  });
+
+  const registry = await startPackageRegistry();
+  const npmEnvironment = {
+    ...process.env,
+    npm_config_audit: 'false',
+    npm_config_fund: 'false',
+    npm_config_offline: 'false',
+    npm_config_registry: registry.url,
+  };
+
+  try {
+    await runNpm(
+      ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--no-save', '--package-lock=false', '--allow-remote=all'],
+      work,
+      npmEnvironment,
+    );
+
+    const build = process.argv.slice(2).filter((argument) => argument !== 'release');
+    const task = build.length === 0 ? 'build' : build[0];
+    const taskArguments = build.length === 0 ? [] : build.slice(1);
+    await runNpm(
+      ['run', task, '--if-present', '--no-audit', '--no-fund', '--', ...taskArguments],
+      work,
+      npmEnvironment,
+    );
+
+    const destination = path.join(prefix, 'lib', 'node_modules', path.basename(source));
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.cpSync(work, destination, { recursive: true, dereference: true });
+  } finally {
+    await registry.close();
+  }
+}
+
+async function startPackageRegistry() {
+  const selectedPackages = new Map();
+  const tarballs = new Map();
+
+  const server = http.createServer(async (request, response) => {
+    try {
+      const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+      if (pathname.startsWith('/tarballs/')) {
+        const tarball = tarballs.get(pathname.slice('/tarballs/'.length));
+        if (!tarball) {
+          response.writeHead(404).end();
+          return;
+        }
+        response.writeHead(200, { 'content-type': 'application/octet-stream' });
+        createReadStream(tarball.path).pipe(response);
+        return;
+      }
+
+      const name = pathname.replace(/^\/+|\/+$/g, '');
+      if (!name) {
+        response.writeHead(404).end();
+        return;
+      }
+
+      const selected = await selectPackage(name, selectedPackages, tarballs);
+      const metadata = {
+        name: selected.metadata.name,
+        version: selected.metadata.version,
+        dist: {
+          tarball: `${registryUrl(server)}/tarballs/${selected.tarballId}`,
+          shasum: selected.shasum,
+          integrity: selected.integrity,
+        },
+      };
+      const packument = {
+        _id: name,
+        name,
+        'dist-tags': { latest: selected.metadata.version },
+        versions: { [selected.metadata.version]: metadata },
+      };
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify(packument));
+    } catch (error) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: error.message }));
+    }
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+
+  return {
+    url: registryUrl(server),
+    close: () => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),
+  };
+}
+
+function registryUrl(server) {
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
+async function selectPackage(name, packages, tarballs) {
+  if (packages.has(name)) return packages.get(name);
+
+  const version = wstoolSelect(`(version ${name})`);
+  const prefix = wstoolSelect(`(prefix (${name} ${version}))`);
+  const tarballPath = path.join(prefix, 'share', 'wstool-npm', 'package.tgz');
+  if (!fs.existsSync(tarballPath) || !fs.statSync(tarballPath).isFile()) {
+    throw new Error(`Selected wstool package ${name}@${version} has no npm tarball`);
+  }
+  const tarballId = crypto.createHash('sha256').update(`${name}\0${version}`).digest('hex') + '.tgz';
+
+  const digest = crypto.createHash('sha512');
+  const shasum = crypto.createHash('sha1');
+  for await (const chunk of createReadStream(tarballPath)) {
+    digest.update(chunk);
+    shasum.update(chunk);
+  }
+  const selected = {
+    metadata: { name, version },
+    tarballId,
+    path: tarballPath,
+    integrity: `sha512-${digest.digest('base64')}`,
+    shasum: shasum.digest('hex'),
+  };
+  packages.set(name, selected);
+  tarballs.set(tarballId, selected);
+  return selected;
+}
+
+function wstoolSelect(selector) {
+  const selected = wstoolSelectOutput(selector);
+  if (!selected) throw new Error(`wstool select returned no result for ${selector}`);
+  return selected;
+}
+
+function wstoolSelectOutput(selector) {
+  const result = spawnSync('wstool', ['select', selector], {
+    cwd: source,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`wstool select failed for ${selector} with exit code ${result.status}`);
+  }
+  return result.stdout.trim();
+}
+
+function runNpm(arguments_, cwd, env) {
+  return new Promise((resolve, reject) => {
+    const npmProcess = spawn('npm', arguments_, { cwd, env, stdio: 'inherit' });
+    npmProcess.once('error', reject);
+    npmProcess.once('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`npm ${arguments_[0]} failed with exit code ${code}`));
+    });
+  });
+}
+
+function required(name) {
+  if (!process.env[name]) throw new Error(`${name} is required`);
+  return process.env[name];
+}
+

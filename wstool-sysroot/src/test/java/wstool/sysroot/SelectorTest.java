@@ -62,8 +62,16 @@ class SelectorTest {
                         return ImmutableDistributionConfig.builder()
                                 .platforms(Set.of("test"))
                                 .addPackages(
-                                        new DistributionPackage.GitRepository(
-                                                RUNTIME, URI.create("file:///unused"), "main"))
+                                        List.of(APP, RUNTIME, PUBLIC, BUILD, TEST, UNUSED).stream()
+                                                .map(
+                                                        name ->
+                                                                new DistributionPackage
+                                                                        .GitRepository(
+                                                                        name,
+                                                                        URI.create(
+                                                                                "file:///unused"),
+                                                                        "main"))
+                                                .toArray(DistributionPackage[]::new))
                                 .build();
                     }
                 };

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec java -cp "$WSTOOL_CLI_CLASSPATH" wstool.cli.Main "$@"

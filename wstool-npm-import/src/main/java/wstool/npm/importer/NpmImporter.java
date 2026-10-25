@@ -66,6 +66,7 @@ public final class NpmImporter {
                                 "--no-audit",
                                 "--no-fund",
                                 "--silent",
+                                "--allow-remote=all",
                                 "--registry",
                                 registryUrl));
         Process process =
@@ -102,9 +103,15 @@ public final class NpmImporter {
             if (version == null) {
                 continue;
             }
+            if (Boolean.TRUE.equals(metadata.get("inBundle"))) {
+                continue;
+            }
             Map<String, String> packageDependencies = new LinkedHashMap<>();
             addDependencies(packageDependencies, metadata.get("dependencies"));
             addDependencies(packageDependencies, metadata.get("optionalDependencies"));
+            addDependencies(packageDependencies, metadata.get("peerDependencies"));
+            removeBundledDependencies(packageDependencies, metadata.get("bundleDependencies"));
+            removeBundledDependencies(packageDependencies, metadata.get("bundledDependencies"));
             result.add(
                     new NpmPackage(
                             name,
@@ -114,6 +121,16 @@ public final class NpmImporter {
                             packageDependencies));
         }
         return List.copyOf(result);
+    }
+
+    private void removeBundledDependencies(Map<String, String> dependencies, Object bundledValue) {
+        if (bundledValue instanceof List<?> bundledDependencies) {
+            for (Object dependency : bundledDependencies) {
+                if (dependency instanceof String name) {
+                    dependencies.remove(name);
+                }
+            }
+        }
     }
 
     private String stringValue(Object value, String defaultValue) {

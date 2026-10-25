@@ -6,6 +6,12 @@ set -eu
 
 source_repository="$WST_SRCDIR/repository"
 output_repository="$WST_PREFIX/share/maven-repo"
+if [ -d "$WST_SRCDIR/lib" ]; then
+  mkdir -p "$WST_PREFIX/share/maven-artifacts"
+  cp -a "$WST_SRCDIR/lib"/. "$WST_PREFIX/share/maven-artifacts"/
+  exit 0
+fi
+
 if [ ! -d "$source_repository" ]; then
   source_tool="$WST_SRCDIR/wstool/bin/maven-wstool-import"
   if [ ! -f "$source_tool" ]; then

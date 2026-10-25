@@ -18,6 +18,7 @@ include(
   ":wstool-npm-import-cli",
   ":wstool-maven-import",
   ":wstool-maven-import-cli",
+  ":wstool-integration-tests",
   ":wstool-common",
   ":wstool-config",
   ":wstool-sysroot",

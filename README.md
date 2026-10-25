@@ -222,3 +222,13 @@ Archive extraction uses Apache Commons Compress to read ZIP and TAR archives, in
 ### Gradle module paths
 
 The Gradle modules are `wstool-cli`, `wstool-config`, and `wstool-common`. For example, build the CLI distribution with `./gradlew :wstool-cli:packageCli`; its generated files are under `wstool-cli/build/distributions`.
+
+### npm tool packages
+
+The `npm-wstool` package installs npm packages imported as source archives. Generated imported package configs depend on this package and use its `npm-wstool` installer. The separate `wstool-npm-import` package provides the `wstool-npm-import` tool for building and installing npm projects whose source is available in the workspace; use it for source packages that need npm dependency resolution through wstool's local registry proxy.
+
+### npm tool package roles
+
+Use `wstool-npm-import` for imported npm packages; it stores each package's prepared source as a tarball in its prefix. Use `npm-wstool` for source packages; it resolves dependencies from the wstool package closure through the local registry proxy, runs the npm build, and installs the result.
+
+This role description supersedes the preceding npm tool package description.

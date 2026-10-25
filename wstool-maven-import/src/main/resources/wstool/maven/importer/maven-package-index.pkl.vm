@@ -1,0 +1,29 @@
+amends $packageModule
+
+package {
+  name = $name
+  version = $version
+}
+
+build { tool = "maven-wstool-import" }
+
+buildDependencies { ["wstool-maven-import"] = "1.0.0" }
+
+#if($dependencies.size() > 0)
+dependencies {
+#foreach($dependency in $dependencies)
+  [$dependency.name] = $dependency.version
+#end
+}
+
+#end
+externalSources = new ImportOptions {
+  sources = new Listing {
+    new FileSource {
+      uri = $sourceUri
+      path = $path
+      checksum = $checksum
+      license = "NOASSERTION"
+    }
+  }
+}

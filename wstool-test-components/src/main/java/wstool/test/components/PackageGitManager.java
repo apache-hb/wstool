@@ -7,11 +7,13 @@ import io.gitea.api.RepositoryApi;
 import io.gitea.model.CreateRepoOption;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ScanResult;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import wstool.git.GitClient;
@@ -42,6 +44,29 @@ public class PackageGitManager {
     public URI create(String name, String folder) throws Exception {
         URI uri = create(name);
         init(name, folder);
+        return uri;
+    }
+
+    public URI create(String name, Path folder, Map<Path, Path> additionalFolders)
+            throws Exception {
+        URI uri = create(name);
+        String branch = "master";
+        Path repository = tmpdir.resolve("git").resolve(name);
+        Files.createDirectories(repository);
+        configure(repository, branch);
+        copyFolder(folder, repository);
+
+        for (var additionalFolder : additionalFolders.entrySet()) {
+            Path destination = additionalFolder.getKey().normalize();
+            if (destination.isAbsolute() || destination.startsWith("..")) {
+                throw new IllegalArgumentException(
+                        "Repository folder path must be relative and stay within the repository: "
+                                + additionalFolder.getKey());
+            }
+            copyFolder(additionalFolder.getValue(), repository.resolve(destination));
+        }
+
+        initialCommit(repository, name, branch);
         return uri;
     }
 
@@ -77,6 +102,24 @@ public class PackageGitManager {
                         });
 
         initialCommit(tmp, name, branch);
+    }
+
+    private void copyFolder(Path source, Path destination) throws IOException {
+        if (!Files.isDirectory(source)) {
+            throw new IOException("Source folder does not exist: " + source);
+        }
+
+        try (var paths = Files.walk(source)) {
+            for (Path file : paths.filter(Files::isRegularFile).toList()) {
+                Path target = destination.resolve(source.relativize(file));
+                Files.createDirectories(target.getParent());
+                Files.copy(
+                        file,
+                        target,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES);
+            }
+        }
     }
 
     public void uploadResources(String name, String folder) throws Exception {

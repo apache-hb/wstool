@@ -1,5 +1,6 @@
 package wstool.npm.importer.cli;
 
+import java.net.http.HttpClient;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -11,6 +12,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import wstool.npm.importer.NpmImportResult;
 import wstool.npm.importer.NpmImporter;
+import wstool.npm.importer.NpmPackageIndexWriter;
 
 @Command(
         name = "wstool-npm-import",
@@ -35,6 +37,11 @@ public final class NpmImportMain implements Callable<Integer> {
             required = true)
     private Path outputDirectory;
 
+    @Option(
+            names = "--package-index",
+            description = "Write per-package wstool.pkl files under this package index directory.")
+    private Path packageIndexDirectory;
+
     @Parameters(arity = "1..*", paramLabel = "PACKAGE[:VERSION]")
     private List<String> packages;
 
@@ -47,6 +54,15 @@ public final class NpmImportMain implements Callable<Integer> {
     public Integer call() throws Exception {
         NpmImportResult result =
                 new NpmImporter(npmExecutable, registry).importPackages(packages, outputDirectory);
+        if (packageIndexDirectory != null) {
+            List<Path> configs =
+                    new NpmPackageIndexWriter(
+                                    HttpClient.newBuilder()
+                                            .followRedirects(HttpClient.Redirect.NORMAL)
+                                            .build())
+                            .write(result.packages(), packageIndexDirectory);
+            logger.info("Wrote {} package configs to {}", configs.size(), packageIndexDirectory);
+        }
         for (var npmPackage : result.packages()) {
             System.out.println(
                     npmPackage.name()

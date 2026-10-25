@@ -1,0 +1,15 @@
+{
+  "name": "wstool-test-infrastructure",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --project tsconfig.json && node dist/main.js"
+  },
+  "dependencies": {
+    "cdktn": "0.24.0",
+    "@cdktn/provider-local": "14.0.1",
+    "@cdktn/provider-random": "15.0.1",
+    "constructs": "10.7.2",
+    "typescript": "5.9.3"
+  }
+}
