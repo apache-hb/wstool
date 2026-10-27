@@ -11,6 +11,7 @@ import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.distribution.DistributionPackage;
 import wstool.common.distribution.DistributionPackage.GitRepository;
+import wstool.common.distribution.StorageConfig;
 import wstool.common.helpers.Asserts;
 import wstool.common.manifest.WorkspaceStorage;
 import wstool.common.model.PackageDependency;
@@ -72,6 +73,10 @@ public class LocalWorkspace {
 
     public WorkspaceStorage storage() {
         return storage;
+    }
+
+    public StorageConfig artifactStorage() {
+        return loadDistribution().storage();
     }
 
     public void setup(GitRepositoryLocation distribution) throws Exception {

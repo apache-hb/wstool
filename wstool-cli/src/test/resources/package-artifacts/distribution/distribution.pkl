@@ -1,0 +1,26 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+local remoteRepository = read("env:ARTIFACT_REMOTE_REPOSITORY")
+local consumerRepository = read("env:ARTIFACT_CONSUMER_REPOSITORY")
+
+platforms { "ubuntu:24.04" }
+
+storage {
+  bucket = read("env:ARTIFACT_BUCKET")
+  endpoint = read("env:AWS_S3_ENDPOINT")
+}
+
+packages {
+  new GitRepository {
+    name = "remote-tool"
+    version = "1.0.0"
+    repo = remoteRepository
+    branch = "master"
+  }
+  new GitRepository {
+    name = "artifact-consumer"
+    version = "1.0.0"
+    repo = consumerRepository
+    branch = "master"
+  }
+}

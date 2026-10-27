@@ -21,6 +21,7 @@ import wstool.common.distribution.DistributionConfig;
 import wstool.common.distribution.DistributionFactory;
 import wstool.common.distribution.DistributionPackage;
 import wstool.common.distribution.ImmutableDistributionConfig;
+import wstool.common.distribution.StorageConfig;
 import wstool.common.model.DependencyType;
 import wstool.common.model.PackageDependency;
 import wstool.common.model.PackageMajorVersion;
@@ -60,6 +61,7 @@ class SelectorTest {
                     @Override
                     public DistributionConfig open(Path path) {
                         return ImmutableDistributionConfig.builder()
+                                .storage(new StorageConfig(null, "unused"))
                                 .platforms(Set.of("test"))
                                 .addPackages(
                                         List.of(APP, RUNTIME, PUBLIC, BUILD, TEST, UNUSED).stream()

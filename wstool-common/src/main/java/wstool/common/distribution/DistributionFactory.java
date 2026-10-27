@@ -31,6 +31,10 @@ public class DistributionFactory {
                 distribution.getPackages().stream().map(this::map).toList();
 
         return ImmutableDistributionConfig.builder()
+                .storage(
+                        new StorageConfig(
+                                distribution.getStorage().getEndpoint(),
+                                distribution.getStorage().getBucket()))
                 .platforms(Set.copyOf(distribution.getPlatforms()))
                 .addAllPackages(packages)
                 .build();

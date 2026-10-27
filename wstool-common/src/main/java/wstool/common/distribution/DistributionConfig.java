@@ -6,6 +6,8 @@ import org.immutables.value.Value;
 
 @Value.Immutable
 public interface DistributionConfig {
+    StorageConfig storage();
+
     Set<String> platforms();
 
     List<DistributionPackage> packages();

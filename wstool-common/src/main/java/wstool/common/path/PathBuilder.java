@@ -27,9 +27,12 @@ import wstool.common.workspace.LocalWorkspace;
 @Singleton
 public class PathBuilder {
     private static final Logger LOGGER = LogManager.getLogger(PathBuilder.class);
+    private final PackageArtifactStore artifactStore;
 
     @Inject
-    public PathBuilder() {}
+    public PathBuilder(PackageArtifactStore artifactStore) {
+        this.artifactStore = artifactStore;
+    }
 
     public String buildToolPath(
             LocalWorkspace workspace, PackageMajorVersion name, Path packageSource)
@@ -44,6 +47,9 @@ public class PathBuilder {
         Set<PackageMajorVersion> dependencies = new LinkedHashSet<>();
         addBuildDependencies(workspace, name, dependencies);
         for (PackageMajorVersion dep : dependencies) {
+            if (artifactStore != null) {
+                artifactStore.ensureRuntimeClosure(workspace, dep);
+            }
             Path buildClosure = workspace.buildClosureCache(dep);
             runtimeSymlinkFolder(workspace, dep, buildClosure);
             closure.add(buildClosure.resolve("bin"));
@@ -77,6 +83,8 @@ public class PathBuilder {
 
     public Set<PackageMajorVersion> runtimeClosure(
             LocalWorkspace workspace, PackageMajorVersion name) throws Exception {
+        return artifactStore.ensureRuntimeClosure(workspace, name);
+
         WorkspaceStorage storage = workspace.storage();
         Set<PackageMajorVersion> closure = new HashSet<>();
         closure.add(name);

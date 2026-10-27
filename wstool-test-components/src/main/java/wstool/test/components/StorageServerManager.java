@@ -32,6 +32,8 @@ public class StorageServerManager {
     }
 
     private final GenericContainer<?> garage;
+    private String accessKey;
+    private String secretKey;
 
     public StorageServerManager(GenericContainer<?> garage) {
         this.garage = garage;
@@ -44,8 +46,8 @@ public class StorageServerManager {
     }
 
     public S3Client createBucket(String name) throws Exception {
-        String accessKey = randomString(20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-        String secretKey =
+        accessKey = randomString(20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+        secretKey =
                 randomString(40, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
 
         run("key", "import", "--yes", "-n", "cli-toolchain", accessKey, secretKey);
@@ -67,6 +69,16 @@ public class StorageServerManager {
                 .credentialsProvider(credentials)
                 .serviceConfiguration(configuration)
                 .build();
+    }
+
+    public Map<String, String> credentialsEnvironment() {
+        if (accessKey == null || secretKey == null) {
+            throw new IllegalStateException("Create a Garage bucket before requesting credentials");
+        }
+        return Map.of(
+                "AWS_ACCESS_KEY_ID", accessKey,
+                "AWS_SECRET_ACCESS_KEY", secretKey,
+                "AWS_REGION", "us-east-1");
     }
 
     public URI endpoint() {

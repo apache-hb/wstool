@@ -12,6 +12,7 @@ import wstool.cli.commands.CommonCommand;
 import wstool.cli.commands.SelectCommand;
 import wstool.cli.commands.packages.PackageCommand;
 import wstool.cli.commands.packages.RunTargetCommand;
+import wstool.cli.commands.packages.StorePackageCommand;
 import wstool.cli.commands.workspace.AddPackageCommand;
 import wstool.cli.commands.workspace.CreateWorkspaceCommand;
 import wstool.cli.commands.workspace.ExecuteRecursiveCommand;
@@ -78,6 +79,13 @@ public final class WstoolModule {
     @IntoMap
     @ClassKey(RunTargetCommand.class)
     static CommonCommand provideRunTargetCommand(RunTargetCommand command) {
+        return command;
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(StorePackageCommand.class)
+    static CommonCommand provideStorePackageCommand(StorePackageCommand command) {
         return command;
     }
 
