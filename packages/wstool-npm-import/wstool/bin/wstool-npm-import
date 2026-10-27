@@ -3,7 +3,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 
 const source = required('WST_SRCDIR');
 const prefix = required('WST_PREFIX');
@@ -19,27 +18,13 @@ if (fs.existsSync(toolScript)) {
 }
 
 function installImportedPackage() {
+  const sourceTarball = path.join(source, 'package.tgz');
+  if (!fs.existsSync(sourceTarball) || !fs.statSync(sourceTarball).isFile()) {
+    throw new Error(`Imported npm package has no tarball at ${sourceTarball}`);
+  }
   const destination = path.join(prefix, 'share', 'wstool-npm', 'package.tgz');
   fs.mkdirSync(path.dirname(destination), { recursive: true });
-  const result = spawnSync(
-    'tar',
-    [
-      '--create',
-      '--gzip',
-      '--file',
-      destination,
-      '--directory',
-      source,
-      '--transform=s,^\\./,package/,',
-      '--exclude=./wstool.pkl',
-      '.',
-    ],
-    { stdio: 'inherit' },
-  );
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`Could not archive imported npm package from ${source}`);
-  }
+  fs.copyFileSync(sourceTarball, destination);
 }
 
 function required(name) {

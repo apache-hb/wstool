@@ -33,6 +33,7 @@ class PackageRunIntegrationTest {
     private Path tmp;
     private PackageGitManager git;
     private CliHelper cli;
+    private Map<String, String> recursiveEnvironment;
 
     @BeforeEach
     void setUp(TestInfo testInfo) throws Exception {
@@ -153,6 +154,62 @@ class PackageRunIntegrationTest {
     }
 
     @Test
+    void buildsRecursiveDependenciesBeforeTheirDependents() throws Exception {
+        Path buildOrder = tmp.resolve("build-order.txt");
+        Path workspace = createRecursiveWorkspace(buildOrder, null, true);
+
+        CliResult result =
+                cli.runCli(
+                        workspace.resolve("src/root"),
+                        recursiveEnvironment,
+                        "workspace",
+                        "execute-recursive",
+                        "--",
+                        "./wstool/bin/build.sh");
+
+        CliHelper.assertSuccess(result);
+        assertEquals(List.of("leaf", "middle", "root"), Files.readAllLines(buildOrder));
+    }
+
+    @Test
+    void stopsRecursiveBuildAfterDependencyFails() throws Exception {
+        Path buildOrder = tmp.resolve("build-order.txt");
+        Path workspace = createRecursiveWorkspace(buildOrder, "middle", true);
+
+        CliResult result =
+                cli.runCli(
+                        workspace.resolve("src/root"),
+                        recursiveEnvironment,
+                        "workspace",
+                        "execute-recursive",
+                        "--",
+                        "./wstool/bin/build.sh");
+
+        assertEquals(1, result.exitCode(), result.output() + result.error());
+        assertEquals(List.of("leaf", "middle"), Files.readAllLines(buildOrder));
+    }
+
+    @Test
+    void skipsMissingDependenciesWithoutCloningThem() throws Exception {
+        Path buildOrder = tmp.resolve("build-order.txt");
+        Path workspace = createRecursiveWorkspace(buildOrder, null, false);
+
+        CliResult result =
+                cli.runCli(
+                        workspace.resolve("src/root"),
+                        recursiveEnvironment,
+                        "workspace",
+                        "execute-recursive",
+                        "--",
+                        "./wstool/bin/build.sh");
+
+        CliHelper.assertSuccess(result);
+        assertEquals(List.of("root"), Files.readAllLines(buildOrder));
+        assertFalse(Files.exists(workspace.resolve("src/middle")));
+        assertFalse(Files.exists(workspace.resolve("src/leaf")));
+    }
+
+    @Test
     void cliBuildsPackageUsingHttpExternalSourcesAndLocalPatch() throws Exception {
         Path fixtureDirectory =
                 TestResources.copyDirectory(
@@ -229,6 +286,38 @@ class PackageRunIntegrationTest {
             throws Exception {
         CliHelper.assertSuccess(
                 cli.runCli(workspace, environment, "workspace", "add", "--package", packageName));
+    }
+
+    private Path createRecursiveWorkspace(
+            Path buildOrder, String failPackage, boolean addDependencies) throws Exception {
+        URI leafRepository =
+                createRepository(
+                        "recursive-leaf",
+                        CliHelper.resourceDirectory("/package-run/recursive/packages/leaf"));
+        URI middleRepository =
+                createRepository(
+                        "recursive-middle",
+                        CliHelper.resourceDirectory("/package-run/recursive/packages/middle"));
+        URI rootRepository =
+                createRepository(
+                        "recursive-root",
+                        CliHelper.resourceDirectory("/package-run/recursive/packages/root"));
+        recursiveEnvironment =
+                Map.of(
+                        "RECURSIVE_LEAF_REPOSITORY", leafRepository.toString(),
+                        "RECURSIVE_MIDDLE_REPOSITORY", middleRepository.toString(),
+                        "RECURSIVE_ROOT_REPOSITORY", rootRepository.toString(),
+                        "WST_BUILD_ORDER", buildOrder.toString(),
+                        "WST_FAIL_PACKAGE", failPackage == null ? "" : failPackage);
+        Path workspace =
+                createWorkspace(
+                        "recursive", "/package-run/recursive/distribution", recursiveEnvironment);
+        addPackage(workspace, "root", recursiveEnvironment);
+        if (addDependencies) {
+            addPackage(workspace, "middle", recursiveEnvironment);
+            addPackage(workspace, "leaf", recursiveEnvironment);
+        }
+        return workspace;
     }
 
     private CliResult runPackage(

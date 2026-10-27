@@ -1,0 +1,30 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+local leafRepository = read("env:RECURSIVE_LEAF_REPOSITORY")
+local middleRepository = read("env:RECURSIVE_MIDDLE_REPOSITORY")
+local rootRepository = read("env:RECURSIVE_ROOT_REPOSITORY")
+
+platforms { "ubuntu:24.04" }
+
+storage { bucket = "unused-test-bucket" }
+
+packages {
+  new GitRepository {
+    name = "leaf"
+    version = "1.0.0"
+    repo = leafRepository
+    branch = "master"
+  }
+  new GitRepository {
+    name = "middle"
+    version = "1.0.0"
+    repo = middleRepository
+    branch = "master"
+  }
+  new GitRepository {
+    name = "root"
+    version = "1.0.0"
+    repo = rootRepository
+    branch = "master"
+  }
+}

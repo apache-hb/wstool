@@ -13,7 +13,8 @@ import wstool.cli.commands.CommonCommand;
             CreateWorkspaceCommand.class,
             SetupWorkspaceCommand.class,
             AddPackageCommand.class,
-            RemovePackageCommand.class
+            RemovePackageCommand.class,
+            ExecuteRecursiveCommand.class
         })
 public class WorkspaceCommand extends CommonCommand {
     @Override

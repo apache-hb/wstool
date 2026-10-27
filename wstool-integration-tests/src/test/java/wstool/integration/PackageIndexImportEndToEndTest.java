@@ -167,11 +167,11 @@ class PackageIndexImportEndToEndTest {
         assertTrue(
                 Files.isRegularFile(
                         workspace.resolve(
-                                "private/build-source/@wstool-test/root/1.0.0/index.js")));
+                                "private/build-source/@wstool-test/root/1.0.0/package.tgz")));
         assertTrue(
                 Files.isRegularFile(
                         workspace.resolve(
-                                "private/build-source/@wstool-test/leaf/2.1.0/index.js")));
+                                "private/build-source/@wstool-test/leaf/2.1.0/package.tgz")));
         assertTrue(
                 Files.isRegularFile(
                         workspace.resolve(
@@ -201,10 +201,12 @@ class PackageIndexImportEndToEndTest {
                         workspace.resolve(
                                 "private/prefix/test.import-fixture:leaf/2.0/share/maven-artifacts/leaf-2.0.jar")));
         assertEquals(
-                "module.exports = require(\"@wstool-test/leaf\");\n",
-                Files.readString(
+                -1,
+                Files.mismatch(
                         workspace.resolve(
-                                "private/build-source/@wstool-test/root/1.0.0/index.js")));
+                                "private/build-source/@wstool-test/root/1.0.0/package.tgz"),
+                        workspace.resolve(
+                                "private/prefix/@wstool-test/root/1.0.0/share/wstool-npm/package.tgz")));
     }
 
     private static Path packageFixture(String name, Path directory) throws IOException {
