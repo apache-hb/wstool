@@ -17,8 +17,13 @@ public final class LocalFileHttpServer implements AutoCloseable {
     private final Map<String, AtomicInteger> requestCounts = new ConcurrentHashMap<>();
 
     public LocalFileHttpServer(Map<String, Path> files) throws IOException {
+        this(files, new InetSocketAddress("127.0.0.1", 0));
+    }
+
+    public LocalFileHttpServer(Map<String, Path> files, InetSocketAddress address)
+            throws IOException {
         this.files = Map.copyOf(files);
-        this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        this.server = HttpServer.create(address, 0);
         server.createContext("/", this::serveFile);
         server.start();
     }
@@ -29,6 +34,10 @@ public final class LocalFileHttpServer implements AutoCloseable {
 
     public int requestCount(String path) {
         return requestCounts.getOrDefault(path, new AtomicInteger()).get();
+    }
+
+    public int port() {
+        return server.getAddress().getPort();
     }
 
     @Override
@@ -45,11 +54,10 @@ public final class LocalFileHttpServer implements AutoCloseable {
             exchange.close();
             return;
         }
-        byte[] content = Files.readAllBytes(file);
         exchange.getResponseHeaders().add("Content-Type", "application/octet-stream");
-        exchange.sendResponseHeaders(200, content.length);
+        exchange.sendResponseHeaders(200, Files.size(file));
         try (var body = exchange.getResponseBody()) {
-            body.write(content);
+            Files.copy(file, body);
         }
     }
 }

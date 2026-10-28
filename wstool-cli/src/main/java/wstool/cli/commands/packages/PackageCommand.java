@@ -12,7 +12,11 @@ import wstool.cli.commands.CommonCommand;
         name = "package",
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class,
-        subcommands = {RunTargetCommand.class, StorePackageCommand.class})
+        subcommands = {
+            RunTargetCommand.class,
+            BuildPackageCommand.class,
+            StorePackageCommand.class
+        })
 public class PackageCommand extends CommonCommand {
     @Unmatched private List<String> targetArguments = new ArrayList<>();
 

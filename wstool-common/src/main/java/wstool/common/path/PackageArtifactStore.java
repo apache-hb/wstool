@@ -5,10 +5,13 @@ import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -46,7 +49,7 @@ public class PackageArtifactStore {
 
     public void store(LocalWorkspace workspace, PackageConfig pkg) throws Exception {
         Path prefix = workspace.prefix(pkg.name());
-        if (!Files.isDirectory(prefix)) {
+        if (!isDirectory(prefix)) {
             throw new IllegalArgumentException(
                     "No build artifacts found for package " + pkg.name() + " at " + prefix);
         }
@@ -78,7 +81,7 @@ public class PackageArtifactStore {
     public void ensureAvailable(LocalWorkspace workspace, PackageMajorVersion name)
             throws Exception {
         Path source = workspace.source(name);
-        if (Files.isRegularFile(source.resolve("wstool.pkl"))) {
+        if (isRegularFile(source.resolve("wstool.pkl"))) {
             return;
         }
 
@@ -87,19 +90,21 @@ public class PackageArtifactStore {
                 workspace.cache().resolve("artifacts").resolve(name.name()).resolve(name.version());
         Path archive = cacheDirectory.resolve("package.tar.gz");
         Path marker = cacheDirectory.resolve("extracted");
-        if (Files.isRegularFile(marker) && Files.isDirectory(prefix)) {
+        if (isRegularFile(marker) && isDirectory(prefix)) {
             return;
         }
 
         Files.createDirectories(cacheDirectory);
         downloadToCache(workspace, objectKey(name), archive);
 
-        if (Files.exists(prefix)) {
-            PathUtils.deleteDirectory(prefix);
-        }
+        deleteDirectoryIfPresent(prefix);
         archiveExtractor.extract(archive, prefix, 0);
         Files.createDirectories(marker.getParent());
-        Files.createFile(marker);
+        Files.writeString(
+                marker,
+                "extracted\n",
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     public Set<PackageMajorVersion> ensureRuntimeClosure(
@@ -124,7 +129,7 @@ public class PackageArtifactStore {
         }
 
         Path source = workspace.source(name);
-        boolean local = Files.isRegularFile(source.resolve("wstool.pkl"));
+        boolean local = isRegularFile(source.resolve("wstool.pkl"));
         if (!local) {
             ensureAvailable(workspace, name);
         }
@@ -147,7 +152,7 @@ public class PackageArtifactStore {
         Path cacheDirectory =
                 workspace.cache().resolve("artifacts").resolve(name.name()).resolve(name.version());
         Path manifest = cacheDirectory.resolve("wstool.pkl");
-        if (!Files.isRegularFile(manifest)) {
+        if (!isRegularFile(manifest)) {
             downloadToCache(workspace, metadataKey(name), manifest);
         }
         return packageFactory.open(cacheDirectory);
@@ -241,13 +246,10 @@ public class PackageArtifactStore {
     }
 
     private void addFile(
-            TarArchiveOutputStream archive,
-            Path root,
-            Path file,
-            BasicFileAttributes attributes)
+            TarArchiveOutputStream archive, Path root, Path file, BasicFileAttributes attributes)
             throws IOException {
         String name = entryName(root, file);
-        if (Files.isSymbolicLink(file)) {
+        if (attributes.isSymbolicLink()) {
             TarArchiveEntry entry = new TarArchiveEntry(name, TarArchiveEntry.LF_SYMLINK);
             entry.setLinkName(Files.readSymbolicLink(file).toString());
             entry.setMode(0777);
@@ -258,7 +260,7 @@ public class PackageArtifactStore {
 
         TarArchiveEntry entry = new TarArchiveEntry(name, TarArchiveEntry.LF_NORMAL);
         entry.setSize(attributes.size());
-        entry.setMode(Files.isExecutable(file) ? 0755 : 0644);
+        entry.setMode(isExecutable(file) ? 0755 : 0644);
         archive.putArchiveEntry(entry);
         Files.copy(file, archive);
         archive.closeArchiveEntry();
@@ -274,5 +276,40 @@ public class PackageArtifactStore {
 
     private String metadataKey(PackageMajorVersion name) {
         return "artifacts/" + name.name() + "/" + name.version() + "/wstool.pkl";
+    }
+
+    private boolean isDirectory(Path path) throws IOException {
+        try {
+            return Files.readAttributes(path, BasicFileAttributes.class).isDirectory();
+        } catch (NoSuchFileException exception) {
+            return false;
+        }
+    }
+
+    private boolean isRegularFile(Path path) throws IOException {
+        try {
+            return Files.readAttributes(path, BasicFileAttributes.class).isRegularFile();
+        } catch (NoSuchFileException exception) {
+            return false;
+        }
+    }
+
+    private boolean isExecutable(Path path) throws IOException {
+        try {
+            Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(path);
+            return permissions.contains(PosixFilePermission.OWNER_EXECUTE)
+                    || permissions.contains(PosixFilePermission.GROUP_EXECUTE)
+                    || permissions.contains(PosixFilePermission.OTHERS_EXECUTE);
+        } catch (NoSuchFileException exception) {
+            return false;
+        }
+    }
+
+    private void deleteDirectoryIfPresent(Path directory) throws IOException {
+        try {
+            PathUtils.deleteDirectory(directory);
+        } catch (NoSuchFileException exception) {
+            // Another process removed the cached prefix before replacement.
+        }
     }
 }

@@ -4,4 +4,8 @@ package { name = "transitive-app"; version = "1.0.0" }
 
 build { tool = "owner-tool" }
 
-buildDependencies { ["tool-owner"] = "1.0.0" }
+buildDependencies {
+  ["tool-owner"] = "1.0.0"
+  ["wstool"] = "1.0.0"
+  ["corretto"] = "25"
+}

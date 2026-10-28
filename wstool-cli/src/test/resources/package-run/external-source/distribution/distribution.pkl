@@ -1,8 +1,14 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
 
 local externalSourceRepository = read("env:EXTERNAL_SOURCE_REPOSITORY")
+local toolchainRepository = read("env:WSTOOL_BUILD_TOOLS_REPOSITORY")
+local toolchain = new GitRepository {
+  name = "wstool-build-toolchain"
+  version = "1.0.0"
+  repo = toolchainRepository
+}
 
-platforms { "ubuntu:24.04" }
+platforms { "ubuntu:26.04" }
 
 storage { bucket = "unused-test-bucket" }
 
@@ -12,5 +18,36 @@ packages {
     version = "1.0"
     repo = externalSourceRepository
     branch = "master"
+  }
+  new Folder { name = "wstool-copy-source"; version = "1.x"; from = toolchain; path = "." }
+  new Folder {
+    name = "corretto"
+    version = "25"
+    from = toolchain
+    path = "packages/corretto"
+  }
+  new Folder {
+    name = "wstool"
+    version = "1.0.0"
+    from = toolchain
+    path = "packages/wstool"
+  }
+  new Folder {
+    name = "ubuntu-rsync"
+    version = "1.0.0"
+    from = toolchain
+    path = "packages/ubuntu-rsync"
+  }
+  new Folder {
+    name = "ubuntu-libpopt0"
+    version = "1.0.0"
+    from = toolchain
+    path = "packages/ubuntu-libpopt0"
+  }
+  new Folder {
+    name = "ubuntu-busybox-static"
+    version = "1.0.0"
+    from = toolchain
+    path = "packages/ubuntu-busybox-static"
   }
 }

@@ -4,4 +4,8 @@ package { name = "dependency-app"; version = "1.0.0" }
 
 build { tool = "provided-tool" }
 
-buildDependencies { ["tool-provider"] = "1.0.0" }
+buildDependencies {
+  ["tool-provider"] = "1.0.0"
+  ["wstool"] = "1.0.0"
+  ["corretto"] = "25"
+}

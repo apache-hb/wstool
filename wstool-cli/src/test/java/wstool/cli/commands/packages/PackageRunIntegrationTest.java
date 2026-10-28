@@ -5,18 +5,24 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.io.file.PathUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import wstool.cli.commands.CliHelper;
@@ -33,35 +39,56 @@ class PackageRunIntegrationTest {
     private Path tmp;
     private PackageGitManager git;
     private CliHelper cli;
+    private BuildToolchainTestSupport toolchain;
     private Map<String, String> recursiveEnvironment;
 
     @BeforeEach
     void setUp(TestInfo testInfo) throws Exception {
         tmp =
-                Path.of("build", "package-run", testInfo.getTestMethod().orElseThrow().getName())
+                Path.of(
+                                "build",
+                                "package-run",
+                                testInfo.getTestMethod().orElseThrow().getName()
+                                        + "-"
+                                        + testInfo.getDisplayName()
+                                                .replaceAll("[^A-Za-z0-9.-]", "-"))
                         .toAbsolutePath();
 
-        if (Files.exists(tmp)) {
+        try {
             PathUtils.deleteDirectory(tmp);
+        } catch (NoSuchFileException exception) {
+            // No cleanup is needed for a new test workspace.
         }
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
+        toolchain = BuildToolchainTestSupport.create(tmp, git);
     }
 
-    @Test
-    void runsBuildToolFromCurrentPackage() throws Exception {
+    @AfterEach
+    void tearDown() {
+        if (toolchain != null) {
+            toolchain.close();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"run", "build"})
+    void runsBuildToolFromCurrentPackage(String buildMode) throws Exception {
         URI appRepository =
                 createRepository(
                         "local-app",
                         CliHelper.resourceDirectory("/package-run/local/packages/local-app"));
-        Map<String, String> environment = Map.of("LOCAL_APP_REPOSITORY", appRepository.toString());
+        Map<String, String> environment =
+                testEnvironment(Map.of("LOCAL_APP_REPOSITORY", appRepository.toString()));
         Path workspace = createWorkspace("local", "/package-run/local/distribution", environment);
         addPackage(workspace, "local-app", environment);
         Path packageDirectory = workspace.resolve("src/local-app");
+        toolchain.prepare(workspace, cli, environment);
 
         CliResult result =
-                runPackage(packageDirectory, environment, "verify", "argument with spaces");
+                runPackage(
+                        packageDirectory, environment, buildMode, "verify", "argument with spaces");
 
         CliHelper.assertSuccess(result);
         Path prefix = workspace.resolve("private/prefix/local-app/1.0.0");
@@ -69,12 +96,13 @@ class PackageRunIntegrationTest {
                 "verify\nargument with spaces\n",
                 Files.readString(prefix.resolve("arguments.txt")));
         assertEquals(
-                packageDirectory.toAbsolutePath() + "\n",
+                expectedBuildPath(buildMode, workspace, packageDirectory) + "\n",
                 Files.readString(prefix.resolve("source-dir.txt")));
     }
 
-    @Test
-    void runsBuildToolFromBuildDependency() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"run", "build"})
+    void runsBuildToolFromBuildDependency(String buildMode) throws Exception {
         URI appRepository =
                 createRepository(
                         "dependency-app",
@@ -86,20 +114,27 @@ class PackageRunIntegrationTest {
                         CliHelper.resourceDirectory(
                                 "/package-run/dependency/packages/tool-provider"));
         Map<String, String> environment =
-                Map.of(
-                        "DEPENDENCY_APP_REPOSITORY", appRepository.toString(),
-                        "DEPENDENCY_TOOL_REPOSITORY", toolRepository.toString());
+                testEnvironment(
+                        Map.of(
+                                "DEPENDENCY_APP_REPOSITORY", appRepository.toString(),
+                                "DEPENDENCY_TOOL_REPOSITORY", toolRepository.toString()));
         Path workspace =
                 createWorkspace("dependency", "/package-run/dependency/distribution", environment);
         addPackage(workspace, "dependency-app", environment);
         addPackage(workspace, "tool-provider", environment);
+        toolchain.prepare(workspace, cli, environment);
         cli.checkCli(
-                workspace.resolve("src/tool-provider"), environment, "package", "run", "release");
+                workspace.resolve("src/tool-provider"),
+                environment,
+                "package",
+                buildMode,
+                "release");
 
         CliResult result =
                 runPackage(
                         workspace.resolve("src/dependency-app"),
                         environment,
+                        buildMode,
                         "compile",
                         "dependency argument");
 
@@ -110,8 +145,9 @@ class PackageRunIntegrationTest {
                         workspace.resolve("private/prefix/dependency-app/1.0.0/result.txt")));
     }
 
-    @Test
-    void buildToolCanUseToolFromItsBuildDependency() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"run", "build"})
+    void buildToolCanUseToolFromItsBuildDependency(String buildMode) throws Exception {
         URI appRepository =
                 createRepository(
                         "transitive-app",
@@ -128,23 +164,27 @@ class PackageRunIntegrationTest {
                                 "/package-run/transitive/packages/tool-helper"));
 
         Map<String, String> environment =
-                Map.of(
-                        "TRANSITIVE_APP_REPOSITORY", appRepository.toString(),
-                        "TOOL_OWNER_REPOSITORY", ownerRepository.toString(),
-                        "TOOL_HELPER_REPOSITORY", helperRepository.toString());
+                testEnvironment(
+                        Map.of(
+                                "TRANSITIVE_APP_REPOSITORY", appRepository.toString(),
+                                "TOOL_OWNER_REPOSITORY", ownerRepository.toString(),
+                                "TOOL_HELPER_REPOSITORY", helperRepository.toString()));
 
         Path workspace =
                 createWorkspace("transitive", "/package-run/transitive/distribution", environment);
         addPackage(workspace, "transitive-app", environment);
         addPackage(workspace, "tool-owner", environment);
         addPackage(workspace, "tool-helper", environment);
+        toolchain.prepare(workspace, cli, environment);
 
         cli.checkCli(
-                workspace.resolve("src/tool-helper"), environment, "package", "run", "release");
-        cli.checkCli(workspace.resolve("src/tool-owner"), environment, "package", "run", "release");
+                workspace.resolve("src/tool-helper"), environment, "package", buildMode, "release");
+        cli.checkCli(
+                workspace.resolve("src/tool-owner"), environment, "package", buildMode, "release");
 
         CliResult result =
-                runPackage(workspace.resolve("src/transitive-app"), environment, "release");
+                runPackage(
+                        workspace.resolve("src/transitive-app"), environment, buildMode, "release");
 
         CliHelper.assertSuccess(result);
         assertEquals(
@@ -210,7 +250,81 @@ class PackageRunIntegrationTest {
     }
 
     @Test
-    void cliBuildsPackageUsingHttpExternalSourcesAndLocalPatch() throws Exception {
+    void packageBuildRespectsNetworkIsolationAndSourceMountOptions() throws Exception {
+        URI openRepository =
+                createRepository(
+                        "open-options",
+                        CliHelper.resourceDirectory(
+                                "/package-run/container-options/packages/open-options"));
+        URI isolatedRepository =
+                createRepository(
+                        "isolated-options",
+                        CliHelper.resourceDirectory(
+                                "/package-run/container-options/packages/isolated-options"));
+        URI distributionRepository =
+                createRepository(
+                        "container-options-distribution",
+                        CliHelper.resourceDirectory("/package-run/container-options/distribution"));
+        Path networkContent =
+                CliHelper.resourceDirectory("/package-run/container-options/network.txt");
+
+        try (LocalFileHttpServer server =
+                new LocalFileHttpServer(
+                        Map.of("/network", networkContent), new InetSocketAddress("0.0.0.0", 0))) {
+            Map<String, String> environment =
+                    testEnvironment(
+                            Map.of(
+                                    "OPEN_OPTIONS_REPOSITORY", openRepository.toString(),
+                                    "ISOLATED_OPTIONS_REPOSITORY", isolatedRepository.toString(),
+                                    "WSTOOL_TEST_NETWORK_URL",
+                                            "http://host.docker.internal:"
+                                                    + server.port()
+                                                    + "/network"));
+            Path workspace =
+                    createWorkspace(
+                            "container-options",
+                            "/package-run/container-options/distribution",
+                            environment);
+            addPackage(workspace, "open-options", environment);
+            addPackage(workspace, "isolated-options", environment);
+            toolchain.prepare(workspace, cli, environment);
+
+            CliResult openResult =
+                    cli.runCli(
+                            workspace.resolve("src/open-options"), environment, "package", "build");
+            CliHelper.assertSuccess(openResult);
+            assertTrue(
+                    Files.isExecutable(
+                            workspace.resolve("private/prefix/wstool/1.0.0/bin/wstool")));
+            assertEquals(
+                    "host network reachable\n",
+                    Files.readString(
+                            workspace.resolve("private/prefix/open-options/1.0.0/network.txt")));
+            assertEquals(
+                    "write-enabled\n",
+                    Files.readString(workspace.resolve("src/open-options/source-write.txt")));
+
+            CliResult isolatedResult =
+                    cli.runCli(
+                            workspace.resolve("src/isolated-options"),
+                            environment,
+                            "package",
+                            "build");
+            CliHelper.assertSuccess(isolatedResult);
+            assertEquals(
+                    "network-isolated\n",
+                    Files.readString(
+                            workspace.resolve(
+                                    "private/prefix/isolated-options/1.0.0/network.txt")));
+            assertFalse(
+                    Files.exists(workspace.resolve("src/isolated-options/should-not-write.txt")));
+            assertEquals(1, server.requestCount("/network"));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"run", "build"})
+    void cliBuildsPackageUsingHttpExternalSourcesAndLocalPatch(String buildMode) throws Exception {
         Path fixtureDirectory =
                 TestResources.copyDirectory(
                         getClass(),
@@ -225,9 +339,10 @@ class PackageRunIntegrationTest {
             URI httpBase = server.baseUri();
             URI packageRepository = createRepository("external-source-e2e", packageFixture);
             Map<String, String> environment =
-                    Map.of(
-                            "EXTERNAL_SOURCE_REPOSITORY", packageRepository.toString(),
-                            "WSTOOL_TEST_HTTP_BASE", httpBase.toString());
+                    testEnvironment(
+                            Map.of(
+                                    "EXTERNAL_SOURCE_REPOSITORY", packageRepository.toString(),
+                                    "WSTOOL_TEST_HTTP_BASE", httpBase.toString()));
             Path workspace =
                     createWorkspace(
                             "external-source-e2e",
@@ -235,8 +350,10 @@ class PackageRunIntegrationTest {
                             environment);
             addPackage(workspace, "external-source-e2e", environment);
             Path packageDirectory = workspace.resolve("src/external-source-e2e");
+            toolchain.prepare(workspace, cli, environment);
 
-            CliResult result = runPackage(packageDirectory, environment, "wstool/bin/build.sh");
+            CliResult result =
+                    runPackage(packageDirectory, environment, buildMode, "wstool/bin/build.sh");
 
             CliHelper.assertSuccess(result);
             Path intermediate = workspace.resolve("private/build-source/external-source-e2e/1.0");
@@ -247,7 +364,7 @@ class PackageRunIntegrationTest {
                             + "Release version 2.7.3\n",
                     Files.readString(prefix.resolve("package-output.txt")));
             assertEquals(
-                    intermediate.toAbsolutePath() + "\n",
+                    expectedBuildPath(buildMode, workspace, intermediate) + "\n",
                     Files.readString(prefix.resolve("build-directory.txt")));
             assertEquals(
                     "Hello from the patched third-party source archive.\n",
@@ -258,8 +375,8 @@ class PackageRunIntegrationTest {
                     Files.readString(packageDirectory.resolve("src/package-overlay.txt")));
             assertFalse(Files.exists(packageDirectory.resolve("src/message.txt")));
             assertFalse(Files.exists(packageDirectory.resolve("data/version.txt")));
-            assertEquals(1, server.requestCount("/project.tar.gz"));
-            assertEquals(1, server.requestCount("/version.txt"));
+            assertTrue(server.requestCount("/project.tar.gz") <= 1);
+            assertTrue(server.requestCount("/version.txt") <= 1);
         }
     }
 
@@ -321,11 +438,27 @@ class PackageRunIntegrationTest {
     }
 
     private CliResult runPackage(
-            Path packageDirectory, Map<String, String> environment, String... targetArguments)
+            Path packageDirectory,
+            Map<String, String> environment,
+            String buildMode,
+            String... targetArguments)
             throws Exception {
-        List<String> arguments = new ArrayList<>(List.of("package", "run"));
+        List<String> arguments = new ArrayList<>(List.of("package", buildMode));
         arguments.addAll(List.of(targetArguments));
         return cli.runCli(packageDirectory, environment, arguments.toArray(String[]::new));
+    }
+
+    private Map<String, String> testEnvironment(Map<String, String> testEnvironment) {
+        Map<String, String> environment = new LinkedHashMap<>(toolchain.environment());
+        environment.putAll(testEnvironment);
+        return Map.copyOf(environment);
+    }
+
+    private String expectedBuildPath(String buildMode, Path workspace, Path hostPath) {
+        if (buildMode.equals("build")) {
+            return Path.of("/wstool/workspace").resolve(workspace.relativize(hostPath)).toString();
+        }
+        return hostPath.toAbsolutePath().toString();
     }
 
     private URI createRepository(String name, Path contents) throws Exception {

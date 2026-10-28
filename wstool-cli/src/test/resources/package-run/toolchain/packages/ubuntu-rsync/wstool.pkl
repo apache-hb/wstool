@@ -1,0 +1,25 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "ubuntu-rsync"; version = "1.0.0" }
+
+local cacheUrl = read("env:WSTOOL_PACKAGE_CACHE_URL")
+
+build { tool = "install-source" }
+
+dependencies { ["ubuntu-libpopt0"] = "1.0.0" }
+
+externalSources {
+  sources {
+    new ArchiveSource {
+      uri = "\(cacheUrl)/ubuntu/rsync/data.tar.gz"
+      checksum = read("env:WSTOOL_RSYNC_DATA_SHA256")
+      license = "GPL-3.0-or-later"
+    }
+    new FileSource {
+      uri = "\(cacheUrl)/ubuntu/rsync/control"
+      path = "configuration/usr/share/doc/rsync/wstool-control"
+      checksum = read("env:WSTOOL_RSYNC_CONTROL_SHA256")
+      license = "GPL-3.0-or-later"
+    }
+  }
+}

@@ -15,19 +15,24 @@ import org.apache.commons.io.file.PathUtils;
 /** Extracts a distribution archive into private storage and links it into the workspace sources. */
 @Singleton
 public class ArchivePackagePreparer {
-    private final ArchiveCache archiveCache;
+    private final DownloadManager downloadManager;
     private final ArchiveExtractor archiveExtractor;
 
     @Inject
-    public ArchivePackagePreparer(ArchiveCache archiveCache, ArchiveExtractor archiveExtractor) {
-        this.archiveCache = archiveCache;
+    public ArchivePackagePreparer(
+            DownloadManager downloadManager, ArchiveExtractor archiveExtractor) {
+        this.downloadManager = downloadManager;
         this.archiveExtractor = archiveExtractor;
     }
 
     public void prepare(
             Path cache, Path privateSource, Path sourceLink, URI archive, String checksum)
             throws Exception {
-        Path cachedArchive = archiveCache.get(cache, archive, checksum);
+        Path cachedArchive =
+                downloadManager.get(
+                        DownloadRequest.builder(cache.resolve("sources/downloads"), archive)
+                                .checksum(checksum)
+                                .build());
         Path extractionMarker =
                 privateSource.resolveSibling("." + privateSource.getFileName() + ".sha256");
         if (!isCurrentExtraction(privateSource, extractionMarker, checksum)) {

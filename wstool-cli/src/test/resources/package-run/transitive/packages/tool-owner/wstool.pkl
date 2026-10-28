@@ -5,3 +5,9 @@ package { name = "tool-owner"; version = "1.0.0" }
 build { tool = "bootstrap" }
 
 dependencies { ["tool-helper"] = "1.0.0" }
+
+buildDependencies {
+  ["wstool"] = "1.0.0"
+  ["ubuntu-rsync"] = "1.0.0"
+  ["ubuntu-libpopt0"] = "1.0.0"
+}

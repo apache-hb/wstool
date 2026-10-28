@@ -7,16 +7,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.io.file.PathUtils;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -37,8 +40,14 @@ class PackageArtifactIntegrationTest {
     private PackageGitManager git;
     private CliHelper cli;
     private StorageServerManager storage;
+    private BuildToolchainTestSupport toolchain;
     private S3Client s3;
     private String bucket;
+
+    @BeforeAll
+    static void setUpGarageLayout() throws Exception {
+        new StorageServerManager(GARAGE).setup();
+    }
 
     @BeforeEach
     void setUp(TestInfo testInfo) throws Exception {
@@ -46,16 +55,21 @@ class PackageArtifactIntegrationTest {
                 Path.of(
                                 "build",
                                 "package-artifacts",
-                                testInfo.getTestMethod().orElseThrow().getName())
+                                testInfo.getTestMethod().orElseThrow().getName()
+                                        + "-"
+                                        + testInfo.getDisplayName()
+                                                .replaceAll("[^A-Za-z0-9.-]", "-"))
                         .toAbsolutePath();
-        if (Files.exists(tmp)) {
+        try {
             PathUtils.deleteDirectory(tmp);
+        } catch (NoSuchFileException exception) {
+            // No cleanup is needed for a new test workspace.
         }
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
+        toolchain = BuildToolchainTestSupport.create(tmp, git);
         storage = new StorageServerManager(GARAGE);
-        storage.setup();
         bucket = "wstool-artifacts-" + UUID.randomUUID().toString().replace("-", "");
         s3 = storage.createBucket(bucket);
     }
@@ -65,10 +79,14 @@ class PackageArtifactIntegrationTest {
         if (s3 != null) {
             s3.close();
         }
+        if (toolchain != null) {
+            toolchain.close();
+        }
     }
 
-    @Test
-    void storesPackageArtifactsAndPullsMissingBuildDependencies() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"run", "build"})
+    void storesPackageArtifactsAndPullsMissingBuildDependencies(String buildMode) throws Exception {
         URI remoteRepository =
                 createRepository(
                         "remote-tool",
@@ -82,7 +100,8 @@ class PackageArtifactIntegrationTest {
                 createRepository(
                         "distribution",
                         CliHelper.resourceDirectory("/package-artifacts/distribution"));
-        Map<String, String> environment = new HashMap<>(storage.credentialsEnvironment());
+        Map<String, String> environment = new HashMap<>(toolchain.environment());
+        environment.putAll(storage.credentialsEnvironment());
         environment.put("AWS_S3_ENDPOINT", storage.endpoint().toString());
         environment.put("ARTIFACT_BUCKET", bucket);
         environment.put("ARTIFACT_REMOTE_REPOSITORY", remoteRepository.toString());
@@ -92,13 +111,14 @@ class PackageArtifactIntegrationTest {
                 createWorkspace("producer", distributionRepository, environment);
         addPackage(producerWorkspace, "remote-tool", environment);
         addPackage(producerWorkspace, "artifact-consumer", environment);
+        toolchain.prepare(producerWorkspace, cli, environment);
 
         CliHelper.assertSuccess(
                 cli.runCli(
                         producerWorkspace.resolve("src/remote-tool"),
                         environment,
                         "package",
-                        "run",
+                        buildMode,
                         "release"));
         CliHelper.assertSuccess(
                 cli.runCli(
@@ -116,6 +136,7 @@ class PackageArtifactIntegrationTest {
         Path consumerWorkspace =
                 createWorkspace("consumer", distributionRepository, environment);
         addPackage(consumerWorkspace, "artifact-consumer", environment);
+        toolchain.prepare(consumerWorkspace, cli, environment);
         Path cachedArtifact =
                 consumerWorkspace.resolve(
                         "private/cache/artifacts/remote-tool/1.0.0/package.tar.gz");
@@ -126,7 +147,7 @@ class PackageArtifactIntegrationTest {
                         consumerWorkspace.resolve("src/artifact-consumer"),
                         environment,
                         "package",
-                        "run",
+                        buildMode,
                         "verify");
 
         CliHelper.assertSuccess(buildResult);

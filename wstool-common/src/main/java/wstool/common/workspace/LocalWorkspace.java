@@ -79,6 +79,15 @@ public class LocalWorkspace {
         return loadDistribution().storage();
     }
 
+    public String buildImage() {
+        List<String> platforms = new ArrayList<>(loadDistribution().platforms());
+        if (platforms.size() != 1) {
+            throw new IllegalStateException(
+                    "A workspace build requires exactly one distribution platform image");
+        }
+        return platforms.get(0);
+    }
+
     public void setup(GitRepositoryLocation distribution) throws Exception {
         storage.setup();
 

@@ -1,0 +1,15 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "open-options"; version = "1.0.0" }
+
+build {
+  tool = "build.sh"
+  networkIsolation = "open"
+  sourceMount = "readwrite"
+}
+
+buildDependencies {
+  ["wstool"] = "1.0.0"
+  ["corretto"] = "25"
+  ["ubuntu-busybox-static"] = "1.0.0"
+}

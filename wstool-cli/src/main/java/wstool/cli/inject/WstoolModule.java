@@ -1,15 +1,22 @@
 package wstool.cli.inject;
 
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.core.DefaultDockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.transport.DockerHttpClient;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ClassKey;
 import dagger.multibindings.IntoMap;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Map;
 import javax.inject.Singleton;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import wstool.cli.commands.CommonCommand;
 import wstool.cli.commands.SelectCommand;
+import wstool.cli.commands.packages.BuildPackageCommand;
 import wstool.cli.commands.packages.PackageCommand;
 import wstool.cli.commands.packages.RunTargetCommand;
 import wstool.cli.commands.packages.StorePackageCommand;
@@ -33,6 +40,31 @@ public final class WstoolModule {
     @Singleton
     static HttpClient provideHttpClient() {
         return HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+    }
+
+    @Provides
+    @Singleton
+    static DockerClient provideDockerClient() {
+        var config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
+        DockerHttpClient httpClient =
+                new ApacheDockerHttpClient.Builder()
+                        .dockerHost(config.getDockerHost())
+                        .sslConfig(config.getSSLConfig())
+                        .connectionTimeout(Duration.ofSeconds(30))
+                        .responseTimeout(Duration.ofMinutes(5))
+                        .build();
+        DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
+        Runtime.getRuntime()
+                .addShutdownHook(
+                        new Thread(
+                                () -> {
+                                    try {
+                                        dockerClient.close();
+                                    } catch (Exception e) {
+                                        // The process is already shutting down.
+                                    }
+                                }));
+        return dockerClient;
     }
 
     @Provides
@@ -79,6 +111,13 @@ public final class WstoolModule {
     @IntoMap
     @ClassKey(RunTargetCommand.class)
     static CommonCommand provideRunTargetCommand(RunTargetCommand command) {
+        return command;
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(BuildPackageCommand.class)
+    static CommonCommand provideBuildPackageCommand(BuildPackageCommand command) {
         return command;
     }
 

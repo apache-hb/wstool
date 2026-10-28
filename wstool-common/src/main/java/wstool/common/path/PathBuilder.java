@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -34,25 +35,29 @@ public class PathBuilder {
         this.artifactStore = artifactStore;
     }
 
+    public PathBuilder() {
+        this(null);
+    }
+
     public String buildToolPath(
             LocalWorkspace workspace, PackageMajorVersion name, Path packageSource)
             throws Exception {
         List<Path> closure = new ArrayList<>();
 
         Path localBin = packageSource.resolve("wstool/bin");
-        if (Files.isDirectory(localBin)) {
+        if (isDirectory(localBin)) {
             closure.add(localBin);
         }
 
         Set<PackageMajorVersion> dependencies = new LinkedHashSet<>();
         addBuildDependencies(workspace, name, dependencies);
         for (PackageMajorVersion dep : dependencies) {
-            if (artifactStore != null) {
-                artifactStore.ensureRuntimeClosure(workspace, dep);
-            }
             Path buildClosure = workspace.buildClosureCache(dep);
             runtimeSymlinkFolder(workspace, dep, buildClosure);
             closure.add(buildClosure.resolve("bin"));
+            closure.add(buildClosure.resolve("usr/bin"));
+            closure.add(buildClosure.resolve("sbin"));
+            closure.add(buildClosure.resolve("usr/sbin"));
         }
 
         if (closure.isEmpty()) {
@@ -64,6 +69,30 @@ public class PathBuilder {
         }
 
         return closure.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
+    }
+
+    private boolean isDirectory(Path path) throws IOException {
+        try {
+            return Files.readAttributes(path, BasicFileAttributes.class).isDirectory();
+        } catch (NoSuchFileException exception) {
+            return false;
+        }
+    }
+
+    public void prepareBuildDependencies(LocalWorkspace workspace, PackageMajorVersion name)
+            throws Exception {
+        Set<PackageMajorVersion> dependencies = new LinkedHashSet<>();
+        addBuildDependencies(workspace, name, dependencies);
+        prepareBuildDependencies(dependencies, workspace);
+    }
+
+    private void prepareBuildDependencies(
+            Set<PackageMajorVersion> dependencies, LocalWorkspace workspace) throws Exception {
+        if (artifactStore != null) {
+            for (PackageMajorVersion dependency : dependencies) {
+                artifactStore.ensureRuntimeClosure(workspace, dependency);
+            }
+        }
     }
 
     private void addBuildDependencies(
@@ -83,7 +112,9 @@ public class PathBuilder {
 
     public Set<PackageMajorVersion> runtimeClosure(
             LocalWorkspace workspace, PackageMajorVersion name) throws Exception {
-        return artifactStore.ensureRuntimeClosure(workspace, name);
+        if (artifactStore != null) {
+            return artifactStore.ensureRuntimeClosure(workspace, name);
+        }
 
         WorkspaceStorage storage = workspace.storage();
         Set<PackageMajorVersion> closure = new HashSet<>();

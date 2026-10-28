@@ -27,6 +27,10 @@ public class PackageFactory {
     }
 
     public PackageConfig findUp(Path cwd) throws Exception {
+        return open(findDirectoryUp(cwd));
+    }
+
+    public Path findDirectoryUp(Path cwd) {
         Path current = cwd.toAbsolutePath();
 
         while (current != null && !Files.exists(current.resolve(CONFIG))) {
@@ -38,7 +42,7 @@ public class PackageFactory {
                     "No package found in current directory or any parent directories.");
         }
 
-        return open(current);
+        return current;
     }
 
     public PackageConfig open(Path path) throws Exception {
@@ -59,6 +63,9 @@ public class PackageFactory {
         return ImmutablePackageConfig.builder()
                 .name(name)
                 .buildTool(buildTool)
+                .networkIsolation(
+                        NetworkIsolation.valueOf(pkg.getBuild().getNetworkIsolation().name()))
+                .sourceMount(SourceMount.valueOf(pkg.getBuild().getSourceMount().name()))
                 .externalSources(externalSources)
                 .dependencies(dependencies)
                 .build();

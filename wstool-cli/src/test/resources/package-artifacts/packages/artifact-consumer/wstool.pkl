@@ -4,4 +4,8 @@ package { name = "artifact-consumer"; version = "1.0.0" }
 
 build { tool = "remote-tool" }
 
-buildDependencies { ["remote-tool"] = "1.0.0" }
+buildDependencies {
+  ["remote-tool"] = "1.0.0"
+  ["wstool"] = "1.0.0"
+  ["corretto"] = "25"
+}

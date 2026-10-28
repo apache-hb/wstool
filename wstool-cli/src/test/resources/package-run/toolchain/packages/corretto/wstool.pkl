@@ -1,0 +1,18 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "corretto"; version = "25" }
+
+local cacheUrl = read("env:WSTOOL_PACKAGE_CACHE_URL")
+
+build { tool = "install-runtime" }
+
+externalSources {
+  sources {
+    new ArchiveSource {
+      uri = "\(cacheUrl)/corretto.tar.gz"
+      checksum = read("env:WSTOOL_CORRETTO_SHA256")
+      stripComponents = 1
+      license = "NOASSERTION"
+    }
+  }
+}

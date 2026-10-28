@@ -1,12 +1,7 @@
 package wstool.common.path;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -14,9 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -32,15 +25,12 @@ import wstool.common.workspace.LocalWorkspace;
 @Singleton
 public class BuildSourcePreparer {
     private static final Logger LOGGER = LogManager.getLogger(BuildSourcePreparer.class);
-    private final HttpClient httpClient;
-    private final ArchiveCache archiveCache;
+    private final DownloadManager downloadManager;
     private final ArchiveExtractor archiveExtractor;
 
     @Inject
-    public BuildSourcePreparer(
-            HttpClient httpClient, ArchiveCache archiveCache, ArchiveExtractor archiveExtractor) {
-        this.httpClient = httpClient;
-        this.archiveCache = archiveCache;
+    public BuildSourcePreparer(DownloadManager downloadManager, ArchiveExtractor archiveExtractor) {
+        this.downloadManager = downloadManager;
         this.archiveExtractor = archiveExtractor;
     }
 
@@ -59,17 +49,21 @@ public class BuildSourcePreparer {
         for (ExternalSource source : pkg.externalSources()) {
             if (source instanceof ArchiveSourceConfig archive) {
                 Path cachedArchive =
-                        archiveCache.get(
-                                workspace.cache(),
-                                resolveSourceUri(packageSource, archive.uri()),
-                                archive.checksum());
+                        downloadManager.get(
+                                DownloadRequest.builder(
+                                                workspace.cache().resolve("sources/downloads"),
+                                                resolveSourceUri(packageSource, archive.uri()))
+                                        .checksum(archive.checksum())
+                                        .build());
                 archiveExtractor.extract(cachedArchive, intermediate, archive.stripComponents());
             } else if (source instanceof FileSourceConfig file) {
                 Path cached =
-                        archiveCache.get(
-                                workspace.cache(),
-                                resolveSourceUri(packageSource, file.uri()),
-                                file.checksum());
+                        downloadManager.get(
+                                DownloadRequest.builder(
+                                                workspace.cache().resolve("sources/downloads"),
+                                                resolveSourceUri(packageSource, file.uri()))
+                                        .checksum(file.checksum())
+                                        .build());
                 Path destination = resolveInside(intermediate, file.path());
                 copyFile(cached, destination);
             }
@@ -88,26 +82,6 @@ public class BuildSourcePreparer {
         return intermediate;
     }
 
-    private void download(URI uri, Path destination) throws Exception {
-        if (uri.getScheme() == null || uri.getScheme().equalsIgnoreCase("file")) {
-            Path source = uri.getScheme() == null ? Path.of(uri.toString()) : Path.of(uri);
-            Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
-            return;
-        }
-        if (!uri.getScheme().equalsIgnoreCase("http")
-                && !uri.getScheme().equalsIgnoreCase("https")) {
-            throw new IOException("Unsupported source URI scheme: " + uri);
-        }
-
-        HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
-        HttpResponse<Path> response =
-                httpClient.send(request, HttpResponse.BodyHandlers.ofFile(destination));
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            Files.deleteIfExists(destination);
-            throw new IOException("Could not download " + uri + ": HTTP " + response.statusCode());
-        }
-    }
-
     private Path resolvePatch(
             LocalWorkspace workspace, Path packageSource, Path intermediate, URI patch)
             throws Exception {
@@ -123,20 +97,9 @@ public class BuildSourcePreparer {
             return patchPath;
         }
 
-        String key = sha256(patch.toString().getBytes(StandardCharsets.UTF_8));
-        Path patchCache = workspace.cache().resolve("sources/patches").resolve(key);
-        if (!Files.isRegularFile(patchCache)) {
-            Files.createDirectories(patchCache.getParent());
-            Path temporary = Files.createTempFile(patchCache.getParent(), ".patch-", ".tmp");
-            try {
-                download(patch, temporary);
-                moveIntoPlace(temporary, patchCache);
-            } catch (Exception e) {
-                Files.deleteIfExists(temporary);
-                throw e;
-            }
-        }
-        return patchCache;
+        return downloadManager.get(
+                DownloadRequest.builder(workspace.cache().resolve("sources/patches"), patch)
+                        .build());
     }
 
     private URI resolveSourceUri(Path packageSource, URI uri) {
@@ -278,29 +241,5 @@ public class BuildSourcePreparer {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-    }
-
-    private String sha256(Path path) throws Exception {
-        try (InputStream input = Files.newInputStream(path)) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] buffer = new byte[8192];
-            int count;
-            while ((count = input.read(buffer)) >= 0) {
-                digest.update(buffer, 0, count);
-            }
-            return HexFormat.of().formatHex(digest.digest());
-        }
-    }
-
-    private String sha256(byte[] content) throws Exception {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
-    }
-
-    private void moveIntoPlace(Path source, Path destination) throws IOException {
-        try {
-            Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException exception) {
-            Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 }

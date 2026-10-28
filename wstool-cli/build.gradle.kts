@@ -10,6 +10,8 @@ dependencies {
   implementation(project(":wstool-sysroot"))
   implementation("de.tu-dresden.inf.lat.jsexp:jsexp:0.2.2")
   implementation(project(":wstool-git"))
+  implementation("com.github.docker-java:docker-java-core:3.7.1")
+  implementation("com.github.docker-java:docker-java-transport-httpclient5:3.7.1")
   implementation("info.picocli:picocli:4.7.6")
   implementation("com.google.dagger:dagger")
   annotationProcessor("com.google.dagger:dagger-compiler:2.60.1")
@@ -56,7 +58,7 @@ tasks.named<JavaExec>("run") { systemProperty("wstool.version", project.version.
 tasks.register<Exec>("packageDeb") {
   group = "distribution"
   description = "Builds a Debian package containing wstool and its Java runtime."
-  dependsOn(tasks.named("installDist"))
+  dependsOn(tasks.named("distTar"))
 
   val installDirectory = layout.buildDirectory.dir("install/wstool")
   val distributionDirectory = layout.buildDirectory.dir("distributions")
@@ -145,6 +147,13 @@ tasks.register<Exec>("packageDeb") {
 }
 
 tasks.test {
+  dependsOn(tasks.named("distTar"))
+  maxHeapSize = "768m"
+  maxParallelForks = 1
   useJUnitPlatform()
   systemProperty("wstool.cli.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+  systemProperty(
+    "wstool.distribution.archive",
+    layout.buildDirectory.file("distributions/wstool-${project.version}.tar").get().asFile.absolutePath,
+  )
 }

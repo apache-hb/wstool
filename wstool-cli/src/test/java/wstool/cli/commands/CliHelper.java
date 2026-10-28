@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
@@ -18,7 +19,8 @@ public final class CliHelper {
             new CliProcess(
                     Main.class,
                     "wstool.cli.classpath",
-                    List.of("-Dwstool.version=integration-test"));
+                    List.of("-Dwstool.version=integration-test"),
+                    Duration.ofMinutes(20));
 
     private final Path tmp;
 

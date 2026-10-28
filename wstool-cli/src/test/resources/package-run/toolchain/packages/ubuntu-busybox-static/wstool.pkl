@@ -1,0 +1,29 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "ubuntu-busybox-static"; version = "1.0.0" }
+
+local cacheUrl = read("env:WSTOOL_PACKAGE_CACHE_URL")
+
+build { tool = "wstool-copy-source" }
+
+buildDependencies {
+  ["ubuntu-rsync"] = "1.0.0"
+  ["ubuntu-libpopt0"] = "1.0.0"
+  ["wstool-copy-source"] = "1.x"
+}
+
+externalSources {
+  sources {
+    new ArchiveSource {
+      uri = "\(cacheUrl)/ubuntu/busybox-static/data.tar.gz"
+      checksum = read("env:WSTOOL_BUSYBOX_DATA_SHA256")
+      license = "GPL-2.0-only"
+    }
+    new FileSource {
+      uri = "\(cacheUrl)/ubuntu/busybox-static/control"
+      path = "configuration/usr/share/doc/busybox-static/wstool-control"
+      checksum = read("env:WSTOOL_BUSYBOX_CONTROL_SHA256")
+      license = "GPL-2.0-only"
+    }
+  }
+}

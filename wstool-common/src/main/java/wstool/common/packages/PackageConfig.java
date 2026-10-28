@@ -14,6 +14,10 @@ public interface PackageConfig {
 
     String buildTool();
 
+    NetworkIsolation networkIsolation();
+
+    SourceMount sourceMount();
+
     @Value.Default
     default List<ExternalSource> externalSources() {
         return List.of();
