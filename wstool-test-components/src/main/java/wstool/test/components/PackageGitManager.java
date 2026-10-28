@@ -26,7 +26,7 @@ public class PackageGitManager {
     public static GiteaContainer container() {
         GiteaContainer container = new GiteaContainer(GiteaVersions.V1_25_4.getDockerImageName());
         container.withStartupTimeout(Duration.ofMinutes(2));
-        return container;
+        return TestContainerLimits.apply(container, 384L * 1024 * 1024, "2G");
     }
 
     private final Path tmpdir;

@@ -22,13 +22,16 @@ public class StorageServerManager {
         GenericContainer<?> container =
                 new GenericContainer<>(DockerImageName.parse("dxflrs/garage:v2.4.1"));
         container.withExposedPorts(3900);
-        container.withTmpFs(Map.of("/meta", "rw", "/data", "rw"));
+        container.withTmpFs(
+                Map.of(
+                        "/var/lib/garage/meta", "rw,size=128m",
+                        "/var/lib/garage/data", "rw,size=1g"));
         container.withCopyToContainer(
                 MountableFile.forClasspathResource("garage.toml"), "/etc/garage.toml");
         container.withCommand("/garage", "-c", "/etc/garage.toml", "server");
         container.waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
         container.withStartupTimeout(Duration.ofMinutes(2));
-        return container;
+        return TestContainerLimits.apply(container, 512L * 1024 * 1024, "2G");
     }
 
     private final GenericContainer<?> garage;

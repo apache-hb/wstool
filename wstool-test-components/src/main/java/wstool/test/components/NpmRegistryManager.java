@@ -43,7 +43,7 @@ public final class NpmRegistryManager {
                 "0.0.0.0:" + REGISTRY_PORT);
         container.waitingFor(Wait.forHttp("/-/ping").forPort(REGISTRY_PORT).forStatusCode(200));
         container.withStartupTimeout(Duration.ofMinutes(2));
-        return container;
+        return TestContainerLimits.apply(container, 384L * 1024 * 1024, "1G");
     }
 
     public static URI registryUri(GenericContainer<?> container) {
