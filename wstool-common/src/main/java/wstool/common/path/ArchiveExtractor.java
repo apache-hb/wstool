@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ public class ArchiveExtractor {
             throws IOException, ArchiveException {
         Files.createDirectories(destination);
         List<Map.Entry<Path, Path>> hardLinks = new ArrayList<>();
+        List<Map.Entry<Path, FileTime>> directoryTimes = new ArrayList<>();
         try (InputStream compressed = decompressedStream(archive);
                 ArchiveInputStream<?> input =
                         archiveStreamFactory.createArchiveInputStream(
@@ -65,12 +67,14 @@ public class ArchiveExtractor {
                 } else if (entry.isDirectory()) {
                     prepareTarget(target, true);
                     Files.createDirectories(target);
+                    addLastModifiedTime(directoryTimes, target, entry);
                 } else {
                     prepareTarget(target, false);
                     Files.createDirectories(target.getParent());
                     try (var output = Files.newOutputStream(target)) {
                         input.transferTo(output);
                     }
+                    setLastModifiedTime(target, entry);
                     if (entry instanceof TarArchiveEntry tarEntry
                             && (tarEntry.getMode() & 0111) != 0
                             && !target.toFile().setExecutable(true, false)) {
@@ -87,6 +91,25 @@ public class ArchiveExtractor {
             }
             Files.createDirectories(hardLink.getKey().getParent());
             Files.copy(hardLink.getValue(), hardLink.getKey(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        for (Map.Entry<Path, FileTime> directoryTime : directoryTimes) {
+            Files.setLastModifiedTime(directoryTime.getKey(), directoryTime.getValue());
+        }
+    }
+
+    private void addLastModifiedTime(
+            List<Map.Entry<Path, FileTime>> directoryTimes, Path target, ArchiveEntry entry) {
+        var modified = entry.getLastModifiedDate();
+        if (modified != null) {
+            directoryTimes.add(Map.entry(target, FileTime.from(modified.toInstant())));
+        }
+    }
+
+    private void setLastModifiedTime(Path target, ArchiveEntry entry) throws IOException {
+        var modified = entry.getLastModifiedDate();
+        if (modified != null) {
+            Files.setLastModifiedTime(target, FileTime.from(modified.toInstant()));
         }
     }
 

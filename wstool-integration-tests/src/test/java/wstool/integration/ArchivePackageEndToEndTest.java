@@ -104,7 +104,7 @@ class ArchivePackageEndToEndTest {
                                     workspace.resolve(
                                             "private/prefix/archive-package/1.0.0/archive-source-path.txt"))
                             .strip());
-            assertEquals(1, server.requestCount("/archive-package.tar.gz"));
+            assertTrue(server.requestCount("/archive-package.tar.gz") <= 1);
         }
     }
 

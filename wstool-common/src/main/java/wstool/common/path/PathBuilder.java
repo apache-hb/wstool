@@ -55,9 +55,6 @@ public class PathBuilder {
             Path buildClosure = workspace.buildClosureCache(dep);
             runtimeSymlinkFolder(workspace, dep, buildClosure);
             closure.add(buildClosure.resolve("bin"));
-            closure.add(buildClosure.resolve("usr/bin"));
-            closure.add(buildClosure.resolve("sbin"));
-            closure.add(buildClosure.resolve("usr/sbin"));
         }
 
         if (closure.isEmpty()) {

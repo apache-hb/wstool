@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -112,6 +113,22 @@ class PathBuilderTest {
         assertFalse(Files.isSymbolicLink(existingFile));
         assertArrayEquals(Files.readAllBytes(fixture), Files.readAllBytes(existingFile));
         assertTrue(Files.isSymbolicLink(target.resolve("lib/nested/libleaf.so")));
+    }
+
+    @Test
+    void buildToolPathIncludesOnlyBinDirectories() throws Exception {
+        Path packageSource = testOutput.resolve("source");
+        Path localBin = packageSource.resolve("wstool/bin");
+        Files.createDirectories(localBin);
+
+        String buildToolPath = pathBuilder.buildToolPath(workspace, APP, packageSource);
+
+        assertArrayEquals(
+                new String[] {
+                    localBin.toString(),
+                    workspace.buildClosureCache(BUILD_ONLY).resolve("bin").toString()
+                },
+                buildToolPath.split(File.pathSeparator));
     }
 
     private static PackageDependency dependency(
