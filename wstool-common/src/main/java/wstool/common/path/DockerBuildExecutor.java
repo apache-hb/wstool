@@ -33,10 +33,6 @@ import wstool.common.workspace.LocalWorkspace;
 
 @Singleton
 public class DockerBuildExecutor {
-    // Docker maps these to the container memory cgroup and the writable snapshot quota.
-    private static final long CONTAINER_MEMORY_LIMIT = 768L * 1024 * 1024;
-    private static final Map<String, String> CONTAINER_TMPFS =
-            Map.of("/tmp", "rw,nosuid,nodev,exec,size=512m");
     private static final Logger LOGGER = LogManager.getLogger(DockerBuildExecutor.class);
     private static final Path CONTAINER_WORKSPACE = Path.of("/wstool/workspace");
     private static final Path CONTAINER_HOME = Path.of("/wstool/home");
@@ -48,13 +44,18 @@ public class DockerBuildExecutor {
         this.dockerClient = dockerClient;
     }
 
-    public int run(LocalWorkspace workspace, PackageConfig pkg, Path source, List<String> args)
+    public int run(
+            LocalWorkspace workspace,
+            PackageConfig pkg,
+            Path source,
+            List<String> args,
+            DockerBuildLimits limits)
             throws Exception {
         String image = workspace.buildImage();
         Path workspacePath = workspace.path().toAbsolutePath().normalize();
         Path containerSource = CONTAINER_WORKSPACE.resolve(workspacePath.relativize(source));
         String containerId =
-                createAndStartContainer(image, pkg, workspacePath, source, containerSource);
+                createAndStartContainer(image, pkg, workspacePath, source, containerSource, limits);
 
         try {
             if (pkg.networkIsolation() == NetworkIsolation.ISOLATED) {
@@ -80,7 +81,12 @@ public class DockerBuildExecutor {
     }
 
     private String createAndStartContainer(
-            String image, PackageConfig pkg, Path workspacePath, Path source, Path containerSource)
+            String image,
+            PackageConfig pkg,
+            Path workspacePath,
+            Path source,
+            Path containerSource,
+            DockerBuildLimits limits)
             throws Exception {
         ensureImage(image);
 
@@ -132,10 +138,13 @@ public class DockerBuildExecutor {
                 HostConfig.newHostConfig()
                         .withNetworkMode("bridge")
                         .withBinds(binds)
-                        .withMemory(CONTAINER_MEMORY_LIMIT)
-                        .withMemorySwap(CONTAINER_MEMORY_LIMIT)
-                        .withStorageOpt(Map.of("size", "2G"))
-                        .withTmpFs(CONTAINER_TMPFS)
+                        .withMemory(limits.memoryBytes())
+                        .withMemorySwap(limits.memoryBytes())
+                        .withStorageOpt(Map.of("size", limits.diskSize()))
+                        .withTmpFs(
+                                Map.of(
+                                        "/tmp",
+                                        "rw,nosuid,nodev,exec,size=" + limits.tmpfsSize()))
                         .withExtraHosts("host.docker.internal:host-gateway");
         CreateContainerResponse response =
                 dockerClient

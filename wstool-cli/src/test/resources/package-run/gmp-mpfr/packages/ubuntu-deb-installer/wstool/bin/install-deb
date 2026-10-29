@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+mkdir -p "$WST_PREFIX"
+env -u LD_LIBRARY_PATH dpkg-deb --extract "$WST_SRCDIR/ubuntu-package.deb" "$WST_PREFIX"

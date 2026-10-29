@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+mkdir -p "$WST_PREFIX/bin"
+cp "$WST_SRCDIR/wstool/bin/install-deb" "$WST_PREFIX/bin/install-deb"

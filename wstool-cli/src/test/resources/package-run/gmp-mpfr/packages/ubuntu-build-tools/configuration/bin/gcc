@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+bin=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+root=$(CDPATH= cd -- "$bin/.." && pwd)
+exec "$root/usr/bin/x86_64-linux-gnu-gcc-15" \
+  --sysroot="$root" \
+  -B"$root/usr/lib/gcc/x86_64-linux-gnu/15/" \
+  "$@"

@@ -25,7 +25,11 @@ public class ContainerBuildRunner {
         this.dockerBuildExecutor = dockerBuildExecutor;
     }
 
-    public int runBuild(LocalWorkspace workspace, PackageConfig pkg, List<String> args)
+    public int runBuild(
+            LocalWorkspace workspace,
+            PackageConfig pkg,
+            List<String> args,
+            DockerBuildLimits limits)
             throws Exception {
         PackageMajorVersion name = pkg.name();
         Path workspacePath = workspace.path().toAbsolutePath().normalize();
@@ -42,6 +46,6 @@ public class ContainerBuildRunner {
 
         // Resolve build dependencies on the host so network-isolated containers can use them.
         pathBuilder.prepareBuildDependencies(workspace, name);
-        return dockerBuildExecutor.run(workspace, pkg, source, args);
+        return dockerBuildExecutor.run(workspace, pkg, source, args, limits);
     }
 }

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+set -eu
+printf 'remote artifact used: %s\n' "$*" > "$WST_PREFIX/remote-tool.txt"

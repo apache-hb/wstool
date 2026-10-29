@@ -1,0 +1,40 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "ubuntu-build-tools"; version = "1.0.0" }
+
+local packageNames = List(
+  "binutils-common",
+  "binutils-x86-64-linux-gnu",
+  "gcc-15-base",
+  "cpp-15-x86-64-linux-gnu",
+  "gcc-15-x86-64-linux-gnu",
+  "libgcc-15-dev",
+  "libc6-dev",
+  "linux-libc-dev",
+  "libc-dev-bin",
+  "rpcsvc-proto",
+  "libgcc-s1",
+  "libisl23",
+  "libmpc3",
+  "libmpfr6",
+  "libbinutils",
+  "libctf0",
+  "libctf-nobfd0",
+  "libsframe3",
+  "libjansson4",
+  "libgprofng0",
+  "libcc1-0",
+  "make",
+  "m4",
+  "libc6",
+)
+
+build { tool = "install-build-tools" }
+
+buildDependencies {
+  for (packageName in packageNames) {
+    ["ubuntu-deb-\(packageName)"] = "1.0.0"
+  }
+  ["corretto"] = "25"
+  ["wstool"] = "1.0.0"
+}

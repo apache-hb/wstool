@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+mkdir -p "$WST_PREFIX"
+cp -a "$WST_SRCDIR"/. "$WST_PREFIX"/

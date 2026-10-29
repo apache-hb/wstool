@@ -1,0 +1,29 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "mpfr"; version = "4.2.1" }
+
+local sourceUrl = read("env:WSTOOL_GMP_MPFR_SOURCE_URL")
+build {
+  tool = "wstool-mpfr"
+  sourceMount = "readwrite"
+}
+
+buildDependencies {
+  ["ubuntu-build-tools"] = "1.0.0"
+  ["gmp"] = "6.3.0"
+  ["corretto"] = "25"
+  ["wstool"] = "1.0.0"
+}
+
+dependencies { ["gmp"] = "6.3.0" }
+
+externalSources {
+  sources {
+    new ArchiveSource {
+      uri = "\(sourceUrl)/sources/mpfr-4.2.1.tar.xz"
+      checksum = "277807353a6726978996945af13e52829e3abd7a9a5b7fb2793894e18f1fcbb2"
+      stripComponents = 1
+      license = "LGPL-3.0-or-later"
+    }
+  }
+}

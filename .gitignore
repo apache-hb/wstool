@@ -7,9 +7,12 @@
 
 # Ignore Gradle build output directory
 build
-bin
+!wstool/bin/*
 !packages/**/wstool/bin/
 !packages/**/wstool/bin/**
+
+wstool-common/bin
+wstool-git/bin
 
 # Ignore Kotlin plugin data
 .kotlin

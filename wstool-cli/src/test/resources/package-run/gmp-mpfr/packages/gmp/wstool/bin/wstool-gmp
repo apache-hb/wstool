@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+export CC=gcc
+export AR=ar
+export NM=nm
+export RANLIB=ranlib
+export CFLAGS="-O2 -std=gnu17"
+export MAKEINFO=true
+./configure --prefix="$WST_PREFIX" --enable-shared --disable-static --disable-assembly
+make -j2
+make install
+sed 's|^prefix=.*|prefix=${pcfiledir}/../..|' \
+  "$WST_PREFIX/lib/pkgconfig/gmp.pc" > "$WST_PRIVATE/gmp.pc"
+mv "$WST_PRIVATE/gmp.pc" "$WST_PREFIX/lib/pkgconfig/gmp.pc"
+rm -f "$WST_PREFIX/lib/libgmp.la"

@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+printf 'built from archive\n' > "$WST_PREFIX/archive-output.txt"
+printf '%s\n' "$WST_SRCDIR" > "$WST_PREFIX/archive-source-path.txt"

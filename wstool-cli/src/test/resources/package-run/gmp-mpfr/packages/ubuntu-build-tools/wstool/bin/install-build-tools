@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+mkdir -p "$WST_PREFIX"
+set -f
+previous_ifs=$IFS
+IFS=:
+for tool_directory in $PATH; do
+  IFS=$previous_ifs
+  case "$tool_directory" in
+    */ubuntu-deb-*/*/usr/bin)
+      dependency=${tool_directory%/usr/bin}
+      cp -a "$dependency"/. "$WST_PREFIX"/
+      ;;
+  esac
+  IFS=:
+done
+IFS=$previous_ifs
+cp -a "$WST_SRCDIR/configuration"/. "$WST_PREFIX"/
+mkdir -p "$WST_PREFIX/bin"
+ln -s ../usr/bin/x86_64-linux-gnu-ar "$WST_PREFIX/bin/ar"
+ln -s ../usr/bin/x86_64-linux-gnu-as "$WST_PREFIX/bin/as"
+ln -s ../usr/bin/x86_64-linux-gnu-ld "$WST_PREFIX/bin/ld"
+ln -s ../usr/bin/m4 "$WST_PREFIX/bin/m4"
+ln -s ../usr/bin/make "$WST_PREFIX/bin/make"
+ln -s ../usr/bin/x86_64-linux-gnu-nm "$WST_PREFIX/bin/nm"
+ln -s ../usr/bin/x86_64-linux-gnu-ranlib "$WST_PREFIX/bin/ranlib"
+ln -s ../usr/bin/x86_64-linux-gnu-strip "$WST_PREFIX/bin/strip"
+ln -s usr/lib64 "$WST_PREFIX/lib64"

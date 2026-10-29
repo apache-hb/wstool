@@ -67,6 +67,18 @@ public final class UbuntuDebCache {
         return artifact(packageName, metadata, dataArchive, controlFile);
     }
 
+    public UbuntuDebFile getDeb(String packageName) throws Exception {
+        UbuntuPackageMetadata metadata = metadata(packageName);
+        Path deb =
+                downloadManager.get(
+                        DownloadRequest.builder(
+                                        cacheRoot.resolve("downloads/sources/downloads"),
+                                        URI.create(UBUNTU_ARCHIVE + metadata.filename()))
+                                .checksum(metadata.checksum())
+                                .build());
+        return new UbuntuDebFile(packageName, deb, metadata.checksum());
+    }
+
     private UbuntuDebArtifact artifact(
             String packageName, UbuntuPackageMetadata metadata, Path dataArchive, Path controlFile)
             throws Exception {

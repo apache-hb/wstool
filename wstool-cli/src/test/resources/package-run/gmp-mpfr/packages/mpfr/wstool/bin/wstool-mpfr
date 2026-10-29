@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+export CC=gcc
+export AR=ar
+export NM=nm
+export RANLIB=ranlib
+previous_ifs=$IFS
+set -f
+IFS=:
+for library_directory in ${LD_LIBRARY_PATH:-}; do
+  IFS=$previous_ifs
+  case "$library_directory" in
+    */lib) dependency=${library_directory%/lib} ;;
+    */lib64) dependency=${library_directory%/lib64} ;;
+    *) IFS=:; continue ;;
+  esac
+  if [ -f "$dependency/include/gmp.h" ]; then gmp_prefix=$dependency; break; fi
+  IFS=:
+done
+IFS=$previous_ifs
+: "${gmp_prefix:?GMP headers are missing from the dependency closure}"
+export CPPFLAGS="${CPPFLAGS:+$CPPFLAGS }-I$gmp_prefix/include"
+export LDFLAGS="${LDFLAGS:+$LDFLAGS }-L$gmp_prefix/lib"
+./configure --prefix="$WST_PREFIX" --with-gmp="$gmp_prefix"
+make -j2
+make install
+sed 's|^prefix=.*|prefix=${pcfiledir}/../..|' \
+  "$WST_PREFIX/lib/pkgconfig/mpfr.pc" > "$WST_PRIVATE/mpfr.pc"
+mv "$WST_PRIVATE/mpfr.pc" "$WST_PREFIX/lib/pkgconfig/mpfr.pc"
+rm -f "$WST_PREFIX/lib/libmpfr.la"

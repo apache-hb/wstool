@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -eu
+mkdir -p "$WST_PREFIX/bin"
+cp "$WST_SRCDIR/wstool/bin/remote-tool" "$WST_PREFIX/bin/remote-tool"
+chmod +x "$WST_PREFIX/bin/remote-tool"

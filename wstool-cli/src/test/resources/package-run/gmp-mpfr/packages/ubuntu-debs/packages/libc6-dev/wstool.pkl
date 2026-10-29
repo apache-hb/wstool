@@ -1,0 +1,20 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
+
+package { name = "ubuntu-deb-libc6-dev"; version = "1.0.0" }
+
+local debsUrl = read("env:WSTOOL_GMP_MPFR_DEBS_URL")
+
+build { tool = "install-deb" }
+
+buildDependencies { ["ubuntu-deb-installer"] = "1.0.0" }
+
+externalSources {
+  sources {
+    new FileSource {
+      uri = "\(debsUrl)/debs/libc6-dev.deb"
+      path = "ubuntu-package.deb"
+      checksum = read("env:WSTOOL_DEB_SHA256_LIBC6_DEV")
+      license = "NOASSERTION"
+    }
+  }
+}

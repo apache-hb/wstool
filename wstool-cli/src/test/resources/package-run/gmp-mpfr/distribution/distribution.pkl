@@ -1,0 +1,89 @@
+amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/distribution.pkl"
+
+local buildToolsRepository = read("env:WSTOOL_BUILD_TOOLS_REPOSITORY")
+local toolchain = new GitRepository {
+  name = "wstool-build-toolchain"
+  version = "1.0.0"
+  repo = buildToolsRepository
+}
+local ubuntuDebPackages = List(
+  "binutils-common",
+  "binutils-x86-64-linux-gnu",
+  "gcc-15-base",
+  "cpp-15-x86-64-linux-gnu",
+  "gcc-15-x86-64-linux-gnu",
+  "libgcc-15-dev",
+  "libc6-dev",
+  "linux-libc-dev",
+  "libc-dev-bin",
+  "rpcsvc-proto",
+  "libgcc-s1",
+  "libisl23",
+  "libmpc3",
+  "libmpfr6",
+  "libbinutils",
+  "libctf0",
+  "libctf-nobfd0",
+  "libsframe3",
+  "libjansson4",
+  "libgprofng0",
+  "libcc1-0",
+  "make",
+  "m4",
+  "libc6",
+)
+local ubuntuDebRepository = new GitRepository {
+  name = "gmp-mpfr-ubuntu-debs"
+  version = "1.0.0"
+  repo = read("env:GMP_MPFR_UBUNTU_DEBS_REPOSITORY")
+}
+
+platforms { "ubuntu:26.04" }
+
+storage { bucket = "unused-test-bucket" }
+
+packages {
+  for (packageName in ubuntuDebPackages) {
+    new Folder {
+      name = "ubuntu-deb-\(packageName)"
+      version = "1.0.0"
+      from = ubuntuDebRepository
+      path = "packages/\(packageName)"
+    }
+  }
+  new GitRepository {
+    name = "ubuntu-deb-installer"
+    version = "1.0.0"
+    repo = read("env:GMP_MPFR_DEB_INSTALLER_REPOSITORY")
+    branch = "master"
+  }
+  new GitRepository {
+    name = "ubuntu-build-tools"
+    version = "1.0.0"
+    repo = read("env:GMP_MPFR_BUILD_TOOLS_REPOSITORY")
+    branch = "master"
+  }
+  new GitRepository {
+    name = "gmp"
+    version = "6.3.0"
+    repo = read("env:GMP_REPOSITORY")
+    branch = "master"
+  }
+  new GitRepository {
+    name = "mpfr"
+    version = "4.2.1"
+    repo = read("env:MPFR_REPOSITORY")
+    branch = "master"
+  }
+  new Folder { name = "wstool-copy-source"; version = "1.x"; from = toolchain; path = "." }
+  new Folder { name = "corretto"; version = "25"; from = toolchain; path = "packages/corretto" }
+  new Folder { name = "wstool"; version = "1.0.0"; from = toolchain; path = "packages/wstool" }
+  new Folder { name = "ubuntu-rsync"; version = "1.0.0"; from = toolchain; path = "packages/ubuntu-rsync" }
+  new Folder { name = "ubuntu-libpopt0"; version = "1.0.0"; from = toolchain; path = "packages/ubuntu-libpopt0" }
+  new Folder {
+    name = "ubuntu-busybox-static"
+    version = "1.0.0"
+    from = toolchain
+    path = "packages/ubuntu-busybox-static"
+  }
+}

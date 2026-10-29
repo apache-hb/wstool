@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'provided by dependency: %s\n' "$*" > "$WST_PREFIX/result.txt"
