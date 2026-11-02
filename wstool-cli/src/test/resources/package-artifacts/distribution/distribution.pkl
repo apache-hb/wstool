@@ -9,7 +9,7 @@ local toolchain = new GitRepository {
   repo = toolchainRepository
 }
 
-platforms { "ubuntu:26.04" }
+platforms { "ubuntu:24.04" }
 
 storage {
   bucket = read("env:ARTIFACT_BUCKET")
