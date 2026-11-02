@@ -11,6 +11,7 @@ dependencies {
   annotationProcessor("com.google.dagger:dagger-compiler:2.60.1")
   implementation("org.apache.logging.log4j:log4j-api")
   runtimeOnly("org.apache.logging.log4j:log4j-core")
+  runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
   testImplementation(testFixtures(project(":wstool-test-components")))

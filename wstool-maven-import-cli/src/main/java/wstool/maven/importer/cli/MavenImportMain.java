@@ -44,6 +44,7 @@ public final class MavenImportMain implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        logger.info("Resolving Maven artifact {}", coordinate);
         MavenImportComponent component =
                 DaggerMavenImportComponent.builder()
                         .repositoryUrl(repository)

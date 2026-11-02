@@ -43,6 +43,7 @@ public final class NpmImportMain implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        logger.info("Resolving npm package {}", packageSpecification);
         Path workingDirectory = Path.of("").toAbsolutePath().normalize();
         Path buildDirectory = workingDirectory.resolve("build");
         Files.createDirectories(buildDirectory);
