@@ -14,6 +14,7 @@ rootProject.name = "wstool-platform"
 
 include(
   ":wstool-cli",
+  ":npm-metadata",
   ":wstool-npm-import",
   ":wstool-npm-import-cli",
   ":wstool-maven-import",

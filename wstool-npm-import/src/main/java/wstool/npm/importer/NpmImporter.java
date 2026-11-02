@@ -126,8 +126,7 @@ public final class NpmImporter {
             removeBundledDependencies(packageDependencies, metadata.get("bundledDependencies"));
             packageDependencies.replaceAll(
                     (dependencyName, ignoredRange) ->
-                            resolveDependencyVersion(
-                                    lockPath, dependencyName, versionsByLockPath));
+                            resolveDependencyVersion(lockPath, dependencyName, versionsByLockPath));
             packageDependencies.values().removeIf(dependencyVersion -> dependencyVersion == null);
             result.add(
                     new NpmPackage(
@@ -141,9 +140,7 @@ public final class NpmImporter {
     }
 
     private String resolveDependencyVersion(
-            String packageLockPath,
-            String dependencyName,
-            Map<String, String> versionsByLockPath) {
+            String packageLockPath, String dependencyName, Map<String, String> versionsByLockPath) {
         String candidate = packageLockPath + "/node_modules/" + dependencyName;
         String resolvedVersion = versionsByLockPath.get(candidate);
         if (resolvedVersion != null) {

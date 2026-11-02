@@ -1,0 +1,6 @@
+{
+  "name": "valid-package",
+  "dependencies": {
+    "invalid package name": "^1.0.0"
+  }
+}
