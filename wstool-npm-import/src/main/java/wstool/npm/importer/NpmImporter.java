@@ -89,6 +89,18 @@ public final class NpmImporter {
             throw new IOException("Unsupported npm lockfile: expected a packages object");
         }
 
+        Map<String, String> versionsByLockPath = new LinkedHashMap<>();
+        for (var field : packageEntries.entrySet()) {
+            String lockPath = String.valueOf(field.getKey());
+            if (lockPath.startsWith("node_modules/")
+                    && field.getValue() instanceof Map<?, ?> metadata) {
+                String version = stringValue(metadata.get("version"), null);
+                if (version != null) {
+                    versionsByLockPath.put(lockPath, version);
+                }
+            }
+        }
+
         List<NpmPackage> result = new ArrayList<>();
         for (var field : packageEntries.entrySet()) {
             String lockPath = String.valueOf(field.getKey());
@@ -112,6 +124,11 @@ public final class NpmImporter {
             addDependencies(packageDependencies, metadata.get("peerDependencies"));
             removeBundledDependencies(packageDependencies, metadata.get("bundleDependencies"));
             removeBundledDependencies(packageDependencies, metadata.get("bundledDependencies"));
+            packageDependencies.replaceAll(
+                    (dependencyName, ignoredRange) ->
+                            resolveDependencyVersion(
+                                    lockPath, dependencyName, versionsByLockPath));
+            packageDependencies.values().removeIf(dependencyVersion -> dependencyVersion == null);
             result.add(
                     new NpmPackage(
                             name,
@@ -121,6 +138,38 @@ public final class NpmImporter {
                             packageDependencies));
         }
         return List.copyOf(result);
+    }
+
+    private String resolveDependencyVersion(
+            String packageLockPath,
+            String dependencyName,
+            Map<String, String> versionsByLockPath) {
+        String candidate = packageLockPath + "/node_modules/" + dependencyName;
+        String resolvedVersion = versionsByLockPath.get(candidate);
+        if (resolvedVersion != null) {
+            return resolvedVersion;
+        }
+
+        String parentPath = packageLockPath;
+        while (true) {
+            int parentPackageStart = parentPath.lastIndexOf("/node_modules/");
+            if (parentPackageStart >= 0) {
+                parentPath = parentPath.substring(0, parentPackageStart);
+            } else if (parentPath.startsWith("node_modules/")) {
+                parentPath = "";
+            } else {
+                return null;
+            }
+
+            candidate =
+                    parentPath.isEmpty()
+                            ? "node_modules/" + dependencyName
+                            : parentPath + "/node_modules/" + dependencyName;
+            resolvedVersion = versionsByLockPath.get(candidate);
+            if (resolvedVersion != null) {
+                return resolvedVersion;
+            }
+        }
     }
 
     private void removeBundledDependencies(Map<String, String> dependencies, Object bundledValue) {

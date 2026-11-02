@@ -44,7 +44,12 @@ class NpmImportMainTest {
     void subprocessImportsPackagesFromNpmRepository() throws Exception {
         URI registry = NpmRegistryManager.registryUri(REGISTRY);
 
-        CliResult result = runCli("--registry", registry.toString(), "@wstool-test/root:1.0.0");
+        CliResult result =
+                runCli(
+                        "--registry",
+                        registry.toString(),
+                        "@wstool-test/root:1.0.0",
+                        "@wstool-test/leaf:2.1.0");
 
         assertSuccess(result);
         assertTrue(

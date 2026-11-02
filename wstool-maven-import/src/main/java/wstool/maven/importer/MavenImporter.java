@@ -66,7 +66,7 @@ public final class MavenImporter {
             Map<Artifact, DependencyNode> nodes = new LinkedHashMap<>();
             collectNodes(result.getRoot(), nodes);
 
-            List<MavenArtifact> artifacts = new ArrayList<>();
+            Map<String, MavenArtifact> artifacts = new LinkedHashMap<>();
             for (ArtifactResult artifactResult : result.getArtifactResults()) {
                 Artifact artifact = artifactResult.getArtifact();
                 DependencyNode node = nodes.get(artifact);
@@ -76,11 +76,12 @@ public final class MavenImporter {
                                         .map(child -> child.getArtifact().toString())
                                         .toList()
                                 : List.of();
-                artifacts.add(
+                artifacts.putIfAbsent(
+                        artifact.toString(),
                         new MavenArtifact(
                                 artifact.toString(), artifact.getFile().toPath(), dependencies));
             }
-            return List.copyOf(artifacts);
+            return List.copyOf(artifacts.values());
         } finally {
             system.shutdown();
         }

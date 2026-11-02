@@ -34,7 +34,8 @@ class MavenImportMainTest {
                         repository.toUri().toString(),
                         "--local-repository",
                         localRepository.toString(),
-                        "test.import-fixture:root:1.0");
+                        "test.import-fixture:root:1.0",
+                        "test.import-fixture:leaf:2.0");
 
         assertSuccess(result);
         List<String> outputLines = result.output().lines().toList();

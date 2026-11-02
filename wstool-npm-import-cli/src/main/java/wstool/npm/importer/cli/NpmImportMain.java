@@ -3,6 +3,7 @@ package wstool.npm.importer.cli;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import org.apache.commons.io.file.PathUtils;
@@ -18,7 +19,7 @@ import wstool.npm.importer.NpmPackageIndexWriter;
 
 @Command(
         name = "wstool-npm-import",
-        description = "Import an npm package and its dependencies into the current package index.",
+        description = "Import npm packages and their dependencies into the current package index.",
         mixinStandardHelpOptions = true,
         version = "1.0.0")
 public final class NpmImportMain implements Callable<Integer> {
@@ -33,8 +34,8 @@ public final class NpmImportMain implements Callable<Integer> {
             defaultValue = "https://registry.npmjs.org/")
     private String registry;
 
-    @Parameters(arity = "1", paramLabel = "PACKAGE[:VERSION]")
-    private String packageSpecification;
+    @Parameters(arity = "1..*", paramLabel = "PACKAGE[:VERSION]")
+    private List<String> packageSpecifications = new ArrayList<>();
 
     public static void main(String[] args) {
         int exitCode = new CommandLine(new NpmImportMain()).execute(args);
@@ -43,7 +44,7 @@ public final class NpmImportMain implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        logger.info("Resolving npm package {}", packageSpecification);
+        logger.info("Resolving npm packages {}", packageSpecifications);
         Path workingDirectory = Path.of("").toAbsolutePath().normalize();
         Path buildDirectory = workingDirectory.resolve("build");
         Files.createDirectories(buildDirectory);
@@ -51,7 +52,7 @@ public final class NpmImportMain implements Callable<Integer> {
         try {
             NpmImportResult result =
                     new NpmImporter(npmExecutable, registry)
-                            .importPackages(List.of(packageSpecification), outputDirectory);
+                            .importPackages(packageSpecifications, outputDirectory);
             List<Path> configs =
                     new NpmPackageIndexWriter(
                                     HttpClient.newBuilder()
