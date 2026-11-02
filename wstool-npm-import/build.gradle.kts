@@ -5,6 +5,7 @@ plugins { `java-library` }
 
 dependencies {
   implementation(platform(project(":")))
+  implementation(project(":npm-metadata"))
   implementation("org.apache.velocity:velocity-engine-core:2.4.1")
   implementation("org.apache.fory:fory-json:1.7.7")
   implementation("org.apache.logging.log4j:log4j-api")

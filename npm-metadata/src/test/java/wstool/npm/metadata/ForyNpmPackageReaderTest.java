@@ -1,28 +1,30 @@
 package wstool.npm.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.zafarkhaja.semver.Version;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import org.apache.fory.json.ForyJson;
+import org.apache.fory.json.ForyJsonException;
 import org.junit.jupiter.api.Test;
+import wstool.npm.metadata.impl.ForyNpmPackageReader;
 
 class ForyNpmPackageReaderTest {
-    private final NpmPackageReader reader = new ForyNpmPackageReader();
+    private final NpmPackageReader reader = new ForyNpmPackageReader(ForyJson.builder().build());
 
     @Test
     void readsTypedManifestFieldsAndPreservesAdditionalProperties() throws Exception {
         NpmPackageMetadata metadata = read("package.json");
 
-        assertEquals("@npm/example-package", metadata.name().orElseThrow());
-        assertEquals(Version.parse("1.2.3-beta.2+build.7"), metadata.version().orElseThrow());
-        assertEquals("A package manifest fixture", metadata.description().orElseThrow());
+        assertEquals("@npm/example-package", metadata.name());
+        assertEquals(Version.parse("1.2.3-beta.2+build.7"), metadata.version());
+        assertEquals("A package manifest fixture", metadata.description());
         assertEquals(List.of("npm", "metadata"), metadata.keywords());
-        assertEquals("module", metadata.type().orElseThrow());
+        assertEquals("module", metadata.type());
         assertEquals(Map.of("@npm/leaf", "^2.0.0", "left-pad", "~1.3.0"), metadata.dependencies());
         assertEquals(Map.of("typescript", "^5.0.0"), metadata.devDependencies());
         assertEquals(Map.of("optional-helper", "latest"), metadata.optionalDependencies());
@@ -38,24 +40,24 @@ class ForyNpmPackageReaderTest {
 
     @Test
     void rejectsVersionsThatAreNotValidSemver() {
-        assertThrows(IOException.class, () -> read("package-invalid-version.json"));
+        assertThrows(ForyJsonException.class, () -> read("package-invalid-version.json"));
     }
 
     @Test
     void rejectsInvalidDependencyPackageNames() {
-        assertThrows(IOException.class, () -> read("package-invalid-dependency.json"));
+        assertThrows(ForyJsonException.class, () -> read("package-invalid-dependency.json"));
     }
 
     @Test
     void permitsManifestsWithoutOptionalNameAndVersion() throws Exception {
         NpmPackageMetadata metadata = read("package-minimal.json");
 
-        assertTrue(metadata.name().isEmpty());
-        assertTrue(metadata.version().isEmpty());
+        assertNull(metadata.name());
+        assertNull(metadata.version());
         assertEquals(Map.of(), metadata.dependencies());
     }
 
-    private NpmPackageMetadata read(String fixture) throws IOException {
+    private NpmPackageMetadata read(String fixture) throws Exception {
         try (InputStream input = resource(fixture)) {
             return reader.read(input);
         }

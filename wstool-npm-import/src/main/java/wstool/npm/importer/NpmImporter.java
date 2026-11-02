@@ -1,7 +1,7 @@
 package wstool.npm.importer;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -11,18 +11,24 @@ import java.util.Map;
 import java.util.TreeMap;
 import org.apache.fory.json.ForyJson;
 import org.apache.fory.reflect.TypeRef;
+import wstool.npm.metadata.NpmLockPackage;
+import wstool.npm.metadata.NpmPackageLock;
+import wstool.npm.metadata.NpmPackageLockReader;
+import wstool.npm.metadata.impl.ForyNpmPackageLockReader;
 
 /** Uses npm's resolver to produce a reproducible lockfile and package metadata. */
 public final class NpmImporter {
     private final String npmExecutable;
     private final String registryUrl;
     private final ForyJson json;
+    private final NpmPackageLockReader packageLockReader;
     private static final TypeRef<Map<String, Object>> JSON_OBJECT_TYPE = new TypeRef<>() {};
 
     public NpmImporter(String npmExecutable, String registryUrl) {
         this.npmExecutable = npmExecutable;
         this.registryUrl = registryUrl;
         this.json = ForyJson.builder().build();
+        this.packageLockReader = new ForyNpmPackageLockReader(json);
     }
 
     public NpmImportResult importPackages(List<String> packageSpecifications, Path outputDirectory)
@@ -82,19 +88,16 @@ public final class NpmImporter {
     }
 
     private List<NpmPackage> readPackages(Path lockfile) throws IOException {
-        Map<String, Object> root =
-                json.fromJson(Files.readString(lockfile, StandardCharsets.UTF_8), JSON_OBJECT_TYPE);
-        Object packageData = root.get("packages");
-        if (!(packageData instanceof Map<?, ?> packageEntries)) {
-            throw new IOException("Unsupported npm lockfile: expected a packages object");
+        NpmPackageLock packageLock;
+        try (InputStream input = Files.newInputStream(lockfile)) {
+            packageLock = packageLockReader.read(input);
         }
 
         Map<String, String> versionsByLockPath = new LinkedHashMap<>();
-        for (var field : packageEntries.entrySet()) {
-            String lockPath = String.valueOf(field.getKey());
-            if (lockPath.startsWith("node_modules/")
-                    && field.getValue() instanceof Map<?, ?> metadata) {
-                String version = stringValue(metadata.get("version"), null);
+        for (var entry : packageLock.packages().entrySet()) {
+            String lockPath = entry.getKey();
+            if (lockPath.startsWith("node_modules/")) {
+                String version = versionString(entry.getValue());
                 if (version != null) {
                     versionsByLockPath.put(lockPath, version);
                 }
@@ -102,28 +105,26 @@ public final class NpmImporter {
         }
 
         List<NpmPackage> result = new ArrayList<>();
-        for (var field : packageEntries.entrySet()) {
-            String lockPath = String.valueOf(field.getKey());
+        for (var entry : packageLock.packages().entrySet()) {
+            String lockPath = entry.getKey();
             if (!lockPath.startsWith("node_modules/")) {
                 continue;
             }
-            if (!(field.getValue() instanceof Map<?, ?> metadata)) {
-                continue;
-            }
-            String name = stringValue(metadata.get("name"), packageNameFromLockPath(lockPath));
-            String version = stringValue(metadata.get("version"), null);
+            NpmLockPackage metadata = entry.getValue();
+            String name =
+                    metadata.name() == null ? packageNameFromLockPath(lockPath) : metadata.name();
+            String version = versionString(metadata);
             if (version == null) {
                 continue;
             }
-            if (Boolean.TRUE.equals(metadata.get("inBundle"))) {
+            if (Boolean.TRUE.equals(metadata.inBundle())) {
                 continue;
             }
             Map<String, String> packageDependencies = new LinkedHashMap<>();
-            addDependencies(packageDependencies, metadata.get("dependencies"));
-            addDependencies(packageDependencies, metadata.get("optionalDependencies"));
-            addDependencies(packageDependencies, metadata.get("peerDependencies"));
-            removeBundledDependencies(packageDependencies, metadata.get("bundleDependencies"));
-            removeBundledDependencies(packageDependencies, metadata.get("bundledDependencies"));
+            packageDependencies.putAll(metadata.dependencies());
+            packageDependencies.putAll(metadata.optionalDependencies());
+            packageDependencies.putAll(metadata.peerDependencies());
+            metadata.bundledDependencies().forEach(packageDependencies::remove);
             packageDependencies.replaceAll(
                     (dependencyName, ignoredRange) ->
                             resolveDependencyVersion(lockPath, dependencyName, versionsByLockPath));
@@ -132,8 +133,8 @@ public final class NpmImporter {
                     new NpmPackage(
                             name,
                             version,
-                            stringValue(metadata.get("resolved"), null),
-                            stringValue(metadata.get("integrity"), null),
+                            metadata.resolved(),
+                            metadata.integrity(),
                             packageDependencies));
         }
         return List.copyOf(result);
@@ -169,30 +170,10 @@ public final class NpmImporter {
         }
     }
 
-    private void removeBundledDependencies(Map<String, String> dependencies, Object bundledValue) {
-        if (bundledValue instanceof List<?> bundledDependencies) {
-            for (Object dependency : bundledDependencies) {
-                if (dependency instanceof String name) {
-                    dependencies.remove(name);
-                }
-            }
-        }
-    }
-
-    private String stringValue(Object value, String defaultValue) {
-        return value instanceof String string ? string : defaultValue;
-    }
-
-    private void addDependencies(Map<String, String> dependencies, Object value) {
-        if (value instanceof Map<?, ?> values) {
-            values.forEach(
-                    (name, range) -> {
-                        if (name instanceof String dependencyName
-                                && range instanceof String dependencyRange) {
-                            dependencies.put(dependencyName, dependencyRange);
-                        }
-                    });
-        }
+    private String versionString(NpmLockPackage metadata) {
+        return metadata.version() == null
+                ? metadata.versionSpecifier()
+                : metadata.version().toString();
     }
 
     private String packageNameFromLockPath(String lockPath) {
