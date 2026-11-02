@@ -37,7 +37,7 @@ class DebPackagePlugin : Plugin<Project> {
           jpackageDirectory.get().asFile.mkdirs()
           distributionDirectory.get().asFile.mkdirs()
           commandLine(
-            "jpackage",
+            Path.of(System.getProperty("java.home"), "bin", "jpackage").toString(),
             "--type",
             "deb",
             "--name",

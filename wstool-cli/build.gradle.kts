@@ -58,7 +58,7 @@ tasks.named<JavaExec>("run") { systemProperty("wstool.version", project.version.
 tasks.register<Exec>("packageDeb") {
   group = "distribution"
   description = "Builds a Debian package containing wstool and its Java runtime."
-  dependsOn(tasks.named("distTar"))
+  dependsOn(tasks.named("installDist"))
 
   val installDirectory = layout.buildDirectory.dir("install/wstool")
   val distributionDirectory = layout.buildDirectory.dir("distributions")
@@ -69,7 +69,7 @@ tasks.register<Exec>("packageDeb") {
     jpackageDirectory.get().asFile.mkdirs()
     distributionDirectory.get().asFile.mkdirs()
     commandLine(
-      "jpackage",
+      Path.of(System.getProperty("java.home"), "bin", "jpackage").toString(),
       "--type",
       "deb",
       "--name",
