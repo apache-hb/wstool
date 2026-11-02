@@ -35,8 +35,8 @@ public final class MountInfoReader {
 
     public Optional<MountInfoEntry> findMostSpecificMount(Path path) throws IOException {
         return readMounts()
-            .filter(entry -> path.startsWith(entry.mount()))
-            .max(Comparator.comparingInt(entry -> entry.mount().toString().length()));
+                .filter(entry -> path.startsWith(entry.mount()))
+                .max(Comparator.comparingInt(entry -> entry.mount().toString().length()));
     }
 
     public Stream<MountInfoEntry> readMounts() throws IOException {
@@ -47,10 +47,7 @@ public final class MountInfoReader {
 
     private Stream<MountInfoEntry> readEntries(CSVReader reader) throws IOException {
         return new CsvToBeanBuilder<MountInfoEntry>(reader)
-                .withType(MountInfoEntry.class)
-                .build()
-                .parse()
-                .stream();
+                .withType(MountInfoEntry.class).build().parse().stream();
     }
 
     private CSVReader createCsvReader() throws IOException {

@@ -83,7 +83,7 @@ class GmpMpfrBuildIntegrationTest {
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
-        toolchain = BuildToolchainTestSupport.create(tmp, git, "noble");
+        toolchain = BuildToolchainTestSupport.create(tmp, git, "jammy");
         environment = new LinkedHashMap<>(toolchain.environment());
 
         DownloadManager downloads =

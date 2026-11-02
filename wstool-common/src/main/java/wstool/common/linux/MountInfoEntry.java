@@ -16,13 +16,16 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
  * <p>The format has six fixed fields, followed by zero or more optional fields, a separator, and
  * three trailing fields.
  *
- * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
+ * @see <a
+ *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
  */
 public final class MountInfoEntry {
     /**
      * Mount ID (field 1).
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), field 1</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     field 1</a>
      */
     @CsvBindByPosition(position = 0)
     private String mountId;
@@ -30,7 +33,9 @@ public final class MountInfoEntry {
     /**
      * Parent mount ID (field 2).
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), field 2</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     field 2</a>
      */
     @CsvBindByPosition(position = 1)
     private String parentMountId;
@@ -38,7 +43,9 @@ public final class MountInfoEntry {
     /**
      * Device major and minor numbers (field 3).
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), field 3</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     field 3</a>
      */
     @CsvBindByPosition(position = 2)
     private String device;
@@ -46,7 +53,9 @@ public final class MountInfoEntry {
     /**
      * Filesystem root (field 4).
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), field 4</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     field 4</a>
      */
     @CsvBindByPosition(position = 3)
     private String root;
@@ -54,7 +63,9 @@ public final class MountInfoEntry {
     /**
      * Mount point (field 5).
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), field 5</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     field 5</a>
      */
     @CsvBindByPosition(position = 4)
     private String mountPoint;
@@ -62,7 +73,9 @@ public final class MountInfoEntry {
     /**
      * Per-mount options (field 6).
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), field 6</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     field 6</a>
      */
     @CsvBindByPosition(position = 5)
     private String mountOptions;
@@ -72,7 +85,9 @@ public final class MountInfoEntry {
      * 7–11). The optional fields are variable length, so the trailing fields are relative to the
      * separator. Optional fields use the form {@code tag[:value]}.
      *
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5), fields 7–11</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5),
+     *     fields 7–11</a>
      */
     @CsvBindAndJoinByPosition(position = "6-", elementType = String.class)
     private ListValuedMap<Integer, String> optionalAndTrailingFields =
@@ -133,7 +148,8 @@ public final class MountInfoEntry {
      * Returns the comma-separated per-mount options.
      *
      * @return the per-mount options
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
      */
     public List<String> mountOptions() {
         return Arrays.asList(mountOptions.split(","));
@@ -143,7 +159,8 @@ public final class MountInfoEntry {
      * Returns optional mount tags that occur before the separator.
      *
      * @return a map from tag names to values; tags without values map to an empty string
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
      */
     public Map<String, String> tags() {
         int separator = separatorPosition();
@@ -165,7 +182,8 @@ public final class MountInfoEntry {
      * Returns the filesystem type field after the separator.
      *
      * @return the filesystem type
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
      */
     public String type() {
         return trailingField(1);
@@ -175,7 +193,8 @@ public final class MountInfoEntry {
      * Returns the mount source field after the separator.
      *
      * @return the mount source
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
      */
     public String mountSource() {
         return trailingField(2);
@@ -185,16 +204,15 @@ public final class MountInfoEntry {
      * Returns the comma-separated superblock options after the separator.
      *
      * @return the superblock options
-     * @see <a href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
+     * @see <a
+     *     href="https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html">proc_pid_mountinfo(5)</a>
      */
     public List<String> superOptions() {
         return Arrays.asList(trailingField(3).split(","));
     }
 
     private String trailingField(int relativePosition) {
-        return optionalAndTrailingFields
-                .get(separatorPosition() + relativePosition)
-                .stream()
+        return optionalAndTrailingFields.get(separatorPosition() + relativePosition).stream()
                 .findFirst()
                 .orElseThrow(
                         () ->

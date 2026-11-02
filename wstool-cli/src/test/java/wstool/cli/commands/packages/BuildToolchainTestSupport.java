@@ -42,8 +42,8 @@ final class BuildToolchainTestSupport implements AutoCloseable {
         this.prefixCache = prefixCache;
     }
 
-    static BuildToolchainTestSupport create(
-            Path temp, PackageGitManager git, String ubuntuRelease) throws Exception {
+    static BuildToolchainTestSupport create(Path temp, PackageGitManager git, String ubuntuRelease)
+            throws Exception {
         HttpClient httpClient =
                 HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
         DownloadManager downloadManager = new DownloadManager(httpClient);

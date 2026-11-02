@@ -1,18 +1,16 @@
 package wstool.test.components;
 
+import com.github.dockerjava.api.DockerClient;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
-
-import com.github.dockerjava.api.DockerClient;
 
 public final class TestContainerLimits {
     private static final Logger LOGGER = LogManager.getLogger(TestContainerLimits.class);
@@ -27,12 +25,10 @@ public final class TestContainerLimits {
         return Holder.INSTANCE;
     }
 
-    public <T extends GenericContainer<?>> T apply(
-            T container, long memoryBytes, String diskSize) {
+    public <T extends GenericContainer<?>> T apply(T container, long memoryBytes, String diskSize) {
 
         // Avoids '--storage-opt is supported only for overlay over xfs with 'pquota' mount option'
-        Map<String, String> storageOpts =
-                supportsStorageOpt() ? Map.of("size", diskSize) : null;
+        Map<String, String> storageOpts = supportsStorageOpt() ? Map.of("size", diskSize) : null;
 
         container.withCreateContainerCmdModifier(
                 command ->
@@ -47,7 +43,11 @@ public final class TestContainerLimits {
         String driver = docker.infoCmd().exec().getDriver();
         String vfsType = getVfsType(dockerRoot());
         boolean supported = driver.equals("overlay2") && vfsType.equals("xfs");
-        LOGGER.info("Docker storage driver: {}, vfs type: {}, supports --storage-opt: {}", driver, vfsType, supported);
+        LOGGER.info(
+                "Docker storage driver: {}, vfs type: {}, supports --storage-opt: {}",
+                driver,
+                vfsType,
+                supported);
         return supported;
     }
 
@@ -65,6 +65,7 @@ public final class TestContainerLimits {
     }
 
     private static final class Holder {
-        private static final TestContainerLimits INSTANCE = new TestContainerLimits(DockerClientFactory.lazyClient());
+        private static final TestContainerLimits INSTANCE =
+                new TestContainerLimits(DockerClientFactory.lazyClient());
     }
 }

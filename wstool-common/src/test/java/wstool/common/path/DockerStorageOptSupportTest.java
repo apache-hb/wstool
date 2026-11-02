@@ -34,10 +34,7 @@ class DockerStorageOptSupportTest {
             Path dockerRoot,
             List<String> mountInfoLines,
             boolean expected) {
-        assertEquals(
-                expected,
-                supports(driver, dockerRoot, mountInfoLines),
-                scenario);
+        assertEquals(expected, supports(driver, dockerRoot, mountInfoLines), scenario);
     }
 
     private static Stream<Arguments> storageOptSupportCases() {
@@ -58,8 +55,7 @@ class DockerStorageOptSupportTest {
                         "reads fields after the separator when no optional fields exist",
                         "overlay2",
                         DOCKER_ROOT,
-                        List.of(
-                                "36 25 0:32 / /var/lib/docker rw,pquota - xfs /dev/sda1 rw"),
+                        List.of("36 25 0:32 / /var/lib/docker rw,pquota - xfs /dev/sda1 rw"),
                         true),
                 Arguments.of(
                         "rejects other storage drivers",
@@ -106,10 +102,7 @@ class DockerStorageOptSupportTest {
                                 List.of("36 25 0:32 / /var/lib/docker rw")));
     }
 
-    private boolean supports(
-            String driver,
-            Path dockerRoot,
-            List<String> mountInfoLines) {
+    private boolean supports(String driver, Path dockerRoot, List<String> mountInfoLines) {
         Path mountInfo = tempDirectory.resolve("mountinfo");
         try {
             Files.write(mountInfo, mountInfoLines);
@@ -124,8 +117,7 @@ class DockerStorageOptSupportTest {
         return List.of(mountLine(mountPoint, mountOptions));
     }
 
-    private static List<String> mount(
-            String mountPoint, String mountOptions, String superOptions) {
+    private static List<String> mount(String mountPoint, String mountOptions, String superOptions) {
         return List.of(mountLine(mountPoint, mountOptions, superOptions));
     }
 
@@ -138,8 +130,7 @@ class DockerStorageOptSupportTest {
         return mountLine(mountPoint, mountOptions, mountOptions);
     }
 
-    private static String mountLine(
-            String mountPoint, String mountOptions, String superOptions) {
+    private static String mountLine(String mountPoint, String mountOptions, String superOptions) {
         return mountLine(mountPoint, mountOptions, superOptions, "xfs");
     }
 

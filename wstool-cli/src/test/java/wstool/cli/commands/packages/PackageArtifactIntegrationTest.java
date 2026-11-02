@@ -68,7 +68,7 @@ class PackageArtifactIntegrationTest {
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
-        toolchain = BuildToolchainTestSupport.create(tmp, git, "noble");
+        toolchain = BuildToolchainTestSupport.create(tmp, git, "jammy");
         storage = new StorageServerManager(GARAGE);
         bucket = "wstool-artifacts-" + UUID.randomUUID().toString().replace("-", "");
         s3 = storage.createBucket(bucket);
