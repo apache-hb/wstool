@@ -12,3 +12,4 @@
 * Never verify structured content using `.contains` on its rendered form, always deserialize the data and assert fields using strong types in java
 * Always implement features fully, dont leave TODOs or workarounds to make single tests pass. Solutions must be complete and generic
 * When interacting with the filesystem in code always catch exceptions rather than doing defensive checks to avoid race conditions with other processess modifying the filesystem. Prefer `try { fileio() } catch (FileNotFound) {}` to `if (exists(file)) { fileio() }`
+* When writing comments use proper javadoc tags and formatting

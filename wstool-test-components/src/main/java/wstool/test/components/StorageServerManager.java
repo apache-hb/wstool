@@ -31,7 +31,7 @@ public class StorageServerManager {
         container.withCommand("/garage", "-c", "/etc/garage.toml", "server");
         container.waitingFor(Wait.forLogMessage(".*S3 API server listening.*\\n", 1));
         container.withStartupTimeout(Duration.ofMinutes(2));
-        return TestContainerLimits.apply(container, 512L * 1024 * 1024, "2G");
+        return TestContainerLimits.instance().apply(container, 512L * 1024 * 1024, "2G");
     }
 
     private final GenericContainer<?> garage;

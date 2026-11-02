@@ -1,20 +1,9 @@
 #!/bin/sh
 set -eu
 mkdir -p "$WST_PREFIX"
-set -f
-previous_ifs=$IFS
-IFS=:
-for tool_directory in $PATH; do
-  IFS=$previous_ifs
-  case "$tool_directory" in
-    */ubuntu-deb-*/*/usr/bin)
-      dependency=${tool_directory%/usr/bin}
-      cp -a "$dependency"/. "$WST_PREFIX"/
-      ;;
-  esac
-  IFS=:
+for dependency in /wstool/dependencies/ubuntu-deb-*/*; do
+  cp -a "$dependency"/. "$WST_PREFIX"/
 done
-IFS=$previous_ifs
 cp -a "$WST_SRCDIR/configuration"/. "$WST_PREFIX"/
 mkdir -p "$WST_PREFIX/bin"
 ln -s ../usr/bin/x86_64-linux-gnu-ar "$WST_PREFIX/bin/ar"

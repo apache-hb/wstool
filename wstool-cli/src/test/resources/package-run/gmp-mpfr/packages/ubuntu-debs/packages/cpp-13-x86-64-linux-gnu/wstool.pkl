@@ -1,6 +1,6 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
-package { name = "ubuntu-deb-libsframe3"; version = "1.0.0" }
+package { name = "ubuntu-deb-cpp-13-x86-64-linux-gnu"; version = "1.0.0" }
 
 local debsUrl = read("env:WSTOOL_GMP_MPFR_DEBS_URL")
 
@@ -11,10 +11,10 @@ buildDependencies { ["ubuntu-deb-installer"] = "1.0.0" }
 externalSources {
   sources {
     new FileSource {
-      uri = "\(debsUrl)/debs/libsframe3.deb"
+      uri = "\(debsUrl)/debs/cpp-13-x86-64-linux-gnu.deb"
       path = "ubuntu-package.deb"
-      checksum = read("env:WSTOOL_DEB_SHA256_LIBSFRAME3")
-      license = "NOASSERTION"
+      checksum = read("env:WSTOOL_DEB_SHA256_CPP_13_X86_64_LINUX_GNU")
+      license = "GPL-3.0-or-later"
     }
   }
 }

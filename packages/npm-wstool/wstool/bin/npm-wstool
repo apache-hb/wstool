@@ -87,6 +87,7 @@ async function startPackageRegistry() {
       const metadata = {
         name: selected.metadata.name,
         version: selected.metadata.version,
+        bin: selected.metadata.bin,
         dist: {
           tarball: `${registryUrl(server)}/tarballs/${selected.tarballId}`,
           shasum: selected.shasum,
@@ -131,6 +132,15 @@ async function selectPackage(name, packages, tarballs) {
   if (!fs.existsSync(tarballPath) || !fs.statSync(tarballPath).isFile()) {
     throw new Error(`Selected wstool package ${name}@${version} has no npm tarball`);
   }
+  const manifestResult = spawnSync('tar', ['-xOzf', tarballPath, 'package/package.json'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+  if (manifestResult.error) throw manifestResult.error;
+  if (manifestResult.status !== 0) {
+    throw new Error(`Unable to read npm package manifest for ${name}@${version}`);
+  }
+  const manifest = JSON.parse(manifestResult.stdout);
   const tarballId = crypto.createHash('sha256').update(`${name}\0${version}`).digest('hex') + '.tgz';
 
   const digest = crypto.createHash('sha512');
@@ -140,7 +150,7 @@ async function selectPackage(name, packages, tarballs) {
     shasum.update(chunk);
   }
   const selected = {
-    metadata: { name, version },
+    metadata: { name, version, bin: manifest.bin },
     tarballId,
     path: tarballPath,
     integrity: `sha512-${digest.digest('base64')}`,

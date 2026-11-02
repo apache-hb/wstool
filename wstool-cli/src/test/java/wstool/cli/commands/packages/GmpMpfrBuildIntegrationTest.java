@@ -38,10 +38,10 @@ class GmpMpfrBuildIntegrationTest {
             List.of(
                     "binutils-common",
                     "binutils-x86-64-linux-gnu",
-                    "gcc-15-base",
-                    "cpp-15-x86-64-linux-gnu",
-                    "gcc-15-x86-64-linux-gnu",
-                    "libgcc-15-dev",
+                    "gcc-13-base",
+                    "cpp-13-x86-64-linux-gnu",
+                    "gcc-13-x86-64-linux-gnu",
+                    "libgcc-13-dev",
                     "libc6-dev",
                     "linux-libc-dev",
                     "libc-dev-bin",
@@ -53,7 +53,7 @@ class GmpMpfrBuildIntegrationTest {
                     "libbinutils",
                     "libctf0",
                     "libctf-nobfd0",
-                    "libsframe3",
+                    "libsframe1",
                     "libjansson4",
                     "libgprofng0",
                     "libcc1-0",
@@ -73,10 +73,7 @@ class GmpMpfrBuildIntegrationTest {
     @BeforeEach
     void setUp(TestInfo testInfo) throws Exception {
         tmp =
-                Path.of(
-                                "build",
-                                "gmp-mpfr-build",
-                                testInfo.getTestMethod().orElseThrow().getName())
+                Path.of("build", "gmp-mpfr-build", testInfo.getTestMethod().orElseThrow().getName())
                         .toAbsolutePath();
         try {
             PathUtils.deleteDirectory(tmp);
@@ -86,7 +83,7 @@ class GmpMpfrBuildIntegrationTest {
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
-        toolchain = BuildToolchainTestSupport.create(tmp, git);
+        toolchain = BuildToolchainTestSupport.create(tmp, git, "noble");
         environment = new LinkedHashMap<>(toolchain.environment());
 
         DownloadManager downloads =
@@ -94,31 +91,34 @@ class GmpMpfrBuildIntegrationTest {
                         HttpClient.newBuilder()
                                 .followRedirects(HttpClient.Redirect.NORMAL)
                                 .build());
-        Path cache =
-                Path.of(System.getProperty("user.home"), ".cache", "wstool", "gmp-mpfr-test");
+        Path cache = Path.of(System.getProperty("user.home"), ".cache", "wstool", "gmp-mpfr-test");
         Map<String, Path> files = new LinkedHashMap<>();
         Path gmp =
                 downloads.get(
-                        DownloadRequest.builder(cache.resolve("sources"), URI.create("https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"))
+                        DownloadRequest.builder(
+                                        cache.resolve("sources"),
+                                        URI.create("https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"))
                                 .cacheName("gmp-6.3.0.tar.xz")
                                 .checksum(GMP_SHA256)
                                 .build());
         Path mpfr =
                 downloads.get(
-                        DownloadRequest.builder(cache.resolve("sources"), URI.create("https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz"))
+                        DownloadRequest.builder(
+                                        cache.resolve("sources"),
+                                        URI.create(
+                                                "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz"))
                                 .cacheName("mpfr-4.2.1.tar.xz")
                                 .checksum(MPFR_SHA256)
                                 .build());
         files.put("/sources/gmp-6.3.0.tar.xz", gmp);
         files.put("/sources/mpfr-4.2.1.tar.xz", mpfr);
 
-        UbuntuDebCache ubuntu = new UbuntuDebCache(downloads);
+        UbuntuDebCache ubuntu = new UbuntuDebCache(downloads, "noble");
         for (String packageName : UBUNTU_BUILD_PACKAGES) {
             UbuntuDebFile artifact = ubuntu.getDeb(packageName);
             files.put("/debs/" + packageName + ".deb", artifact.file());
             environment.put(
-                    "WSTOOL_DEB_SHA256_"
-                            + packageName.toUpperCase().replaceAll("[^A-Z0-9]", "_"),
+                    "WSTOOL_DEB_SHA256_" + packageName.toUpperCase().replaceAll("[^A-Z0-9]", "_"),
                     artifact.checksum());
         }
         sourceServer = new LocalFileHttpServer(files);
@@ -186,12 +186,14 @@ class GmpMpfrBuildIntegrationTest {
         Path workspace = tmp.resolve("gmp-mpfr");
         for (String packageName : List.of("ubuntu-deb-" + UBUNTU_BUILD_PACKAGES.getFirst())) {
             CliHelper.assertSuccess(
-                    cli.runCli(workspace, environment, "workspace", "add", "--package", packageName));
+                    cli.runCli(
+                            workspace, environment, "workspace", "add", "--package", packageName));
         }
         for (String packageName :
                 List.of("ubuntu-deb-installer", "ubuntu-build-tools", "gmp", "mpfr")) {
             CliHelper.assertSuccess(
-                    cli.runCli(workspace, environment, "workspace", "add", "--package", packageName));
+                    cli.runCli(
+                            workspace, environment, "workspace", "add", "--package", packageName));
         }
         toolchain.prepare(workspace, cli, environment);
 
@@ -205,7 +207,8 @@ class GmpMpfrBuildIntegrationTest {
         for (String packageName : UBUNTU_BUILD_PACKAGES) {
             CliHelper.assertSuccess(
                     cli.runCli(
-                            workspace.resolve("src/gmp-mpfr-ubuntu-debs/packages")
+                            workspace
+                                    .resolve("src/gmp-mpfr-ubuntu-debs/packages")
                                     .resolve(packageName),
                             environment,
                             "package",

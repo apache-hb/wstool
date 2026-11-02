@@ -2,32 +2,33 @@ amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
 package { name = "ubuntu-build-tools"; version = "1.0.0" }
 
-local packageNames = List(
-  "binutils-common",
-  "binutils-x86-64-linux-gnu",
-  "gcc-15-base",
-  "cpp-15-x86-64-linux-gnu",
-  "gcc-15-x86-64-linux-gnu",
-  "libgcc-15-dev",
-  "libc6-dev",
-  "linux-libc-dev",
-  "libc-dev-bin",
-  "rpcsvc-proto",
-  "libgcc-s1",
-  "libisl23",
-  "libmpc3",
-  "libmpfr6",
-  "libbinutils",
-  "libctf0",
-  "libctf-nobfd0",
-  "libsframe3",
-  "libjansson4",
-  "libgprofng0",
-  "libcc1-0",
-  "make",
-  "m4",
-  "libc6",
-)
+local packageNames =
+  List(
+    "binutils-common",
+    "binutils-x86-64-linux-gnu",
+    "gcc-13-base",
+    "cpp-13-x86-64-linux-gnu",
+    "gcc-13-x86-64-linux-gnu",
+    "libgcc-13-dev",
+    "libc6-dev",
+    "linux-libc-dev",
+    "libc-dev-bin",
+    "rpcsvc-proto",
+    "libgcc-s1",
+    "libisl23",
+    "libmpc3",
+    "libmpfr6",
+    "libbinutils",
+    "libctf0",
+    "libctf-nobfd0",
+    "libsframe1",
+    "libjansson4",
+    "libgprofng0",
+    "libcc1-0",
+    "make",
+    "m4",
+    "libc6",
+  )
 
 build { tool = "install-build-tools" }
 

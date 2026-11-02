@@ -2,3 +2,5 @@
 set -eu
 mkdir -p "$WST_PREFIX"
 cp -a "$WST_SRCDIR/configuration"/. "$WST_PREFIX"/
+mkdir -p "$WST_PREFIX/bin"
+ln -s ../usr/bin/rsync "$WST_PREFIX/bin/rsync"

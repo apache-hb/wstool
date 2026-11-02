@@ -32,16 +32,17 @@ import wstool.common.path.DownloadRequest;
  * Downloads Ubuntu package files once and prepares source archives for the test package catalog.
  */
 public final class UbuntuDebCache {
-    private static final String UBUNTU_RELEASE = "resolute";
     private static final String UBUNTU_ARCHIVE = "https://archive.ubuntu.com/ubuntu/";
     private static final List<String> COMPONENTS = List.of("main", "universe");
 
     private final DownloadManager downloadManager;
+    private final String ubuntuRelease;
     private final String architecture;
     private final Path cacheRoot;
 
-    public UbuntuDebCache(DownloadManager downloadManager) {
+    public UbuntuDebCache(DownloadManager downloadManager, String ubuntuRelease) {
         this.downloadManager = downloadManager;
+        this.ubuntuRelease = ubuntuRelease;
         this.architecture = architecture();
         this.cacheRoot =
                 Path.of(
@@ -49,7 +50,7 @@ public final class UbuntuDebCache {
                         ".cache",
                         "wstool",
                         "ubuntu",
-                        UBUNTU_RELEASE,
+                        ubuntuRelease,
                         architecture);
     }
 
@@ -126,7 +127,7 @@ public final class UbuntuDebCache {
             }
         }
         throw new IOException(
-                "Ubuntu " + UBUNTU_RELEASE + " repositories do not contain package " + packageName);
+                "Ubuntu " + ubuntuRelease + " repositories do not contain package " + packageName);
     }
 
     private Path packageIndex(String component) throws Exception {
@@ -134,7 +135,7 @@ public final class UbuntuDebCache {
                 URI.create(
                         UBUNTU_ARCHIVE
                                 + "dists/"
-                                + UBUNTU_RELEASE
+                                + ubuntuRelease
                                 + "/"
                                 + component
                                 + "/binary-"

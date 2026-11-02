@@ -42,7 +42,8 @@ final class BuildToolchainTestSupport implements AutoCloseable {
         this.prefixCache = prefixCache;
     }
 
-    static BuildToolchainTestSupport create(Path temp, PackageGitManager git) throws Exception {
+    static BuildToolchainTestSupport create(
+            Path temp, PackageGitManager git, String ubuntuRelease) throws Exception {
         HttpClient httpClient =
                 HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
         DownloadManager downloadManager = new DownloadManager(httpClient);
@@ -51,7 +52,7 @@ final class BuildToolchainTestSupport implements AutoCloseable {
         CachedCorretto corretto = new CorrettoTestPackageSource(downloadManager).get();
         Path wstoolArchive = Path.of(System.getProperty("wstool.distribution.archive"));
         String wstoolChecksum = DownloadManager.sha256(wstoolArchive);
-        UbuntuDebCache ubuntu = new UbuntuDebCache(downloadManager);
+        UbuntuDebCache ubuntu = new UbuntuDebCache(downloadManager, ubuntuRelease);
         UbuntuDebArtifact rsync = ubuntu.get("rsync");
         UbuntuDebArtifact libpopt = ubuntu.get("libpopt0");
         UbuntuDebArtifact busybox = ubuntu.get("busybox-static");
@@ -146,6 +147,7 @@ final class BuildToolchainTestSupport implements AutoCloseable {
         addChecksums(environment, "BUSYBOX", busybox);
         Path prefixCache =
                 Path.of(System.getProperty("user.home"), ".cache", "wstool", "build-toolchain")
+                        .resolve(ubuntuRelease)
                         .resolve(corretto.checksum())
                         .resolve(wstoolChecksum)
                         .resolve(rsync.dataChecksum());
@@ -180,8 +182,7 @@ final class BuildToolchainTestSupport implements AutoCloseable {
                             ? workspace.resolve("src/wstool-build-toolchain")
                             : workspace
                                     .resolve("src/wstool-build-toolchain/packages")
-                                    .resolve(
-                                    packageName);
+                                    .resolve(packageName);
             CliHelper.assertSuccess(cli.runCli(source, environment, "package", "run"));
             cachePrefix(workspace, packageName);
         }

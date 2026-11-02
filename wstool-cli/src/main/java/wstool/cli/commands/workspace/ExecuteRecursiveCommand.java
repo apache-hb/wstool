@@ -21,8 +21,7 @@ import wstool.common.workspace.WorkspaceFactory;
 
 @Command(
         name = "execute-recursive",
-        description =
-                "Execute a command in each local package source, starting with dependencies.",
+        description = "Execute a command in each local package source, starting with dependencies.",
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class)
 public class ExecuteRecursiveCommand extends CommonCommand {
@@ -76,7 +75,8 @@ public class ExecuteRecursiveCommand extends CommonCommand {
             return;
         }
         if (!visiting.add(name)) {
-            throw new IllegalArgumentException("Dependency cycle detected while traversing " + name);
+            throw new IllegalArgumentException(
+                    "Dependency cycle detected while traversing " + name);
         }
 
         packages.put(name, pkg);
@@ -100,12 +100,7 @@ public class ExecuteRecursiveCommand extends CommonCommand {
                 packages.put(dependency, dependencyConfig);
             }
             collectExecutionOrder(
-                    workspace,
-                    dependencyConfig,
-                    packages,
-                    executionOrder,
-                    visiting,
-                    visited);
+                    workspace, dependencyConfig, packages, executionOrder, visiting, visited);
         }
 
         visiting.remove(name);

@@ -7,8 +7,8 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
@@ -70,8 +70,7 @@ public class PackageArtifactStore {
                                 .bucket(storage.bucket())
                                 .key(metadataKey(pkg.name()))
                                 .build(),
-                        RequestBody.fromFile(
-                                workspace.source(pkg.name()).resolve("wstool.pkl")));
+                        RequestBody.fromFile(workspace.source(pkg.name()).resolve("wstool.pkl")));
             }
         } finally {
             Files.deleteIfExists(archive);
@@ -147,8 +146,8 @@ public class PackageArtifactStore {
         visiting.remove(name);
     }
 
-    private PackageConfig openStoredPackageConfig(LocalWorkspace workspace, PackageMajorVersion name)
-            throws Exception {
+    private PackageConfig openStoredPackageConfig(
+            LocalWorkspace workspace, PackageMajorVersion name) throws Exception {
         Path cacheDirectory =
                 workspace.cache().resolve("artifacts").resolve(name.name()).resolve(name.version());
         Path manifest = cacheDirectory.resolve("wstool.pkl");
@@ -167,10 +166,7 @@ public class PackageArtifactStore {
             StorageConfig storage = workspace.artifactStorage();
             try (S3Client client = createClient(storage)) {
                 client.getObject(
-                        GetObjectRequest.builder()
-                                .bucket(storage.bucket())
-                                .key(key)
-                                .build(),
+                        GetObjectRequest.builder().bucket(storage.bucket()).key(key).build(),
                         ResponseTransformer.toFile(download));
             }
             moveIntoPlace(download, destination);

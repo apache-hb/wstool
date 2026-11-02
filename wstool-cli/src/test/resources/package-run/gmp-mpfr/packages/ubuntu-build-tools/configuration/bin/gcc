@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
+version=13
 bin=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$bin/.." && pwd)
-exec "$root/usr/bin/x86_64-linux-gnu-gcc-15" \
+exec "$root/usr/bin/x86_64-linux-gnu-gcc-$version" \
   --sysroot="$root" \
-  -B"$root/usr/lib/gcc/x86_64-linux-gnu/15/" \
+  -B"$root/usr/lib/gcc/x86_64-linux-gnu/$version/" \
   "$@"

@@ -1,6 +1,6 @@
 amends "package://pkl.konna.cloud/pkl/wstool@1.0.2#/package.pkl"
 
-package { name = "ubuntu-deb-libgcc-15-dev"; version = "1.0.0" }
+package { name = "ubuntu-deb-libgcc-13-dev"; version = "1.0.0" }
 
 local debsUrl = read("env:WSTOOL_GMP_MPFR_DEBS_URL")
 
@@ -11,10 +11,10 @@ buildDependencies { ["ubuntu-deb-installer"] = "1.0.0" }
 externalSources {
   sources {
     new FileSource {
-      uri = "\(debsUrl)/debs/libgcc-15-dev.deb"
+      uri = "\(debsUrl)/debs/libgcc-13-dev.deb"
       path = "ubuntu-package.deb"
-      checksum = read("env:WSTOOL_DEB_SHA256_LIBGCC_15_DEV")
-      license = "NOASSERTION"
+      checksum = read("env:WSTOOL_DEB_SHA256_LIBGCC_13_DEV")
+      license = "GPL-3.0-or-later WITH GCC-exception-3.1"
     }
   }
 }

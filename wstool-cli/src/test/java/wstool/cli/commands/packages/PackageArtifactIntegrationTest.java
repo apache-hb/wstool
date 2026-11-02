@@ -68,7 +68,7 @@ class PackageArtifactIntegrationTest {
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
-        toolchain = BuildToolchainTestSupport.create(tmp, git);
+        toolchain = BuildToolchainTestSupport.create(tmp, git, "resolute");
         storage = new StorageServerManager(GARAGE);
         bucket = "wstool-artifacts-" + UUID.randomUUID().toString().replace("-", "");
         s3 = storage.createBucket(bucket);
@@ -107,8 +107,7 @@ class PackageArtifactIntegrationTest {
         environment.put("ARTIFACT_REMOTE_REPOSITORY", remoteRepository.toString());
         environment.put("ARTIFACT_CONSUMER_REPOSITORY", consumerRepository.toString());
 
-        Path producerWorkspace =
-                createWorkspace("producer", distributionRepository, environment);
+        Path producerWorkspace = createWorkspace("producer", distributionRepository, environment);
         addPackage(producerWorkspace, "remote-tool", environment);
         addPackage(producerWorkspace, "artifact-consumer", environment);
         toolchain.prepare(producerWorkspace, cli, environment);
@@ -133,8 +132,7 @@ class PackageArtifactIntegrationTest {
                         .key("artifacts/remote-tool/1.0.0.tar.gz")
                         .build());
 
-        Path consumerWorkspace =
-                createWorkspace("consumer", distributionRepository, environment);
+        Path consumerWorkspace = createWorkspace("consumer", distributionRepository, environment);
         addPackage(consumerWorkspace, "artifact-consumer", environment);
         toolchain.prepare(consumerWorkspace, cli, environment);
         Path cachedArtifact =
@@ -180,8 +178,8 @@ class PackageArtifactIntegrationTest {
         return tmp.resolve(name);
     }
 
-    private void addPackage(
-            Path workspace, String packageName, Map<String, String> environment) throws Exception {
+    private void addPackage(Path workspace, String packageName, Map<String, String> environment)
+            throws Exception {
         CliHelper.assertSuccess(
                 cli.runCli(workspace, environment, "workspace", "add", "--package", packageName));
     }

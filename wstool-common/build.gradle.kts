@@ -12,6 +12,7 @@ dependencies {
   implementation(platform(project(":")))
   api(project(":wstool-config"))
   api("org.jspecify:jspecify:1.0.0")
+  implementation("com.opencsv:opencsv:5.12.0")
 
   compileOnly("org.immutables:value-annotations:2.12.2")
   annotationProcessor("org.immutables:value:2.12.2")

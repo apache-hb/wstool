@@ -154,6 +154,10 @@ tasks.test {
   systemProperty("wstool.cli.classpath", sourceSets.main.get().runtimeClasspath.asPath)
   systemProperty(
     "wstool.distribution.archive",
-    layout.buildDirectory.file("distributions/wstool-${project.version}.tar").get().asFile.absolutePath,
+    layout.buildDirectory
+      .file("distributions/wstool-${project.version}.tar")
+      .get()
+      .asFile
+      .absolutePath,
   )
 }

@@ -62,7 +62,7 @@ class PackageRunIntegrationTest {
         Files.createDirectories(tmp);
         git = new PackageGitManager(tmp, GITEA);
         cli = new CliHelper(tmp);
-        toolchain = BuildToolchainTestSupport.create(tmp, git);
+        toolchain = BuildToolchainTestSupport.create(tmp, git, "resolute");
     }
 
     @AfterEach

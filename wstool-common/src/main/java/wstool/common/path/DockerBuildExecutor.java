@@ -38,10 +38,13 @@ public class DockerBuildExecutor {
     private static final Path CONTAINER_HOME = Path.of("/wstool/home");
 
     private final DockerClient dockerClient;
+    private final DockerStorageOptSupport dockerStorageOptSupport;
 
     @Inject
-    public DockerBuildExecutor(DockerClient dockerClient) {
+    public DockerBuildExecutor(
+            DockerClient dockerClient, DockerStorageOptSupport dockerStorageOptSupport) {
         this.dockerClient = dockerClient;
+        this.dockerStorageOptSupport = dockerStorageOptSupport;
     }
 
     public int run(
@@ -140,12 +143,12 @@ public class DockerBuildExecutor {
                         .withBinds(binds)
                         .withMemory(limits.memoryBytes())
                         .withMemorySwap(limits.memoryBytes())
-                        .withStorageOpt(Map.of("size", limits.diskSize()))
                         .withTmpFs(
-                                Map.of(
-                                        "/tmp",
-                                        "rw,nosuid,nodev,exec,size=" + limits.tmpfsSize()))
+                                Map.of("/tmp", "rw,nosuid,nodev,exec,size=" + limits.tmpfsSize()))
                         .withExtraHosts("host.docker.internal:host-gateway");
+        if (supportsStorageOpt()) {
+            hostConfig.withStorageOpt(Map.of("size", limits.diskSize()));
+        }
         CreateContainerResponse response =
                 dockerClient
                         .createContainerCmd(image)
@@ -170,6 +173,12 @@ public class DockerBuildExecutor {
             LOGGER.info("Pulling Docker build image {}", image);
             dockerClient.pullImageCmd(image).start().awaitCompletion();
         }
+    }
+
+    private boolean supportsStorageOpt() {
+        var info = dockerClient.infoCmd().exec();
+        Path dockerRoot = Path.of(info.getDockerRootDir()).toAbsolutePath().normalize();
+        return dockerStorageOptSupport.supports(info.getDriver(), dockerRoot);
     }
 
     private int execute(
