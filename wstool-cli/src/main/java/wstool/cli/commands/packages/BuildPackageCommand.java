@@ -50,7 +50,6 @@ public class BuildPackageCommand extends CommonCommand {
     @Override
     public Integer call() throws Exception {
         var workspace = workspaceFactory.findUp(cwd);
-        workspace.refresh();
         var pkg = packageFactory.findUp(cwd);
         DockerBuildLimits defaults = DockerBuildLimits.defaults();
         DockerBuildLimits limits =

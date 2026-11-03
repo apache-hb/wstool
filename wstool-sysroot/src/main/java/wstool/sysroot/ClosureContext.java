@@ -1,6 +1,13 @@
 package wstool.sysroot;
 
+import java.util.Objects;
+
 import wstool.common.model.PackageMajorVersion;
 import wstool.common.workspace.LocalWorkspace;
 
-public record ClosureContext(LocalWorkspace workspace, PackageMajorVersion name) {}
+public record ClosureContext(LocalWorkspace workspace, PackageMajorVersion name) {
+    public ClosureContext {
+        Objects.requireNonNull(workspace, "workspace must not be null");
+        Objects.requireNonNull(name, "name must not be null");
+    }
+}

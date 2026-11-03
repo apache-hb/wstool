@@ -37,10 +37,7 @@ public class ClosureSelector implements Selector {
 
         @Override
         public Optional<Selector> parse(Sexp expr, SelectorContext context) throws Exception {
-            if (expr.isAtomic()
-                    || expr.getLength() < 2
-                    || expr.getLength() > 3
-                    || !expr.get(0).equals(SexpFactory.newAtomicSexp("closure"))) {
+            if (!expr.get(0).equals(SexpFactory.newAtomicSexp("closure"))) {
                 return Optional.empty();
             }
 

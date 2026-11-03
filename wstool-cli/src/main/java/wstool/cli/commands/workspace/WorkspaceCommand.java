@@ -12,6 +12,7 @@ import wstool.cli.commands.CommonCommand;
         subcommands = {
             CreateWorkspaceCommand.class,
             SetupWorkspaceCommand.class,
+            RefreshWorkspaceCommand.class,
             AddPackageCommand.class,
             RemovePackageCommand.class,
             ExecuteRecursiveCommand.class

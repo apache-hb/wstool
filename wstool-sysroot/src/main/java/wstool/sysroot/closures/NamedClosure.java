@@ -27,6 +27,7 @@ public class NamedClosure implements Closure {
         @Override
         public Optional<Closure> parse(Sexp expr, ClosureContext context) {
             String name;
+
             if (expr.isAtomic()) {
                 name = expr.toString();
             } else if (expr.getLength() == 1 && expr.get(0).isAtomic()) {
@@ -34,9 +35,7 @@ public class NamedClosure implements Closure {
             } else {
                 return Optional.empty();
             }
-            if (!ClosureNames.supports(name)) {
-                return Optional.empty();
-            }
+
             return Optional.of(new NamedClosure(context, ClosureNames.from(name)));
         }
     }

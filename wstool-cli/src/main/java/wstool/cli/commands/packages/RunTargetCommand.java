@@ -38,7 +38,6 @@ public class RunTargetCommand extends CommonCommand {
     @Override
     public Integer call() throws Exception {
         LocalWorkspace workspace = workspaceFactory.findUp(cwd);
-        workspace.refresh();
         var packageDirectory = packageFactory.findDirectoryUp(cwd);
         PackageConfig pkgConfig = packageFactory.open(packageDirectory);
         return buildRunner.runBuild(workspace, pkgConfig, packageDirectory, args);

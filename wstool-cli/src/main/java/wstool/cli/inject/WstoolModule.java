@@ -23,6 +23,7 @@ import wstool.cli.commands.packages.StorePackageCommand;
 import wstool.cli.commands.workspace.AddPackageCommand;
 import wstool.cli.commands.workspace.CreateWorkspaceCommand;
 import wstool.cli.commands.workspace.ExecuteRecursiveCommand;
+import wstool.cli.commands.workspace.RefreshWorkspaceCommand;
 import wstool.cli.commands.workspace.RemovePackageCommand;
 import wstool.common.pkl.PklHelper;
 import wstool.git.GitClient;
@@ -90,6 +91,13 @@ public final class WstoolModule {
     @IntoMap
     @ClassKey(CreateWorkspaceCommand.class)
     static CommonCommand provideCreateWorkspaceCommand(CreateWorkspaceCommand command) {
+        return command;
+    }
+
+    @Provides
+    @IntoMap
+    @ClassKey(RefreshWorkspaceCommand.class)
+    static CommonCommand provideRefreshWorkspaceCommand(RefreshWorkspaceCommand command) {
         return command;
     }
 

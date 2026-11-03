@@ -125,10 +125,20 @@ public final class NpmImporter {
             packageDependencies.putAll(metadata.optionalDependencies());
             packageDependencies.putAll(metadata.peerDependencies());
             metadata.bundledDependencies().forEach(packageDependencies::remove);
+            packageDependencies.entrySet().removeIf(
+                    dependency -> {
+                        String dependencyLockPath =
+                                resolveDependencyLockPath(
+                                        lockPath, dependency.getKey(), versionsByLockPath);
+                        return dependencyLockPath == null
+                                || Boolean.TRUE.equals(
+                                        packageLock.packages().get(dependencyLockPath).inBundle());
+                    });
             packageDependencies.replaceAll(
                     (dependencyName, ignoredRange) ->
-                            resolveDependencyVersion(lockPath, dependencyName, versionsByLockPath));
-            packageDependencies.values().removeIf(dependencyVersion -> dependencyVersion == null);
+                            versionsByLockPath.get(
+                                    resolveDependencyLockPath(
+                                            lockPath, dependencyName, versionsByLockPath)));
             result.add(
                     new NpmPackage(
                             name,
@@ -140,12 +150,11 @@ public final class NpmImporter {
         return List.copyOf(result);
     }
 
-    private String resolveDependencyVersion(
+    private String resolveDependencyLockPath(
             String packageLockPath, String dependencyName, Map<String, String> versionsByLockPath) {
         String candidate = packageLockPath + "/node_modules/" + dependencyName;
-        String resolvedVersion = versionsByLockPath.get(candidate);
-        if (resolvedVersion != null) {
-            return resolvedVersion;
+        if (versionsByLockPath.containsKey(candidate)) {
+            return candidate;
         }
 
         String parentPath = packageLockPath;
@@ -163,9 +172,8 @@ public final class NpmImporter {
                     parentPath.isEmpty()
                             ? "node_modules/" + dependencyName
                             : parentPath + "/node_modules/" + dependencyName;
-            resolvedVersion = versionsByLockPath.get(candidate);
-            if (resolvedVersion != null) {
-                return resolvedVersion;
+            if (versionsByLockPath.containsKey(candidate)) {
+                return candidate;
             }
         }
     }

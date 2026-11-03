@@ -45,6 +45,9 @@ public class AddPackageCommand extends CommonCommand {
         } else {
             workspace.clone(new PackageMajorVersion(packageName, version));
         }
+
+        workspace.refresh();
+
         return 0;
     }
 }

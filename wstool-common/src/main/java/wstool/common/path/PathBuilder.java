@@ -45,12 +45,12 @@ public class PathBuilder {
         List<Path> closure = new ArrayList<>();
 
         Path localBin = packageSource.resolve("wstool/bin");
-        if (isDirectory(localBin)) {
+        if (Files.isDirectory(localBin)) {
             closure.add(localBin);
         }
 
-        Set<PackageMajorVersion> dependencies = new LinkedHashSet<>();
-        addBuildDependencies(workspace, name, dependencies);
+        Set<PackageMajorVersion> dependencies = addBuildDependencies(workspace, name);
+
         for (PackageMajorVersion dep : dependencies) {
             Path buildClosure = workspace.buildClosureCache(dep);
             runtimeSymlinkFolder(workspace, dep, buildClosure);
@@ -61,25 +61,16 @@ public class PathBuilder {
             throw new IllegalArgumentException(
                     "No build tools found for package "
                             + name.name()
-                            + " in package "
+                            + " in "
                             + packageSource);
         }
 
         return closure.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
     }
 
-    private boolean isDirectory(Path path) throws IOException {
-        try {
-            return Files.readAttributes(path, BasicFileAttributes.class).isDirectory();
-        } catch (NoSuchFileException exception) {
-            return false;
-        }
-    }
-
     public void prepareBuildDependencies(LocalWorkspace workspace, PackageMajorVersion name)
             throws Exception {
-        Set<PackageMajorVersion> dependencies = new LinkedHashSet<>();
-        addBuildDependencies(workspace, name, dependencies);
+        Set<PackageMajorVersion> dependencies = addBuildDependencies(workspace, name);
         prepareBuildDependencies(dependencies, workspace);
     }
 
@@ -92,12 +83,13 @@ public class PathBuilder {
         }
     }
 
-    private void addBuildDependencies(
+    private Set<PackageMajorVersion> addBuildDependencies(
             LocalWorkspace workspace,
-            PackageMajorVersion name,
-            Set<PackageMajorVersion> dependencies)
+            PackageMajorVersion name)
             throws Exception {
         WorkspaceStorage storage = workspace.storage();
+
+        Set<PackageMajorVersion> dependencies = new LinkedHashSet<>();
 
         for (PackageDependency dependency : storage.dependenciesOf(name)) {
             PackageMajorVersion buildDependency = dependency.dependency();
@@ -105,6 +97,8 @@ public class PathBuilder {
                 dependencies.add(buildDependency);
             }
         }
+
+        return dependencies;
     }
 
     public Set<PackageMajorVersion> runtimeClosure(

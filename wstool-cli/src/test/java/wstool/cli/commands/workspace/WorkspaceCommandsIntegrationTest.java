@@ -8,6 +8,8 @@ import dev.parsick.testcontainers.gitserver.gitea.GiteaContainer;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.sql.DriverManager;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.io.file.PathUtils;
@@ -71,6 +73,53 @@ class WorkspaceCommandsIntegrationTest {
         assertTrue(Files.isDirectory(workspace.resolve("private/prefix")), result.output());
         assertTrue(Files.isDirectory(workspace.resolve("private/build")), result.output());
         assertTrue(Files.isRegularFile(workspace.resolve("wstool.db")), result.output());
+    }
+
+    @Test
+    void refreshUpdatesWorkspaceDataFromDistributionConfig() throws Exception {
+        URI distribution =
+                createRepository(
+                        "distribution",
+                        CliHelper.resourceDirectory("/workspace-add-remove/distribution/initial"));
+        Path workspace = tmp.resolve("refresh-workspace");
+        CliResult createResult =
+                cli.runCli(
+                        tmp,
+                        Map.of(),
+                        "workspace",
+                        "create",
+                        "--name",
+                        "refresh-workspace",
+                        "--distribution",
+                        distribution.toString());
+        CliHelper.assertSuccess(createResult);
+
+        Path updatedConfig =
+                CliHelper.resourceDirectory("/workspace-add-remove/distribution/updated")
+                        .resolve("distribution.pkl");
+        Files.copy(
+                updatedConfig,
+                workspace.resolve("distribution/distribution.pkl"),
+                StandardCopyOption.REPLACE_EXISTING);
+
+        CliResult refreshResult =
+                cli.runCli(
+                        workspace,
+                        Map.of("PACKAGE_REPOSITORY", "https://example.com/sample.git"),
+                        "workspace",
+                        "refresh");
+
+        CliHelper.assertSuccess(refreshResult);
+        try (var connection =
+                        DriverManager.getConnection(
+                                "jdbc:sqlite:" + workspace.resolve("wstool.db"));
+                var statement = connection.createStatement();
+                var resultSet = statement.executeQuery("SELECT name, version FROM package")) {
+            assertTrue(resultSet.next());
+            assertEquals("sample", resultSet.getString("name"));
+            assertEquals("1.0.0", resultSet.getString("version"));
+            assertFalse(resultSet.next());
+        }
     }
 
     @Test

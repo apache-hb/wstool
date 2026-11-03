@@ -65,7 +65,6 @@ public class SelectCommand extends CommonCommand {
     @Override
     public Integer call() throws Exception {
         LocalWorkspace workspace = workspaceFactory.findUp(cwd);
-        workspace.refresh();
         PackageConfig pkg = packageFactory.findUp(cwd);
 
         SelectorContext context = new SelectorContext(workspace, pkg.name());

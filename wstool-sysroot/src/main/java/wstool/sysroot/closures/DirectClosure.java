@@ -23,11 +23,10 @@ public class DirectClosure implements Closure {
     public static class DirectClosureFactory implements ClosureFactory {
         @Override
         public Optional<Closure> parse(Sexp expr, ClosureContext context) {
-            if (expr.isAtomic()
-                    || expr.getLength() == 0
-                    || !expr.get(0).equals(SexpFactory.newAtomicSexp("direct"))) {
+            if (!expr.get(0).equals(SexpFactory.newAtomicSexp("direct"))) {
                 return Optional.empty();
             }
+
             EnumSet<ClosureName> names = EnumSet.noneOf(ClosureName.class);
             for (int i = 1; i < expr.getLength(); i++) {
                 Sexp child = expr.get(i);

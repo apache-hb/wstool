@@ -10,32 +10,32 @@ import wstool.sysroot.SelectorFactory;
 
 /** Given a package name finds its effective version in the provided context */
 public class VersionSelector implements Selector {
-    private final SelectorContext context;
-    private final String name;
+    private final PackageMajorVersion pmv;
 
-    public VersionSelector(SelectorContext context, String name) {
-        this.context = context;
-        this.name = name;
+    public VersionSelector(PackageMajorVersion pmv) {
+        this.pmv = pmv;
     }
 
     public static class VersionSelectorFactory implements SelectorFactory {
         @Override
         public Optional<Selector> parse(Sexp expr, SelectorContext context) throws Exception {
             // (version name)
-            if (expr.isAtomic()
-                    || expr.getLength() != 2
-                    || !expr.get(0).equals(SexpFactory.newAtomicSexp("version"))) {
+            if (!expr.get(0).equals(SexpFactory.newAtomicSexp("version"))) {
                 return Optional.empty();
             }
 
-            return Optional.of(new VersionSelector(context, expr.get(1).toString()));
+            PackageMajorVersion target =
+                    expr.getLength() > 1
+                            ? VersionSelector.resolve(context, expr.get(1))
+                            : context.name();
+
+            return Optional.of(new VersionSelector(target));
         }
     }
 
     @Override
     public String select() throws Exception {
-        PackageMajorVersion target = context.workspace().find(name);
-        return target.version();
+        return pmv.version();
     }
 
     public static PackageMajorVersion resolve(SelectorContext context, Sexp expr) throws Exception {
